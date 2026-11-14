@@ -667,7 +667,7 @@
     },
     "/api/v1/events/{id}/related": {
       "get": {
-        "description": "Events about the same situation, each with the rule that matched, a\nplain reason and a confidence: a fire's evacuation zones (named in the\nCal OES notes, or the nearest fire to a zone issued soon after it\nstarted), outages PG&E attributes to it, shutoffs and road reports near\nit; shutoffs, outages and road reports inside a wind, fire-weather or\nwinter storm product's area while it is in effect. Works from either\nside: an evacuation lists its fire. Relations state what the sources say\nor how events coincide, never a cause the sources do not state. Computed\nat read time from the stored events (every status), so rules can change\nwithout a migration. Related events carry no shapes (as\n`geometryFormat=NONE`); fetch one for its geometry.",
+        "description": "Events about the same situation, each with the rule that matched, a\nplain reason and a confidence: a fire's evacuation zones (named in the\nCal OES notes, or the nearest fire to a zone issued soon after it\nstarted), outages PG&E attributes to it, shutoffs and road reports near\nit; shutoffs, outages and road reports inside a wind, fire-weather or\nwinter storm product's area while it is in effect. Works from either\nside: an evacuation lists its fire. Relations state what the sources say\nor how events coincide, never a cause the sources do not state.\n\nMesh nodes relate differently, by structure, not by situation: a node's\nrelated events are the other nodes read by the same operator-run monitor\n(`mesh.telemetry.admin.reporterId`), whatever their status. A gateway\n(the companion radio a monitor listens through) lists the repeaters that\nmonitor reads and they list it (`mesh-monitor-gateway`); two repeaters,\nor two gateways, of one monitor list each other (`mesh-monitor-peer`).\nThe claim is only that one monitor reads both: which gateway a repeater\nwas read through is not reported. A node no monitor reads has none, and\na mesh node is never related to a fire, outage or road report. For radio\nlinks between nodes use `GET /api/v1/mesh/links`. Computed\nat read time from the stored events (every status), so rules can change\nwithout a migration. Related events carry no shapes (as\n`geometryFormat=NONE`); fetch one for its geometry.",
         "operationId": "GridService_ListRelatedEvents",
         "parameters": [
           {
@@ -7314,7 +7314,7 @@
             "type": "string"
           },
           "rule": {
-            "description": "The rule that matched, e.g. `fire-evacuation-named`,\n`fire-evacuation-near`, `fire-outage-cause`, `fire-shutoff-near`,\n`fire-road-named`, `weather-shutoff`, `weather-outage`, `weather-road`.\nNew rules may appear; treat unknown names generically.",
+            "description": "The rule that matched, e.g. `fire-evacuation-named`,\n`fire-evacuation-near`, `fire-outage-cause`, `fire-shutoff-near`,\n`fire-road-named`, `weather-shutoff`, `weather-outage`, `weather-road`,\n`mesh-monitor-gateway`, `mesh-monitor-peer`.\nNew rules may appear; treat unknown names generically.",
             "example": "fire-evacuation-named",
             "type": "string"
           }
@@ -7348,7 +7348,7 @@
       },
       "v1RelationConfidence": {
         "default": "RELATION_CONFIDENCE_UNSPECIFIED",
-        "description": "RelationConfidence is how strongly a relation is supported.\n\n - RELATION_CONTEXT: Coincidence in time and place worth showing as context; no link claimed\n(an outage inside a High Wind Warning's area).\n - RELATION_LOW: Plausible from time and place alone (a shutoff near a burning fire).\n - RELATION_MEDIUM: Time and place plus a corroborating fact (PG&E lists the cause as fire),\nor the nearest fire to an evacuation zone issued soon after it started.\n - RELATION_HIGH: A source names the other event (Cal OES notes name the fire).",
+        "description": "RelationConfidence is how strongly a relation is supported.\n\n - RELATION_CONTEXT: Coincidence in time and place worth showing as context; no link claimed\n(an outage inside a High Wind Warning's area). For mesh nodes: two\nrepeaters, or two gateways, read by the same monitor.\n - RELATION_LOW: Plausible from time and place alone (a shutoff near a burning fire).\n - RELATION_MEDIUM: Time and place plus a corroborating fact (PG&E lists the cause as fire),\nor the nearest fire to an evacuation zone issued soon after it started.\nFor mesh nodes: a gateway and a node read by the same monitor.\n - RELATION_HIGH: A source names the other event (Cal OES notes name the fire).",
         "enum": [
           "RELATION_CONFIDENCE_UNSPECIFIED",
           "RELATION_CONTEXT",

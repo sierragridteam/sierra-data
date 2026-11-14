@@ -242,3 +242,7 @@ func TestZoneWithoutEffectiveStartsWhenFirstStored(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, ids(rs), "evac:ccu-139")
 }
+
+func seedSource(ctx context.Context, st *store.Store, id string) error {
+	return st.SeedSources(ctx, []store.SourceSeed{{ID: id, Name: id, PollInterval: time.Minute}})
+}

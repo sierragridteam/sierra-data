@@ -1479,7 +1479,18 @@ service GridService {
   // it; shutoffs, outages and road reports inside a wind, fire-weather or
   // winter storm product's area while it is in effect. Works from either
   // side: an evacuation lists its fire. Relations state what the sources say
-  // or how events coincide, never a cause the sources do not state. Computed
+  // or how events coincide, never a cause the sources do not state.
+  //
+  // Mesh nodes relate differently, by structure, not by situation: a node's
+  // related events are the other nodes read by the same operator-run monitor
+  // (`mesh.telemetry.admin.reporterId`), whatever their status. A gateway
+  // (the companion radio a monitor listens through) lists the repeaters that
+  // monitor reads and they list it (`mesh-monitor-gateway`); two repeaters,
+  // or two gateways, of one monitor list each other (`mesh-monitor-peer`).
+  // The claim is only that one monitor reads both: which gateway a repeater
+  // was read through is not reported. A node no monitor reads has none, and
+  // a mesh node is never related to a fire, outage or road report. For radio
+  // links between nodes use `GET /api/v1/mesh/links`. Computed
   // at read time from the stored events (every status), so rules can change
   // without a migration. Related events carry no shapes (as
   // `geometryFormat=NONE`); fetch one for its geometry.
@@ -2203,12 +2214,14 @@ message RelatedEventList {
 enum RelationConfidence {
   RELATION_CONFIDENCE_UNSPECIFIED = 0;
   // Coincidence in time and place worth showing as context; no link claimed
-  // (an outage inside a High Wind Warning's area).
+  // (an outage inside a High Wind Warning's area). For mesh nodes: two
+  // repeaters, or two gateways, read by the same monitor.
   RELATION_CONTEXT = 1;
   // Plausible from time and place alone (a shutoff near a burning fire).
   RELATION_LOW = 2;
   // Time and place plus a corroborating fact (PG&E lists the cause as fire),
   // or the nearest fire to an evacuation zone issued soon after it started.
+  // For mesh nodes: a gateway and a node read by the same monitor.
   RELATION_MEDIUM = 3;
   // A source names the other event (Cal OES notes name the fire).
   RELATION_HIGH = 4;
@@ -2220,7 +2233,8 @@ message RelatedEvent {
   Event event = 1 [(google.api.field_behavior) = REQUIRED];
   // The rule that matched, e.g. `fire-evacuation-named`,
   // `fire-evacuation-near`, `fire-outage-cause`, `fire-shutoff-near`,
-  // `fire-road-named`, `weather-shutoff`, `weather-outage`, `weather-road`.
+  // `fire-road-named`, `weather-shutoff`, `weather-outage`, `weather-road`,
+  // `mesh-monitor-gateway`, `mesh-monitor-peer`.
   // New rules may appear; treat unknown names generically.
   string rule = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"fire-evacuation-named\""}];
   RelationConfidence confidence = 3;

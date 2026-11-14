@@ -21,6 +21,34 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-14 (later)
+
+### Mesh nodes have related events: the nodes their monitor reads
+
+`GET /api/v1/events/{id}/related` returned nothing for a mesh node. It now
+lists the other nodes read by the same operator-run monitor (the id in
+`mesh.telemetry.admin.reporterId`: the SIERRA relay, an operator's own
+monitor), so a gateway links to the repeaters read through its relay and each
+repeater links back.
+
+- `mesh-monitor-gateway`, `RELATION_MEDIUM`: a gateway (a `companion` node, the
+  radio a monitor listens through) and a node that monitor reads. Reasons:
+  "Read by SIERRA Mesh Relay, which listens through this gateway" and, from the
+  repeater, "A gateway of SIERRA Mesh Relay, which reads this node".
+- `mesh-monitor-peer`, `RELATION_CONTEXT`: two repeaters, or two gateways, of
+  one monitor ("Also read by …", "Another gateway of …").
+
+What is claimed is only that one monitor reads both. Which gateway a repeater
+was read through is not reported, so no relation says so. A node no monitor
+reads has no related events, and a mesh node is never related to a fire, an
+outage or a road report. These relations are structural and do not depend on
+time or distance; a related node is listed whatever its status, and carries its
+latest reading (`mesh.telemetry.admin`) for how recent the monitor's read is.
+Radio links between nodes stay at `GET /api/v1/mesh/links`.
+
+Additive: the response shape is unchanged and the two rule names are new values
+of `rule`, which clients already treat generically.
+
 ## 2026-11-14
 
 ### BREAKING: `chain_control` is one feature per stretch of highway, not one per Caltrans sign

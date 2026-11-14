@@ -701,12 +701,14 @@ type RelationConfidence int32
 const (
 	RelationConfidence_RELATION_CONFIDENCE_UNSPECIFIED RelationConfidence = 0
 	// Coincidence in time and place worth showing as context; no link claimed
-	// (an outage inside a High Wind Warning's area).
+	// (an outage inside a High Wind Warning's area). For mesh nodes: two
+	// repeaters, or two gateways, read by the same monitor.
 	RelationConfidence_RELATION_CONTEXT RelationConfidence = 1
 	// Plausible from time and place alone (a shutoff near a burning fire).
 	RelationConfidence_RELATION_LOW RelationConfidence = 2
 	// Time and place plus a corroborating fact (PG&E lists the cause as fire),
 	// or the nearest fire to an evacuation zone issued soon after it started.
+	// For mesh nodes: a gateway and a node read by the same monitor.
 	RelationConfidence_RELATION_MEDIUM RelationConfidence = 3
 	// A source names the other event (Cal OES notes name the fire).
 	RelationConfidence_RELATION_HIGH RelationConfidence = 4
@@ -5640,7 +5642,8 @@ type RelatedEvent struct {
 	Event *Event `protobuf:"bytes,1,opt,name=event,proto3" json:"event,omitempty"`
 	// The rule that matched, e.g. `fire-evacuation-named`,
 	// `fire-evacuation-near`, `fire-outage-cause`, `fire-shutoff-near`,
-	// `fire-road-named`, `weather-shutoff`, `weather-outage`, `weather-road`.
+	// `fire-road-named`, `weather-shutoff`, `weather-outage`, `weather-road`,
+	// `mesh-monitor-gateway`, `mesh-monitor-peer`.
 	// New rules may appear; treat unknown names generically.
 	Rule       string             `protobuf:"bytes,2,opt,name=rule,proto3" json:"rule,omitempty"`
 	Confidence RelationConfidence `protobuf:"varint,3,opt,name=confidence,proto3,enum=grid.v1.RelationConfidence" json:"confidence,omitempty"`

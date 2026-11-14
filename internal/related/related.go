@@ -117,6 +117,9 @@ type Engine struct {
 	Now   func() time.Time
 	// MaxCandidates bounds the events read per rule side (newest first).
 	MaxCandidates int
+	// ReporterName resolves a monitor's id to its display name for the mesh
+	// relations' reasons. Optional: without it the id is quoted.
+	ReporterName func(id string) string
 
 	// firstSeen is when the Grid first stored events that state no start of
 	// their own (Cal OES zones, FIRIS perimeters); see span.
@@ -144,6 +147,11 @@ func (e *Engine) Related(ctx context.Context, subject *gridv1.Event) ([]Relation
 		if cur, ok := best[r.Event.GetId()]; !ok || r.Confidence > cur.Confidence {
 			best[r.Event.GetId()] = r
 		}
+	}
+	if subject.GetLayer() == gridv1.Layer_MESH {
+		// Mesh nodes relate through the monitor that reads them, not through
+		// time and place; see mesh.go.
+		return e.meshRelated(ctx, subject)
 	}
 	for _, rule := range e.Rules {
 		if rule.A.has(subject) {
