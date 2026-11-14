@@ -60,3 +60,53 @@ func TestListRelatedEvents(t *testing.T) {
 	_, err = g.ListRelatedEvents(rpcBG(), &gridv1.ListRelatedEventsRequest{Id: "nope:1"})
 	assert.Equal(t, codes.NotFound, status.Code(err))
 }
+
+// A mesh node's related events are the nodes its monitor reads, with the
+// monitor named from the source registry.
+func TestListRelatedEventsMeshNodes(t *testing.T) {
+	s := newTestService(t)
+	ctx := context.Background()
+	require.NoError(t, s.Store.SeedSources(ctx, []store.SourceSeed{
+		{ID: "meshcore", Name: "MeshCore", PollInterval: time.Minute},
+		{ID: "relay", Name: "SIERRA Mesh Relay", Kind: gridv1.SourceKind_REPORTER, PollInterval: time.Minute},
+	}))
+	node := func(key, name, nodeType, reporter string) {
+		d := &gridv1.MeshDetail{PublicKey: key, Name: name, NodeType: nodeType}
+		if reporter != "" {
+			d.Telemetry = &gridv1.MeshTelemetry{Admin: &gridv1.MeshAdminTelemetry{ReporterId: reporter}}
+		}
+		upsert(t, s.Store, &gridv1.Event{
+			Id: "meshcore:" + key, Layer: gridv1.Layer_MESH, Category: "node", Headline: name,
+			Severity: gridv1.Severity_INFO, Status: gridv1.EventStatus_ACTIVE,
+			Geometry:  pointGeom(38.2, -120.3),
+			Effective: timestamppb.New(base), ObservedAt: timestamppb.New(base),
+			Provenance: &gridv1.Provenance{SourceId: "meshcore", SourceName: "MeshCore"},
+			Detail:     &gridv1.Event_Mesh{Mesh: d},
+		})
+	}
+	node("aa01", "Eagle Gateway", "companion", "relay")
+	node("bb01", "Eagle HQ", "repeater", "relay")
+	node("dd01", "Somebody's node", "repeater", "")
+	g := NewGridServer(s)
+
+	res, err := g.ListRelatedEvents(rpcBG(), &gridv1.ListRelatedEventsRequest{Id: "meshcore:aa01"})
+	require.NoError(t, err)
+	require.Len(t, res.GetRelated(), 1)
+	r := res.GetRelated()[0]
+	assert.Equal(t, "meshcore:bb01", r.GetEvent().GetId())
+	assert.Equal(t, "mesh-monitor-gateway", r.GetRule())
+	assert.Equal(t, gridv1.RelationConfidence_RELATION_MEDIUM, r.GetConfidence())
+	assert.Equal(t, "Read by SIERRA Mesh Relay, which listens through this gateway", r.GetReason())
+	assert.Empty(t, r.GetEvent().GetGeometry().GetGeojson(), "related events carry no shapes")
+	assert.Equal(t, "relay", r.GetEvent().GetMesh().GetTelemetry().GetAdmin().GetReporterId(), "the related node keeps its reading")
+
+	back, err := g.ListRelatedEvents(rpcBG(), &gridv1.ListRelatedEventsRequest{Id: "meshcore:bb01"})
+	require.NoError(t, err)
+	require.Len(t, back.GetRelated(), 1)
+	assert.Equal(t, "meshcore:aa01", back.GetRelated()[0].GetEvent().GetId())
+	assert.Equal(t, "A gateway of SIERRA Mesh Relay, which reads this node", back.GetRelated()[0].GetReason())
+
+	none, err := g.ListRelatedEvents(rpcBG(), &gridv1.ListRelatedEventsRequest{Id: "meshcore:dd01"})
+	require.NoError(t, err)
+	assert.Empty(t, none.GetRelated(), "a node no monitor reads")
+}

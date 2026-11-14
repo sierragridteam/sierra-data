@@ -94,7 +94,18 @@ type GridServiceClient interface {
 	// it; shutoffs, outages and road reports inside a wind, fire-weather or
 	// winter storm product's area while it is in effect. Works from either
 	// side: an evacuation lists its fire. Relations state what the sources say
-	// or how events coincide, never a cause the sources do not state. Computed
+	// or how events coincide, never a cause the sources do not state.
+	//
+	// Mesh nodes relate differently, by structure, not by situation: a node's
+	// related events are the other nodes read by the same operator-run monitor
+	// (`mesh.telemetry.admin.reporterId`), whatever their status. A gateway
+	// (the companion radio a monitor listens through) lists the repeaters that
+	// monitor reads and they list it (`mesh-monitor-gateway`); two repeaters,
+	// or two gateways, of one monitor list each other (`mesh-monitor-peer`).
+	// The claim is only that one monitor reads both: which gateway a repeater
+	// was read through is not reported. A node no monitor reads has none, and
+	// a mesh node is never related to a fire, outage or road report. For radio
+	// links between nodes use `GET /api/v1/mesh/links`. Computed
 	// at read time from the stored events (every status), so rules can change
 	// without a migration. Related events carry no shapes (as
 	// `geometryFormat=NONE`); fetch one for its geometry.
@@ -451,7 +462,18 @@ type GridServiceServer interface {
 	// it; shutoffs, outages and road reports inside a wind, fire-weather or
 	// winter storm product's area while it is in effect. Works from either
 	// side: an evacuation lists its fire. Relations state what the sources say
-	// or how events coincide, never a cause the sources do not state. Computed
+	// or how events coincide, never a cause the sources do not state.
+	//
+	// Mesh nodes relate differently, by structure, not by situation: a node's
+	// related events are the other nodes read by the same operator-run monitor
+	// (`mesh.telemetry.admin.reporterId`), whatever their status. A gateway
+	// (the companion radio a monitor listens through) lists the repeaters that
+	// monitor reads and they list it (`mesh-monitor-gateway`); two repeaters,
+	// or two gateways, of one monitor list each other (`mesh-monitor-peer`).
+	// The claim is only that one monitor reads both: which gateway a repeater
+	// was read through is not reported. A node no monitor reads has none, and
+	// a mesh node is never related to a fire, outage or road report. For radio
+	// links between nodes use `GET /api/v1/mesh/links`. Computed
 	// at read time from the stored events (every status), so rules can change
 	// without a migration. Related events carry no shapes (as
 	// `geometryFormat=NONE`); fetch one for its geometry.
