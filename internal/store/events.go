@@ -231,6 +231,9 @@ func (s *Store) UpsertEvent(ctx context.Context, ev *gridv1.Event) (UpsertResult
 		if err := putLite(tx, c); err != nil {
 			return err
 		}
+		if err := putSearch(ctx, tx, []searchRow{newSearchRow(c, res.Revision, observedAt)}, true); err != nil {
+			return err
+		}
 		return replaceEventPlaces(tx, c.GetId(), c.PlaceIds)
 	})
 	if err != nil {
@@ -315,6 +318,7 @@ func transitionChunkTx(ctx context.Context, tx *sql.Tx, ids []string, to gridv1.
 		hashes           []string
 		blobs, liteBlobs [][]byte
 		liteIDs          []string
+		searchRows       []searchRow
 	)
 	for _, id := range ids { // the caller's order, not the map's
 		blob, ok := stored[id]
@@ -348,6 +352,7 @@ func transitionChunkTx(ctx context.Context, tx *sql.Tx, ids []string, to gridv1.
 		// the feed (status differs) correctly writes a revision.
 		hashes = append(hashes, ContentHash(ev))
 		blobs, liteBlobs, liteIDs = append(blobs, newBlob), append(liteBlobs, lb), append(liteIDs, id)
+		searchRows = append(searchRows, newSearchRow(ev, ev.GetRevision(), observedAt.Unix()))
 	}
 	if len(mid) == 0 {
 		return nil
@@ -373,6 +378,11 @@ func transitionChunkTx(ctx context.Context, tx *sql.Tx, ids []string, to gridv1.
 		SELECT id, proto FROM unnest($1::text[], $2::bytea[]) AS v(id, proto)
 		ON CONFLICT (event_id) DO UPDATE SET proto = excluded.proto`, liteIDs, liteBlobs); err != nil {
 		return fmt.Errorf("store: transition lite copies of %d events: %w", len(mid), err)
+	}
+	// The text rarely changes on a transition, but an amendment can change
+	// it, and the new revision needs its snapshot row either way.
+	if err := putSearch(ctx, tx, searchRows, true); err != nil {
+		return err
 	}
 	return bumpVersion(tx, versionRevisions, int64(len(mid)))
 }
@@ -688,6 +698,16 @@ func (s *Store) refreshEventPlaces(tx *sql.Tx, ev *gridv1.Event, pre *storedForR
 		}
 	} else if _, err := tx.Exec(`UPDATE events SET proto = $1, refreshes = refreshes + 1 WHERE id = $2`, newBlob, ev.GetId()); err != nil {
 		return false, fmt.Errorf("store: update event %s for refresh: %w", ev.GetId(), err)
+	}
+	// Of everything this path rewrites, only the AI summary is search text
+	// (search.Build leaves telemetry, observations and place ids out), so a
+	// telemetry refresh costs no search write. After the UPDATE, so the row
+	// records the refreshes count it was built from. History is not touched:
+	// the revision's snapshot row keeps the text it was stored with.
+	if enhChanged {
+		if err := putSearch(context.Background(), tx, []searchRow{newSearchRow(stored, stored.GetRevision(), 0)}, false); err != nil {
+			return false, err
+		}
 	}
 	// Same transaction as the rewrite: a reader can never pair the new
 	// version with the old blob.

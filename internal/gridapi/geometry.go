@@ -29,13 +29,35 @@ type geometryFormat int
 const (
 	geometryBase64 geometryFormat = iota
 	geometryObject
+	// geometryNone drops the shape and keeps bbox and centroid: for lists
+	// that do not draw. Only the list RPCs that say so accept it
+	// (parseListGeometryFormat). ListEvents has its own NONE, which reads the
+	// stored shape-free copy; revisions have no such copy and are stripped
+	// here, which still saves the bytes on the wire.
+	geometryNone
 )
 
 func (f geometryFormat) String() string {
-	if f == geometryObject {
+	switch f {
+	case geometryObject:
 		return "OBJECT"
+	case geometryNone:
+		return "NONE"
 	}
 	return "BASE64"
+}
+
+// parseListGeometryFormat is parseGeometryFormat for the revision lists,
+// which also take NONE.
+func parseListGeometryFormat(v string) (geometryFormat, error) {
+	if strings.EqualFold(strings.TrimSpace(v), "NONE") {
+		return geometryNone, nil
+	}
+	f, err := parseGeometryFormat(v)
+	if err != nil {
+		return 0, fmt.Errorf("%w; this list also takes NONE", err)
+	}
+	return f, nil
 }
 
 // parseGeometryFormat reads the request parameter: "" is the default,
@@ -60,6 +82,14 @@ func parseGeometryFormat(v string) (geometryFormat, error) {
 // object, and the failure is logged: one corrupt geometry must not fail a
 // whole page, and the bytes are still there for the client to inspect.
 func applyGeometryFormat(ctx context.Context, f geometryFormat, geoms ...*gridv1.Geometry) {
+	if f == geometryNone {
+		for _, g := range geoms {
+			if g != nil {
+				g.Geojson, g.Object = nil, nil
+			}
+		}
+		return
+	}
 	if f != geometryObject {
 		return
 	}

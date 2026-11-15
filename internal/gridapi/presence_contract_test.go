@@ -130,6 +130,24 @@ func TestResponsesHonorFieldPresence(t *testing.T) {
 		check("GetMeshTelemetry "+node, arch, err)
 	}
 
+	// Text search, in each of its response forms.
+	indexSearch(t, s)
+	found, err := g.ListEvents(rpcBG(), &gridv1.ListEventsRequest{Q: "earthquake", Status: allStatuses})
+	check("ListEvents q", found, err)
+	require.NotEmpty(t, found.GetEvents())
+	counted, err := g.ListEvents(rpcBG(), &gridv1.ListEventsRequest{Counts: true, Layer: []string{"EARTHQUAKE"}})
+	check("ListEvents counts", counted, err)
+	revs, err := g.ListHistory(rpcBG(), &gridv1.ListHistoryRequest{Q: "earthquake"})
+	check("ListHistory q", revs, err)
+	require.NotEmpty(t, revs.GetRevisions())
+	collapsed, err := g.ListHistory(rpcBG(), &gridv1.ListHistoryRequest{Q: "earthquake", Collapse: "event"})
+	check("ListHistory q collapsed", collapsed, err)
+	require.NotEmpty(t, collapsed.GetCollapsed())
+
+	finder, err := g.Search(rpcBG(), &gridv1.SearchRequest{Q: "arnold"})
+	check("Search", finder, err)
+	require.NotEmpty(t, finder.GetHits())
+
 	// Every annotation a GridService response can carry was seen holding a value.
 	svc := gridv1.File_grid_proto.Services().ByName("GridService")
 	var roots []protoreflect.MessageDescriptor

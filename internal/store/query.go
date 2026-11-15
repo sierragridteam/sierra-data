@@ -12,6 +12,7 @@ import (
 	"time"
 
 	gridv1 "github.com/sierragridteam/sierra-data/api/grid/v1"
+	"github.com/sierragridteam/sierra-data/internal/search"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -38,6 +39,13 @@ type EventQuery struct {
 	// carries bbox and centroid but no GeoJSON. For lists that do not draw
 	// shapes; see migrationV12 for why it matters.
 	Lite bool
+	// Search is a text query over the events' search documents (search.go).
+	// With it the page is ordered newest first (observed_at DESC, id ASC),
+	// not by severity. Only SearchEvents reads it.
+	Search *search.Query
+	// Counts asks SearchEvents for the total and its breakdown by layer and
+	// category even without a text query.
+	Counts bool
 }
 
 // HistoryQuery filters QueryHistory over event_revisions. The time window is
@@ -48,6 +56,9 @@ type HistoryQuery struct {
 	From, To  time.Time
 	PageSize  int
 	PageToken string
+	// Search is a text query over each revision's search document. Only
+	// SearchHistory and SearchHistoryByEvent read it.
+	Search *search.Query
 }
 
 // eventCursor is the keyset for QueryEvents' ordering
@@ -162,6 +173,12 @@ func (s *Store) QueryEventsPage(ctx context.Context, q EventQuery) (Page[*gridv1
 	if err != nil {
 		return Page[*gridv1.Event]{}, fmt.Errorf("store: query events: %w", err)
 	}
+	return scanEventsPage(rows, pageSize, q.Lite)
+}
+
+// scanEventsPage reads the rows of an events page statement (blob, severity,
+// observed_at, id; pageSize+1 of them at most) and closes them.
+func scanEventsPage(rows *sql.Rows, pageSize int, lite bool) (Page[*gridv1.Event], error) {
 	defer rows.Close()
 
 	var page Page[*gridv1.Event]
@@ -179,7 +196,7 @@ func (s *Store) QueryEventsPage(ctx context.Context, q EventQuery) (Page[*gridv1
 		if err := proto.Unmarshal(blob, ev); err != nil {
 			return Page[*gridv1.Event]{}, fmt.Errorf("store: unmarshal event %s: %w", cur.ID, err)
 		}
-		if q.Lite {
+		if lite {
 			// A row the backfill has not reached yet fell back to the full
 			// blob. Drop its shape here, so a lite page is the same body
 			// before and after the backfill (its ETag does not move).
@@ -209,11 +226,6 @@ func (s *Store) QueryEventsPage(ctx context.Context, q EventQuery) (Page[*gridv1
 // primary key. Holding a read that long is what let a deploy's drain cancel
 // it mid-query (the 500 that gridapi.internalErr now reports as a 503).
 func eventsPageSQL(q EventQuery, pageSize int) (string, []any, error) {
-	statuses := q.Statuses
-	if len(statuses) == 0 {
-		statuses = []gridv1.EventStatus{gridv1.EventStatus_ACTIVE, gridv1.EventStatus_SCHEDULED}
-	}
-
 	var sb strings.Builder
 	var args sqlArgs
 	blobCol := "e.proto"
@@ -222,19 +234,8 @@ func eventsPageSQL(q EventQuery, pageSize int) (string, []any, error) {
 	}
 	sb.WriteString(`SELECT ` + blobCol + `, k.severity, k.observed_at, k.id FROM (` +
 		`SELECT e.id, e.severity, e.observed_at FROM events e`)
-	if q.PlaceID != "" {
-		sb.WriteString(` JOIN event_places ep ON ep.event_id = e.id AND ep.place_id = ` + args.add(q.PlaceID))
-	}
-	sb.WriteString(` WHERE e.status = ANY(` + args.add(enumInts(statuses)) + `)`)
-	if len(q.Layers) > 0 {
-		sb.WriteString(` AND e.layer = ANY(` + args.add(enumInts(q.Layers)) + `)`)
-	}
-	if q.MinSeverity > gridv1.Severity_INFO {
-		sb.WriteString(` AND e.severity >= ` + args.add(int32(q.MinSeverity)))
-	}
-	if !q.Since.IsZero() {
-		sb.WriteString(` AND e.observed_at >= ` + args.add(q.Since.Unix()))
-	}
+	q.Search = nil // the severity-ordered page has no text match (SearchEvents)
+	sb.WriteString(eventsFilterSQL(q, &args))
 	if q.PageToken != "" {
 		var cur eventCursor
 		if err := decodeToken(q.PageToken, &cur); err != nil {

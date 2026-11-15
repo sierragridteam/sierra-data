@@ -2,8 +2,10 @@ package ingest
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/dpup/prefab"
 	"github.com/stretchr/testify/assert"
@@ -22,6 +24,7 @@ import (
 	"github.com/sierragridteam/sierra-data/internal/gridapi"
 	"github.com/sierragridteam/sierra-data/internal/openapispec"
 	"github.com/sierragridteam/sierra-data/internal/places"
+	"github.com/sierragridteam/sierra-data/internal/store"
 )
 
 // TestNormalizersHonorFieldPresence is the normalizer half of the spec's
@@ -94,6 +97,19 @@ func TestNormalizersHonorFieldPresence(t *testing.T) {
 		}
 		hist, err := g.ListHistory(rpcStreamCtx(), &gridv1.ListHistoryRequest{PageSize: 200, GeometryFormat: format})
 		check(phase+" ListHistory", hist, err)
+		// Text search over the same events and revisions: a word out of a
+		// stored headline, so every form has something to return.
+		buildSearchIndex(t, st)
+		word := searchableWord(t, events)
+		found, err := g.ListEvents(rpcStreamCtx(), &gridv1.ListEventsRequest{Q: word, Status: req.Status, GeometryFormat: format})
+		check(phase+" ListEvents q", found, err)
+		require.NotEmpty(t, found.GetEvents(), "q=%s", word)
+		revs, err := g.ListHistory(rpcStreamCtx(), &gridv1.ListHistoryRequest{Q: word, GeometryFormat: format})
+		check(phase+" ListHistory q", revs, err)
+		require.NotEmpty(t, revs.GetRevisions(), "q=%s", word)
+		collapsed, err := g.ListHistory(rpcStreamCtx(), &gridv1.ListHistoryRequest{Q: word, Collapse: "event", GeometryFormat: format})
+		check(phase+" ListHistory q collapsed", collapsed, err)
+		require.NotEmpty(t, collapsed.GetCollapsed(), "q=%s", word)
 		return ids
 	}
 
@@ -115,6 +131,50 @@ func TestNormalizersHonorFieldPresence(t *testing.T) {
 	for _, f := range openapispec.RequiredFieldsReachable(event, revisions) {
 		assert.True(t, seen[f], "%s is REQUIRED in grid.proto but no poller fixture here produced it; extend one", f)
 	}
+}
+
+// buildSearchIndex runs the search backfill to the end, as a writer term does.
+func buildSearchIndex(t *testing.T, st *store.Store) {
+	t.Helper()
+	ctx := context.Background()
+	for after := ""; ; {
+		b, err := st.BackfillEventSearch(ctx, after, 500)
+		require.NoError(t, err)
+		if b.Done {
+			break
+		}
+		after = b.NextID
+	}
+	for id, rev := "", int64(0); ; {
+		b, err := st.BackfillRevisionSearch(ctx, id, rev, 500)
+		require.NoError(t, err)
+		if b.Done {
+			break
+		}
+		id, rev = b.NextID, b.NextRev
+	}
+}
+
+// searchableWord returns a plain word of five letters or more from a
+// stored headline.
+func searchableWord(t *testing.T, events []*gridv1.Event) string {
+	t.Helper()
+	for _, ev := range events {
+		for _, w := range strings.Fields(ev.GetHeadline()) {
+			if len(w) < 5 {
+				continue
+			}
+			plain := true
+			for _, r := range w {
+				plain = plain && unicode.IsLetter(r)
+			}
+			if plain {
+				return w
+			}
+		}
+	}
+	t.Fatal("no stored headline has a plain word to search for")
+	return ""
 }
 
 // presencePollers builds every production poller over the fixtures its own

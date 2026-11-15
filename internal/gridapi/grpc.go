@@ -240,6 +240,11 @@ func (g *GridServer) ListEvents(ctx context.Context, req *gridv1.ListEventsReque
 	} else if geomFmt, err = parseGeometryFormat(req.GetGeometryFormat()); err != nil {
 		return nil, invalidErr(fmt.Errorf("%w; /api/v1/events also takes NONE", err))
 	}
+	if eq.Search, err = parseSearch(req.GetQ(), req.GetQTyping()); err != nil {
+		return nil, err
+	}
+	eq.Counts = req.GetCounts()
+	searching := eq.Search != nil || eq.Counts
 
 	// Filters are validated above (400/404 first); guard on a cheap global data
 	// version + the filter set so a match skips the query entirely.
@@ -268,13 +273,25 @@ func (g *GridServer) ListEvents(ctx context.Context, req *gridv1.ListEventsReque
 		}
 		version += ".m" + strconv.FormatInt(mv, 10)
 	}
+	if searching {
+		// A backfill rebuilds search rows, and so results, without a revision.
+		sv, err := g.searchVersion(ctx)
+		if err != nil {
+			return nil, internalErr(ctx, err)
+		}
+		version += sv
+	}
 	tag := weakListTag(version,
 		req.GetPlace(), strings.Join(req.GetLayer(), ","), strings.Join(req.GetStatus(), ","),
 		req.GetSeverityMin(), req.GetSince(),
 		strconv.Itoa(int(req.GetPageSize())), req.GetPageToken(), strconv.FormatBool(req.GetEnhancementIo()),
-		geomFmt.String(), strconv.FormatBool(eq.Lite))
+		geomFmt.String(), strconv.FormatBool(eq.Lite),
+		req.GetQ(), strconv.FormatBool(req.GetQTyping()), strconv.FormatBool(eq.Counts))
 	if err := etag.Guard(ctx, tag); err != nil {
 		return nil, err // 304 — skip the query
+	}
+	if searching {
+		return g.eventListWithSearch(ctx, eq, req, geomFmt)
 	}
 
 	page, err := g.svc.Store.QueryEventsPage(ctx, eq)
@@ -350,7 +367,7 @@ func (g *GridServer) GetEventHistory(ctx context.Context, req *gridv1.GetEventHi
 	if err != nil {
 		return nil, invalidErr(err)
 	}
-	geomFmt, err := parseGeometryFormat(req.GetGeometryFormat())
+	geomFmt, err := parseListGeometryFormat(req.GetGeometryFormat())
 	if err != nil {
 		return nil, invalidErr(err)
 	}
@@ -417,9 +434,22 @@ func (g *GridServer) ListHistory(ctx context.Context, req *gridv1.ListHistoryReq
 		return nil, invalidErr(err)
 	}
 	hq.PageToken = req.GetPageToken()
-	geomFmt, err := parseGeometryFormat(req.GetGeometryFormat())
+	geomFmt, err := parseListGeometryFormat(req.GetGeometryFormat())
 	if err != nil {
 		return nil, invalidErr(err)
+	}
+	if hq.Search, err = parseSearch(req.GetQ(), req.GetQTyping()); err != nil {
+		return nil, err
+	}
+	collapse := false
+	switch c := strings.ToLower(strings.TrimSpace(req.GetCollapse())); {
+	case c == "":
+	case c != "event":
+		return nil, invalidErr(fmt.Errorf("unknown collapse: %q (the only value is event)", req.GetCollapse()))
+	case hq.Search == nil:
+		return nil, invalidErr(errors.New("collapse=event needs q: it groups the revisions a text query matched"))
+	default:
+		collapse = true
 	}
 
 	dv, err := g.svc.Store.DataVersion(ctx)
@@ -431,6 +461,13 @@ func (g *GridServer) ListHistory(ctx context.Context, req *gridv1.ListHistoryReq
 		return nil, internalErr(ctx, err)
 	}
 	version := prefix + "." + strconv.FormatInt(dv, 10)
+	if hq.Search != nil {
+		sv, err := g.searchVersion(ctx)
+		if err != nil {
+			return nil, internalErr(ctx, err)
+		}
+		version += sv
+	}
 	if hq.PlaceID != "" {
 		// Snapshots never change, but which events a place matches can: a
 		// place re-attachment rewrites event_places without a revision.
@@ -443,9 +480,12 @@ func (g *GridServer) ListHistory(ctx context.Context, req *gridv1.ListHistoryReq
 	tag := weakListTag(version,
 		req.GetPlace(), strings.Join(req.GetLayer(), ","), req.GetFrom(), req.GetTo(),
 		strconv.Itoa(int(req.GetPageSize())), req.GetPageToken(), strconv.FormatBool(req.GetEnhancementIo()),
-		geomFmt.String())
+		geomFmt.String(), req.GetQ(), strconv.FormatBool(req.GetQTyping()), strconv.FormatBool(collapse))
 	if err := etag.Guard(ctx, tag); err != nil {
 		return nil, err // 304 — skip the query
+	}
+	if hq.Search != nil {
+		return g.historyWithSearch(ctx, hq, collapse, req.GetEnhancementIo(), geomFmt)
 	}
 
 	page, err := g.svc.Store.QueryHistoryPage(ctx, hq)

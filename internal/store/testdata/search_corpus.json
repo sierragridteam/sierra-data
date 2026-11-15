@@ -1,0 +1,1773 @@
+{
+ "events": [
+  {
+   "areaLabel": "Sr108 / Brown Ct",
+   "category": "incident",
+   "description": "CHP Incident 260901MR0381 1183-Trfc Collision-Unkn Inj Sep 1 2026 5:06PM Sr108 / Brown Ct Sep 1 2026 5:06PM [2] IPHONE TC NOTIFICATION Information courtesy of CHP",
+   "effective": "2026-09-02T00:06:00Z",
+   "headline": "Traffic Collision-Unknown Injury",
+   "id": "chp:260901MR0381",
+   "ingestedAt": "2026-09-02T00:29:08.318634793Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-09-02T00:29:07.838991237Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-09-02T00:09:07.866353296Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "",
+    "log": [],
+    "logNumber": "260901MR0381",
+    "metadata": {}
+   },
+   "severity": "MODERATE",
+   "status": "RESOLVED"
+  },
+  {
+   "areaLabel": "Hwy 108 from Bonanza Drive (Right) to Sierra Road (Right), near Mi Wuk Village",
+   "category": "closure",
+   "description": "Closed: lane 1 (of 2 lanes). Estimated delay: 15 min.",
+   "effective": "2026-11-10T16:30:00Z",
+   "headline": "Hwy 108 one-way traffic control (Drainage Work)",
+   "id": "caltrans:d10-M108GA-0004-2026-11-10-083000",
+   "ingestedAt": "2026-11-10T16:16:44.096725451Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-10T16:16:43.832179126Z",
+   "provenance": {
+    "attribution": "cwwp2.dot.ca.gov",
+    "fetchedAt": "2026-11-05T06:19:45.822488209Z",
+    "sourceId": "caltrans",
+    "sourceName": "Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "roadIncident": {
+    "closure": {
+     "begin": {
+      "lat": 38.07451,
+      "lng": -120.173086
+     },
+     "beginLocation": "Bonanza Drive (Right)",
+     "closureDuration": "Standard",
+     "closureId": "M108GA",
+     "closureType": "One-Way Traffic",
+     "direction": "East / West",
+     "district": 10,
+     "end": {
+      "lat": 38.06571,
+      "lng": -120.184849
+     },
+     "endIndefinite": false,
+     "endLocation": "Sierra Road (Right)",
+     "estimatedDelayMinutes": 15,
+     "facility": "Conventional Hwy",
+     "lanesClosed": "1",
+     "logNumber": "4",
+     "plannedEnd": "2026-11-10T23:59:00Z",
+     "plannedStart": "2026-11-10T16:30:00Z",
+     "route": "SR-108",
+     "setUpAt": null,
+     "totalLanes": 2,
+     "windowId": "M108GA-0004-2026-11-10-08:30:00",
+     "workType": "Drainage Work"
+    },
+    "duration": "",
+    "impact": "",
+    "log": [],
+    "logNumber": "M108GA",
+    "metadata": {}
+   },
+   "severity": "MODERATE",
+   "status": "RESOLVED"
+  },
+  {
+   "areaLabel": "Lime Kiln Rd at SR 108, near Sonora",
+   "category": "incident",
+   "description": "CHP Incident 261114MR0161 1125-Traffic Hazard Nov 14 2026 9:07AM Lime Kiln Rd / Sr108 Nov 14 2026 9:07AM [1] ROAD FLOODED Information courtesy of CHP",
+   "effective": "2026-11-14T17:07:00Z",
+   "headline": "Road flooded and impassable",
+   "id": "chp:261114MR0161",
+   "ingestedAt": "2026-11-14T17:55:22.819863943Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-14T17:55:22.799251589Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-11-14T17:15:33.384858738Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "severe",
+    "log": [
+     {
+      "at": "2026-11-14T17:07:00Z",
+      "number": 1,
+      "text": "ROAD FLOODED"
+     }
+    ],
+    "logNumber": "261114MR0161",
+    "metadata": {
+     "incident_type": "road flooding",
+     "lanes_blocked": "all lanes"
+    }
+   },
+   "severity": "SEVERE",
+   "status": "RESOLVED",
+   "summary": "Road flooded at the intersection of Lime Kiln Road and SR 108 near Sonora. Flooding has made the roadway impassable; expect closures or turnarounds in the area. Report updated at 9:14 AM."
+  },
+  {
+   "areaLabel": "State Route 108 at Lime Kiln Road, near Sonora",
+   "category": "incident",
+   "description": "CHP Incident 261113MR0407 FLOOD-Roadway Flooding Nov 13 2026 8:18PM Sr108 / Lime Kiln Rd Information courtesy of CHP",
+   "effective": "2026-11-14T04:18:00Z",
+   "headline": "Roadway flooding reported, expect standing water and slow conditions",
+   "id": "chp:261113MR0407",
+   "ingestedAt": "2026-11-14T04:45:27.592417189Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-14T04:45:27.547809123Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-11-14T04:26:02.349703012Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "light",
+    "log": [],
+    "logNumber": "261113MR0407",
+    "metadata": {
+     "incident_type": "roadway flooding"
+    }
+   },
+   "severity": "MINOR",
+   "status": "RESOLVED",
+   "summary": "Roadway flooding reported on State Route 108 at Lime Kiln Road near Sonora. Flooding observed on the roadway; expect standing water and slow or hazardous conditions. Use caution and reduce speed; conditions may limit travel."
+  },
+  {
+   "areaLabel": "Soulsbyville Road at State Route 108, near Twain Harte",
+   "category": "incident",
+   "description": "CHP Incident 261022MR0424 FLOOD-Roadway Flooding Oct 22 2026 5:35PM Soulsbyville Rd / Sr108 Oct 22 2026 6:07PM [7] 1039 CORDS Oct 22 2026 5:38PM [5] 1039 CORDS Oct 22 2026 5:35PM [1] RDWY FLOODED Information courtesy of CHP",
+   "effective": "2026-10-23T00:35:00Z",
+   "headline": "Roadway flooding; road closed due to high water, responders notified.",
+   "id": "chp:261022MR0424",
+   "ingestedAt": "2026-10-23T01:48:10.224992868Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-10-23T01:48:09.831405082Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-10-23T01:18:07.930849975Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 4,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "severe",
+    "log": [],
+    "logNumber": "261022MR0424",
+    "metadata": {
+     "first_report_time": "2026-10-22T17:35:00-07:00",
+     "incident_id": "chp:261022MR0424",
+     "incident_type": "roadway flooding",
+     "last_update_time": "2026-10-22T18:17:00-07:00",
+     "reported_by": "CHP",
+     "roadway_status": "flooded"
+    }
+   },
+   "severity": "SEVERE",
+   "status": "RESOLVED",
+   "summary": "The roadway at Soulsbyville Road and State Route 108 is flooded. High water has made the highway impassable at the intersection; responders were notified. First report received Oct 22, 2026 at 5:35 PM; last update Oct 22, 2026 at 6:17 PM."
+  },
+  {
+   "areaLabel": "Old Priest Grade and Highway 120, Big Oak Flat",
+   "canonicalUrl": "https://www.fire.ca.gov/incidents/2026/7/6/priest-fire/",
+   "category": "wildfire",
+   "effective": "2026-07-06T14:25:00Z",
+   "headline": "Priest Fire \u2014 10 ac, 100% contained",
+   "id": "calfire:d2e2f55d-a944-489d-a8e0-70e134bc3381",
+   "ingestedAt": "2026-07-08T04:53:59.458505009Z",
+   "layer": "WILDFIRE",
+   "observedAt": "2026-07-08T04:53:59.415585836Z",
+   "provenance": {
+    "attribution": "CAL FIRE / WFIGS",
+    "fetchedAt": "2026-07-08T01:17:03.969492437Z",
+    "sourceId": "calfire",
+    "sourceName": "CAL FIRE",
+    "sourceUrl": "https://www.fire.ca.gov/incidents/2026/7/6/priest-fire/"
+   },
+   "revision": 5,
+   "severity": "MINOR",
+   "status": "RESOLVED",
+   "wildfire": {
+    "acres": 9.5,
+    "cause": "",
+    "containment": 100,
+    "county": "Tuolumne",
+    "hasPerimeter": false
+   }
+  },
+  {
+   "category": "wildfire",
+   "headline": "Dome \u2014 6801 ac",
+   "id": "firis:dome",
+   "ingestedAt": "2026-10-20T16:42:58.495212599Z",
+   "layer": "WILDFIRE",
+   "observedAt": "2026-10-20T16:42:58.412457096Z",
+   "provenance": {
+    "attribution": "CAL FIRE / FIRIS / NIFC",
+    "fetchedAt": "2026-10-18T04:52:58.026317343Z",
+    "sourceId": "firis",
+    "sourceName": "CAL FIRE / FIRIS",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "severity": "EXTREME",
+   "status": "EXPIRED",
+   "wildfire": {
+    "acres": 6801.389727602452,
+    "cause": "",
+    "containment": 0,
+    "county": "",
+    "hasPerimeter": true
+   }
+  },
+  {
+   "areaLabel": "Gopher Dr / Deerfield Dr",
+   "category": "incident",
+   "description": "CHP Incident 261113MR0361 1125-Traffic Hazard Nov 13 2026 6:38PM Gopher Dr / Deerfield Dr Nov 13 2026 6:40PM [1] MOVING TRK BLOCKING RDWY Information courtesy of CHP",
+   "effective": "2026-11-14T02:38:00Z",
+   "headline": "Moving truck blocking roadway, intersection blocked",
+   "id": "chp:261113MR0361",
+   "ingestedAt": "2026-11-14T03:15:27.189511025Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-14T03:15:27.148483363Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-11-14T02:45:57.542743033Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "severe",
+    "log": [
+     {
+      "at": "2026-11-14T02:40:00Z",
+      "number": 1,
+      "text": "MOVING TRK BLOCKING RDWY"
+     }
+    ],
+    "logNumber": "261113MR0361",
+    "metadata": {
+     "incident_type": "traffic hazard",
+     "lanes_blocked": "all lanes",
+     "vehicles_involved": "moving truck"
+    }
+   },
+   "severity": "SEVERE",
+   "status": "RESOLVED",
+   "summary": "A moving truck is blocking the roadway at the intersection of Gopher Drive and Deerfield Drive, obstructing traffic. Reported at 6:38 PM; last update at 6:44 PM. No information provided about injuries or emergency response."
+  },
+  {
+   "areaLabel": "US-50 west at Canal Street",
+   "category": "incident",
+   "description": "CHP Incident 261113SA1174 1125A-Animal Hazard Nov 13 2026 9:18PM Us50 W / Canal St Nov 13 2026 9:19PM [3] VEH GOA Nov 13 2026 9:19PM [2] DEER IS 1125 IN LANES Nov 13 2026 9:18PM [1] VEH VS DEER Information courtesy of CHP",
+   "effective": "2026-11-14T05:18:00Z",
+   "headline": "Vehicle struck deer; deer in lanes, three vehicles gone on arrival",
+   "id": "chp:261113SA1174",
+   "ingestedAt": "2026-11-14T05:35:24.665806376Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-14T05:35:24.619936743Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-11-14T05:25:25.544156976Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "light",
+    "log": [
+     {
+      "at": "2026-11-14T05:18:00Z",
+      "number": 1,
+      "text": "VEH VS DEER"
+     },
+     {
+      "at": "2026-11-14T05:19:00Z",
+      "number": 2,
+      "text": "DEER IS 1125 IN LANES"
+     },
+     {
+      "at": "2026-11-14T05:19:00Z",
+      "number": 3,
+      "text": "VEH GOA"
+     }
+    ],
+    "logNumber": "261113SA1174",
+    "metadata": {
+     "incident_type": "animal hazard",
+     "lanes_blocked": "deer in lanes",
+     "vehicles_involved": "3 (gone on arrival)"
+    }
+   },
+   "severity": "MINOR",
+   "status": "RESOLVED",
+   "summary": "Vehicle struck a deer on US-50 west at Canal Street. The deer is in the travel lanes. Three vehicles were listed as gone on arrival. No injuries or emergency response are reported in the message."
+  },
+  {
+   "areaLabel": "SR 49 at Middle Bar Road",
+   "category": "incident",
+   "description": "CHP Incident 261113ST0290 1125-Traffic Hazard Nov 13 2026 5:19PM Sr49 / Middle Bar Rd Nov 13 2026 5:25PM [4] [Appended, 17:26:31] [2] INJ DEER ON RHS Nov 13 2026 5:21PM [2] 1039 CT Nov 13 2026 5:20PM [1] INJ'D DEER ON FOG LINE Information courtesy of CHP",
+   "effective": "2026-11-14T01:19:00Z",
+   "headline": "Injured deer on right shoulder creating traffic hazard",
+   "id": "chp:261113ST0290",
+   "ingestedAt": "2026-11-14T01:49:53.248907290Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-14T01:49:53.193858733Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-11-14T01:30:18.386239416Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "light",
+    "log": [
+     {
+      "at": "2026-11-14T01:20:00Z",
+      "number": 1,
+      "text": "INJ'D DEER ON FOG LINE"
+     },
+     {
+      "at": "2026-11-14T01:21:00Z",
+      "number": 2,
+      "text": "1039 CT"
+     },
+     {
+      "at": "2026-11-14T01:25:00Z",
+      "number": 4,
+      "text": "[Appended, 17:26:31] [2] INJ DEER ON RHS"
+     }
+    ],
+    "logNumber": "261113ST0290",
+    "metadata": {
+     "incident_type": "animal in roadway",
+     "lanes_blocked": "right shoulder"
+    }
+   },
+   "severity": "MINOR",
+   "status": "RESOLVED",
+   "summary": "Reports of an injured deer on the right edge of the roadway (on or near the fog line) at SR 49 and Middle Bar Road creating a traffic hazard. Animal is on the right shoulder; no lanes reported blocked. Responding units noted the situation; no human injuries reported."
+  },
+  {
+   "areaLabel": "State Route 4 at Stallion Way",
+   "category": "incident",
+   "description": "CHP Incident 261113ST0403 1183-Trfc Collision-Unkn Inj Nov 13 2026 9:01PM Sr4 / Stallion Way Nov 13 2026 9:03PM [2] MALE SUBJ STANDING OUTSIDE OF ONE VEH Nov 13 2026 9:03PM [1] TWO VEHS OFF THE RDWY THRU A FENCE Information courtesy of CHP",
+   "effective": "2026-11-14T05:01:00Z",
+   "headline": "Two-vehicle crash off roadway through fence, injuries unknown",
+   "id": "chp:261113ST0403",
+   "ingestedAt": "2026-11-14T05:35:24.665806376Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-14T05:35:24.619936743Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-11-14T05:05:23.765497047Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "none",
+    "log": [
+     {
+      "at": "2026-11-14T05:03:00Z",
+      "number": 1,
+      "text": "TWO VEHS OFF THE RDWY THRU A FENCE"
+     },
+     {
+      "at": "2026-11-14T05:03:00Z",
+      "number": 2,
+      "text": "MALE SUBJ STANDING OUTSIDE OF ONE VEH"
+     }
+    ],
+    "logNumber": "261113ST0403",
+    "metadata": {
+     "incident_type": "traffic collision",
+     "injuries": "unknown",
+     "vehicles_involved": "2"
+    }
+   },
+   "severity": "INFO",
+   "status": "RESOLVED",
+   "summary": "Two-vehicle collision where both vehicles went off the roadway and through a fence. One male was observed standing outside one of the vehicles. Injuries are unknown. No lanes or ramp closures are reported."
+  },
+  {
+   "areaLabel": "SR 4 at Appaloosa Way",
+   "category": "incident",
+   "description": "CHP Incident 261113ST0187 1183-Trfc Collision-Unkn Inj Nov 13 2026 1:59PM Sr4 / Appaloosa Way Nov 13 2026 2:04PM [11] [Rotation Request Comment] 1039 SAM BERRI (XXX) XXX-XXXX [Shared] Nov 13 2026 2:03PM [8] 1185 30' OFF RDWY [Shared] Nov 13 2026 2:01PM [3] RHS Nov 13 2026 2:00PM [1] WHI 2D SD / SPUN OUT AND HIT A BARBED WIRE FENCE Information courtesy of CHP",
+   "effective": "2026-11-13T21:59:00Z",
+   "headline": "Single-vehicle crash spun out and struck fence, injuries unknown",
+   "id": "chp:261113ST0187",
+   "ingestedAt": "2026-11-13T22:40:12.235537197Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-13T22:40:12.212555906Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-11-13T22:10:12.968416832Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "none",
+    "log": [
+     {
+      "at": "2026-11-13T22:00:00Z",
+      "number": 1,
+      "text": "WHI 2D SD / SPUN OUT AND HIT A BARBED WIRE FENCE"
+     },
+     {
+      "at": "2026-11-13T22:01:00Z",
+      "number": 3,
+      "text": "RHS"
+     },
+     {
+      "at": "2026-11-13T22:03:00Z",
+      "number": 8,
+      "text": "1185 30' OFF RDWY [Shared]"
+     },
+     {
+      "at": "2026-11-13T22:04:00Z",
+      "number": 11,
+      "text": "[Rotation Request Comment] 1039 SAM BERRI (XXX) XXX-XXXX [Shared]"
+     }
+    ],
+    "logNumber": "261113ST0187",
+    "metadata": {
+     "incident_type": "traffic collision",
+     "injuries": "unknown",
+     "vehicles_involved": "1 (white 2-door)"
+    }
+   },
+   "severity": "INFO",
+   "status": "RESOLVED",
+   "summary": "A white two-door sedan spun out on SR 4 at Appaloosa Way, went about 30 feet off the roadway to the right and struck a barbed-wire fence. Injuries are unknown. The vehicle is off the travel lanes."
+  },
+  {
+   "areaLabel": "SR-120 at New Priest Grade",
+   "category": "incident",
+   "description": "CHP Incident 260724MR0154 CFIRE-Car Fire Jul 24 2026 8:53AM Sr120 / New Priest Grade Jul 24 2026 8:59AM [2] A LOT OF SMOKE COMING FRM TOUR BUS Information courtesy of CHP",
+   "effective": "2026-07-24T15:53:00Z",
+   "headline": "Tour bus fire producing heavy smoke, possible lane obstruction and reduced visibility",
+   "id": "chp:260724MR0154",
+   "ingestedAt": "2026-07-24T16:34:24.159307794Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-07-24T16:34:23.475006643Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-07-24T16:05:02.410981790Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "moderate",
+    "log": [],
+    "logNumber": "260724MR0154",
+    "metadata": {
+     "incident_type": "vehicle fire",
+     "injuries": "unknown",
+     "lanes_blocked": "unknown",
+     "reporting_unit": "CHP",
+     "smoke": "heavy",
+     "vehicles_involved": "tour bus"
+    }
+   },
+   "severity": "MODERATE",
+   "status": "RESOLVED",
+   "summary": "A vehicle fire was reported involving a tour bus with a lot of smoke. Report indicates heavy smoke coming from the bus at the SR-120 / New Priest Grade area. Smoke may reduce visibility and could be affecting lanes; expect delays while emergency responders handle the fire and scene."
+  },
+  {
+   "areaLabel": "Old Priest / State Route 120",
+   "category": "incident",
+   "description": "CHP Incident 261112MR0043 1125-Traffic Hazard Nov 12 2026 5:51AM Old Priest / Sr120 Nov 12 2026 5:53AM [4] 1039 OFC Nov 12 2026 5:51AM [2] POSS BO TRANS Information courtesy of CHP",
+   "effective": "2026-11-12T13:51:00Z",
+   "headline": "Traffic hazard reported, officer on scene",
+   "id": "chp:261112MR0043",
+   "ingestedAt": "2026-11-12T14:36:18.205752800Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-12T14:36:15.455212341Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-11-12T13:56:23.158396883Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "light",
+    "log": [
+     {
+      "at": "2026-11-12T13:51:00Z",
+      "number": 2,
+      "text": "POSS BO TRANS"
+     },
+     {
+      "at": "2026-11-12T13:53:00Z",
+      "number": 4,
+      "text": "1039 OFC"
+     }
+    ],
+    "logNumber": "261112MR0043",
+    "metadata": {
+     "emergency_services": "police officer",
+     "incident_type": "traffic hazard"
+    }
+   },
+   "severity": "MINOR",
+   "status": "RESOLVED",
+   "summary": "A traffic hazard was reported at Old Priest and State Route 120. An officer is on scene. Dispatch included a note 'POSS BO TRANS' (unspecified). No lanes or closures are reported."
+  },
+  {
+   "areaLabel": "CALAVERAS",
+   "category": "order",
+   "description": "EMERGENCY ALERT: Fire units responding near E. Old Emigrant Trail and S. Railroad Flat Road. EVACUATION ORDER: Swiss Ranch Road and Railroad Flat Road to Winding Way. Leave immediately. Follow official instructions. Avoid the area.  More information to follow.  ",
+   "evacuation": {
+    "county": "CALAVERAS",
+    "eventType": "",
+    "level": "ORDER",
+    "zoneId": "US-CA-XCA-CCU-043"
+   },
+   "headline": "Evacuation Order \u2014 US-CA-XCA-CCU-043",
+   "id": "evac:US-CA-XCA-CCU-043",
+   "ingestedAt": "2026-08-21T03:01:38.893565753Z",
+   "layer": "EVACUATION",
+   "observedAt": "2026-08-21T03:01:38.833293482Z",
+   "provenance": {
+    "attribution": "Cal OES \u2014 reference only",
+    "fetchedAt": "2026-08-20T20:51:38.838802065Z",
+    "sourceId": "caloes",
+    "sourceName": "Cal OES",
+    "sourceUrl": "https://protect.genasys.com/zones/US-CA-XCA-CCU-043"
+   },
+   "revision": 2,
+   "severity": "EXTREME",
+   "status": "RESOLVED"
+  },
+  {
+   "canonicalUrl": "https://pgealerts.alerts.pge.com/outage-tools/outage-map/",
+   "category": "unplanned",
+   "effective": "2026-10-21T20:04:19Z",
+   "headline": "Power outage \u2014 2,082 customers (emergency repairs)",
+   "id": "pge:383765",
+   "ingestedAt": "2026-10-21T21:32:05.764632871Z",
+   "layer": "POWER",
+   "observedAt": "2026-10-21T21:32:04.062614048Z",
+   "power": {
+    "allClear": null,
+    "cause": "EMERG REPAIRS",
+    "crewStatus": "T-Man On Site",
+    "customersAffected": 2082,
+    "deEnergizationEnd": null,
+    "deEnergizationStart": null,
+    "estimatedRestoration": "2026-10-22T00:30:00Z",
+    "eventId": "",
+    "eventName": "",
+    "medicalBaselineAffected": 0,
+    "outageId": "383765",
+    "stage": "",
+    "timePeriod": ""
+   },
+   "provenance": {
+    "attribution": "Pacific Gas and Electric",
+    "fetchedAt": "2026-10-21T21:17:03.844629724Z",
+    "sourceId": "pge",
+    "sourceName": "PG&E",
+    "sourceUrl": "https://pgealerts.alerts.pge.com/outage-tools/outage-map/"
+   },
+   "revision": 7,
+   "severity": "SEVERE",
+   "status": "RESOLVED"
+  },
+  {
+   "areaLabel": "Hwy 4 from Tipton House Road to Dorrington, near Arnold",
+   "category": "closure",
+   "description": "Closed: lane 1, right shoulder (of 2 lanes). Estimated delay: 10 min.",
+   "effective": "2026-11-17T16:01:00Z",
+   "headline": "Hwy 4 one-way traffic control (Tree Work)",
+   "id": "caltrans:d10-M4LA-0002-2026-11-17-080100",
+   "ingestedAt": "2026-11-11T05:55:54.077827404Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-11T05:53:02Z",
+   "provenance": {
+    "attribution": "cwwp2.dot.ca.gov",
+    "fetchedAt": "2026-11-11T05:55:54.071282787Z",
+    "sourceId": "caltrans",
+    "sourceName": "Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 1,
+   "roadIncident": {
+    "closure": {
+     "begin": {
+      "lat": 38.228014,
+      "lng": -120.369051
+     },
+     "beginLocation": "Tipton House Road",
+     "closureDuration": "Standard",
+     "closureId": "M4LA",
+     "closureType": "One-Way Traffic",
+     "direction": "East / West",
+     "district": 10,
+     "end": {
+      "lat": 38.300733,
+      "lng": -120.277027
+     },
+     "endIndefinite": false,
+     "endLocation": "Dorrington",
+     "estimatedDelayMinutes": 10,
+     "facility": "Conventional Hwy",
+     "lanesClosed": "1, RShoulder",
+     "logNumber": "2",
+     "plannedEnd": "2026-11-18T01:01:00Z",
+     "plannedStart": "2026-11-17T16:01:00Z",
+     "route": "SR-4",
+     "setUpAt": null,
+     "totalLanes": 2,
+     "windowId": "M4LA-0002-2026-11-17-08:01:00",
+     "workType": "Tree Work"
+    },
+    "duration": "",
+    "impact": "",
+    "log": [],
+    "logNumber": "M4LA",
+    "metadata": {}
+   },
+   "severity": "MODERATE",
+   "status": "SCHEDULED"
+  },
+  {
+   "areaLabel": "Hwy 26 from Route 49 Mokelumne Hill to Main Street (Left)",
+   "category": "closure",
+   "description": "Closed: all lanes (of 2 lanes).",
+   "effective": "2026-08-24T14:58:01Z",
+   "headline": "Hwy 26 full closure (Roadway Excavation)",
+   "id": "caltrans:d10-C26EA-0001-2026-08-24-070100",
+   "ingestedAt": "2026-11-12T18:00:38.873563827Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-12T17:53:03Z",
+   "provenance": {
+    "attribution": "cwwp2.dot.ca.gov",
+    "fetchedAt": "2026-11-12T18:00:38.657473950Z",
+    "sourceId": "caltrans",
+    "sourceName": "Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 3,
+   "roadIncident": {
+    "closure": {
+     "begin": {
+      "lat": 38.297818,
+      "lng": -120.704668
+     },
+     "beginLocation": "Route 49 Mokelumne Hill",
+     "closureDuration": "Long Term",
+     "closureId": "C26EA",
+     "closureType": "Full",
+     "direction": "East / West",
+     "district": 10,
+     "end": {
+      "lat": 38.296771,
+      "lng": -120.707192
+     },
+     "endIndefinite": false,
+     "endLocation": "Main Street (Left)",
+     "estimatedDelayMinutes": 0,
+     "facility": "Conventional Hwy",
+     "lanesClosed": "All",
+     "logNumber": "1",
+     "plannedEnd": "2026-12-07T15:01:00Z",
+     "plannedStart": "2026-08-24T14:01:00Z",
+     "route": "SR-26",
+     "setUpAt": "2026-08-24T14:58:01Z",
+     "totalLanes": 2,
+     "windowId": "C26EA-0001-2026-08-24-07:01:00",
+     "workType": "Roadway Excavation"
+    },
+    "duration": "",
+    "impact": "",
+    "log": [],
+    "logNumber": "C26EA",
+    "metadata": {}
+   },
+   "severity": "SEVERE",
+   "status": "ACTIVE"
+  },
+  {
+   "areaLabel": "US 50 from County Rd 1929A (Bull Creek Rd) to 30 Milestone Tract, near Pollock Pines",
+   "category": "closure",
+   "description": "Closed: lane 1 (of 2 lanes). Estimated delay: 10 min.",
+   "effective": "2026-11-21T04:01:00Z",
+   "headline": "US 50 one-way traffic control (Drainage Work)",
+   "id": "caltrans:d3-C50BA-0001-2026-11-20-200100",
+   "ingestedAt": "2026-11-14T04:09:06.258652682Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-14T04:03:02Z",
+   "provenance": {
+    "attribution": "cwwp2.dot.ca.gov",
+    "fetchedAt": "2026-11-14T04:09:06.252413352Z",
+    "sourceId": "caltrans",
+    "sourceName": "Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 1,
+   "roadIncident": {
+    "closure": {
+     "begin": {
+      "lat": 38.76976,
+      "lng": -120.436922
+     },
+     "beginLocation": "County Rd 1929A (Bull Creek Rd)",
+     "closureDuration": "Standard",
+     "closureId": "C50BA",
+     "closureType": "One-Way Traffic",
+     "direction": "East / West",
+     "district": 3,
+     "end": {
+      "lat": 38.764564,
+      "lng": -120.335687
+     },
+     "endIndefinite": false,
+     "endLocation": "30 Milestone Tract",
+     "estimatedDelayMinutes": 10,
+     "facility": "Conventional Hwy",
+     "lanesClosed": "1",
+     "logNumber": "1",
+     "plannedEnd": "2026-11-21T14:59:00Z",
+     "plannedStart": "2026-11-21T04:01:00Z",
+     "route": "US-50",
+     "setUpAt": null,
+     "totalLanes": 2,
+     "windowId": "C50BA-0001-2026-11-20-20:01:00",
+     "workType": "Drainage Work"
+    },
+    "duration": "",
+    "impact": "",
+    "log": [],
+    "logNumber": "C50BA",
+    "metadata": {}
+   },
+   "severity": "MODERATE",
+   "status": "SCHEDULED"
+  },
+  {
+   "areaLabel": "3031 Lo Hi Way",
+   "category": "incident",
+   "description": "CHP Incident 261113SA0837 CHAINS-Chain Control Nov 13 2026 4:19PM 3031 Lo Hi Way Nov 14 2026 8:45AM [8] [Notification] [CHP]-^SR89WS - NO CONTROLS Nov 14 2026 8:17AM [7] [Notification] [CHP]-^SR89L - EBRIGHTS TO BLISS Nov 14 2026 8:17AM [6] [Notification] [CHP]-^US50 - NO CONTROLS // SR89L - R-2 EBRIGHTS TO MEYERS Information courtesy of CHP",
+   "effective": "2026-11-14T00:19:00Z",
+   "headline": "Chain control in effect, R2 required on affected SR 89 segment",
+   "id": "chp:261113SA0837",
+   "ingestedAt": "2026-11-14T17:35:14.080457007Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-14T17:35:14.063077794Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-11-14T16:55:25.466168934Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 5,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "light",
+    "log": [
+     {
+      "at": "2026-11-14T16:17:00Z",
+      "number": 6,
+      "text": "[Notification] [CHP]-^US50 - NO CONTROLS // SR89L - R-2 EBRIGHTS TO MEYERS"
+     },
+     {
+      "at": "2026-11-14T16:17:00Z",
+      "number": 7,
+      "text": "[Notification] [CHP]-^SR89L - EBRIGHTS TO BLISS"
+     },
+     {
+      "at": "2026-11-14T16:45:00Z",
+      "number": 8,
+      "text": "[Notification] [CHP]-^SR89WS - NO CONTROLS"
+     }
+    ],
+    "logNumber": "261113SA0837",
+    "metadata": {
+     "incident_type": "chain control"
+    }
+   },
+   "severity": "MINOR",
+   "status": "RESOLVED",
+   "summary": "Chain control in effect. As of the latest updates: State Route 89 (south/linear segment) between Ebrights and Meyers is under R-2 chain restrictions (chains required on most vehicles). Other segments reported: SR 89 west side and US 50 currently have no chain controls. Expect requirements to be in force for the SR 89 Ebrights\u2013Meyers segment and check before travel."
+  },
+  {
+   "areaLabel": "0 SR 88",
+   "category": "incident",
+   "description": "CHP Incident 261114TK0004 1125-Traffic Hazard Nov 14 2026 1:25AM 0 Sr88 Nov 14 2026 4:02AM [24] C13-105 1185 97 Nov 14 2026 3:33AM [22] PER AC TOW / TRUCK ON 88 ICY ROADS / JUST PASSED BLUE LAKES Nov 14 2026 3:31AM [21] C13-105 REQ ETA FRM AC TOW Nov 14 2026 2:39AM [17] PER AC TOW DRIVER PUTTING CHAINS ON / ON 88 Nov 14 2026 2:38AM [16] ON HOLD 1185 Nov 14 2026 2:36AM [15] C13-105 REQETA FOR 1185 Nov 14 2026 1:37AM [12] Tow Request Cancelled: 882683 Nov 14 2026 1:37AM [11] AC TOW ENRT CAN POSS TAKE BOTH Nov 14 2026 1:36AM [10] [Rotation Request Comment] JandE TOW (XXX) XXX-XXXX - NOT AVAIL - TRUCK ISSUES Nov 14 2026 1:35AM [9] [Rotation Request Comment] SILVER STATE TOW (XXX) XXX-XXXX - PASS DRIVER UNAVAIL Nov 14 2026 1:32AM [7] [Rotation Request Comment] 1039 AC TOW (XXX) XXX-XXXX Nov 14 2026 1:30AM [5] 13-105 REQ 2 1185 HD Nov 14 2026 1:25AM [1] 2 SEMIS 1125 Information courtesy of CHP",
+   "effective": "2026-11-14T09:25:00Z",
+   "headline": "Two semis creating a traffic hazard on icy road, tow and chains requested",
+   "id": "chp:261114TK0004",
+   "ingestedAt": "2026-11-14T13:55:23.796626719Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-14T13:55:23.758909151Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-11-14T12:05:27.717864768Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 6,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "light",
+    "log": [
+     {
+      "at": "2026-11-14T09:25:00Z",
+      "number": 1,
+      "text": "2 SEMIS 1125"
+     },
+     {
+      "at": "2026-11-14T09:30:00Z",
+      "number": 5,
+      "text": "13-105 REQ 2 1185 HD"
+     },
+     {
+      "at": "2026-11-14T09:32:00Z",
+      "number": 7,
+      "text": "[Rotation Request Comment] 1039 AC TOW (XXX) XXX-XXXX"
+     },
+     {
+      "at": "2026-11-14T09:35:00Z",
+      "number": 9,
+      "text": "[Rotation Request Comment] SILVER STATE TOW (XXX) XXX-XXXX - PASS DRIVER UNAVAIL"
+     },
+     {
+      "at": "2026-11-14T09:36:00Z",
+      "number": 10,
+      "text": "[Rotation Request Comment] JandE TOW (XXX) XXX-XXXX - NOT AVAIL - TRUCK ISSUES"
+     },
+     {
+      "at": "2026-11-14T09:37:00Z",
+      "number": 11,
+      "text": "AC TOW ENRT CAN POSS TAKE BOTH"
+     },
+     {
+      "at": "2026-11-14T09:37:00Z",
+      "number": 12,
+      "text": "Tow Request Cancelled: 882683"
+     },
+     {
+      "at": "2026-11-14T10:36:00Z",
+      "number": 15,
+      "text": "C13-105 REQETA FOR 1185"
+     },
+     {
+      "at": "2026-11-14T10:38:00Z",
+      "number": 16,
+      "text": "ON HOLD 1185"
+     },
+     {
+      "at": "2026-11-14T10:39:00Z",
+      "number": 17,
+      "text": "PER AC TOW DRIVER PUTTING CHAINS ON / ON 88"
+     },
+     {
+      "at": "2026-11-14T11:31:00Z",
+      "number": 21,
+      "text": "C13-105 REQ ETA FRM AC TOW"
+     },
+     {
+      "at": "2026-11-14T11:33:00Z",
+      "number": 22,
+      "text": "PER AC TOW / TRUCK ON 88 ICY ROADS / JUST PASSED BLUE LAKES"
+     },
+     {
+      "at": "2026-11-14T12:02:00Z",
+      "number": 24,
+      "text": "C13-105 1185 97"
+     }
+    ],
+    "logNumber": "261114TK0004",
+    "metadata": {
+     "emergency_services": "AC tow en route",
+     "incident_type": "traffic hazard",
+     "vehicles_involved": "2 semis"
+    }
+   },
+   "severity": "MINOR",
+   "status": "RESOLVED",
+   "summary": "Two commercial semitrailers involved in a traffic hazard on State Route 88. Conditions reported as icy just past Blue Lakes. Tow trucks were requested; Amador County tow units en route and drivers were reported putting chains on. Tow rotation notes show multiple tow vendors contacted, one tow request was briefly cancelled and then an AC tow was advised they could possibly handle both vehicles."
+  },
+  {
+   "areaLabel": "State Route 26 westbound between 3622 and 4027",
+   "category": "incident",
+   "description": "CHP Incident 261113ST0389 1182-Trfc Collision-No Inj Nov 13 2026 8:42PM 3622-4027 Sr26 Nov 13 2026 9:06PM [25] [Rotation Request Comment] 1039 SAM BERRI // (XXX) XXX-XXXX --------------- [Shared] Nov 13 2026 9:06PM [23] B49-030 1185R [Shared] Nov 13 2026 8:53PM [22] B49-030 BOTH LNS BLOCKED [Shared] Nov 13 2026 8:49PM [21] C49-100 PART 1125 IN EB LANE [Shared] Nov 13 2026 8:47PM [20] 1039 CALSO [Shared] Nov 13 2026 8:46PM [15] [Appended, 20:46:59] [3] VEH PARTIALLY 1125 / DEBRIS ALSO 1125 Nov 13 2026 8:45PM [10] [Notification] [CHP]-Problem changed from 1179-Trfc Collision-1141 Enrt to 1182-Trfc Collision-No Inj by CHP Nov 13 2026 8:43PM [4] PART IN WB LN / DITCH Nov 13 2026 8:43PM [3] ON WB RHS Nov 13 2026 8:42PM [1] VEH OTD Information courtesy of CHP",
+   "effective": "2026-11-14T04:42:00Z",
+   "headline": "Single-vehicle crash, both lanes blocked, no injuries",
+   "id": "chp:261113ST0389",
+   "ingestedAt": "2026-11-14T05:55:48.200530321Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-14T05:55:48.144459208Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-11-14T05:15:36.403245070Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 4,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "severe",
+    "log": [
+     {
+      "at": "2026-11-14T04:42:00Z",
+      "number": 1,
+      "text": "VEH OTD"
+     },
+     {
+      "at": "2026-11-14T04:43:00Z",
+      "number": 3,
+      "text": "ON WB RHS"
+     },
+     {
+      "at": "2026-11-14T04:43:00Z",
+      "number": 4,
+      "text": "PART IN WB LN / DITCH"
+     },
+     {
+      "at": "2026-11-14T04:45:00Z",
+      "number": 10,
+      "text": "[Notification] [CHP]-Problem changed from 1179-Trfc Collision-1141 Enrt to 1182-Trfc Collision-No Inj by CHP"
+     },
+     {
+      "at": "2026-11-14T04:46:00Z",
+      "number": 15,
+      "text": "[Appended, 20:46:59] [3] VEH PARTIALLY 1125 / DEBRIS ALSO 1125"
+     },
+     {
+      "at": "2026-11-14T04:47:00Z",
+      "number": 20,
+      "text": "1039 CALSO [Shared]"
+     },
+     {
+      "at": "2026-11-14T04:49:00Z",
+      "number": 21,
+      "text": "C49-100 PART 1125 IN EB LANE [Shared]"
+     },
+     {
+      "at": "2026-11-14T04:53:00Z",
+      "number": 22,
+      "text": "B49-030 BOTH LNS BLOCKED [Shared]"
+     },
+     {
+      "at": "2026-11-14T05:06:00Z",
+      "number": 23,
+      "text": "B49-030 1185R [Shared]"
+     },
+     {
+      "at": "2026-11-14T05:06:00Z",
+      "number": 25,
+      "text": "[Rotation Request Comment] 1039 SAM BERRI // (XXX) XXX-XXXX --------------- [Shared]"
+     }
+    ],
+    "logNumber": "261113ST0389",
+    "metadata": {
+     "incident_type": "traffic collision",
+     "injuries": "none",
+     "lanes_blocked": "both lanes",
+     "vehicles_involved": "1 vehicle"
+    }
+   },
+   "severity": "SEVERE",
+   "status": "RESOLVED",
+   "summary": "Traffic collision with no injuries reported. A vehicle is off the right shoulder and partially in the roadway and ditch; debris is in the eastbound lane. At one point both lanes were reported blocked."
+  },
+  {
+   "canonicalUrl": "https://corescope.stonekitty.net/#/nodes/950ffe39d7087803864e0e1cdc77cc1463b4af54e8c0a904f7c79638a7910439",
+   "category": "repeater",
+   "headline": "Marelink West-1w",
+   "id": "meshcore:950ffe39d7087803864e0e1cdc77cc1463b4af54e8c0a904f7c79638a7910439",
+   "ingestedAt": "2026-11-15T05:54:27.480632958Z",
+   "layer": "MESH",
+   "mesh": {
+    "name": "Marelink West-1w",
+    "nodeType": "repeater",
+    "publicKey": "950ffe39d7087803864e0e1cdc77cc1463b4af54e8c0a904f7c79638a7910439",
+    "reachability": "MESH_REACHABILITY_UNSPECIFIED"
+   },
+   "observedAt": "2026-11-15T05:54:27.100946627Z",
+   "provenance": {
+    "attribution": "MeshCore community mesh via gomesh.dev",
+    "fetchedAt": "2026-11-15T05:54:27.398726911Z",
+    "sourceId": "meshcore",
+    "sourceName": "MeshCore Mesh",
+    "sourceUrl": "https://www.gomesh.dev/"
+   },
+   "revision": 64,
+   "severity": "INFO",
+   "status": "ACTIVE"
+  },
+  {
+   "canonicalUrl": "https://corescope.stonekitty.net/#/nodes/ab074a85d45b976a6b7b35189d43781385a309e2dbb878cc6507687be2c3e95b",
+   "category": "repeater",
+   "headline": "SIERRA Camp Connell",
+   "id": "meshcore:ab074a85d45b976a6b7b35189d43781385a309e2dbb878cc6507687be2c3e95b",
+   "ingestedAt": "2026-11-15T04:04:27.597848062Z",
+   "layer": "MESH",
+   "mesh": {
+    "name": "SIERRA Camp Connell",
+    "nodeType": "repeater",
+    "publicKey": "ab074a85d45b976a6b7b35189d43781385a309e2dbb878cc6507687be2c3e95b",
+    "reachability": "UNREACHABLE"
+   },
+   "observedAt": "2026-11-15T04:04:27.446487888Z",
+   "provenance": {
+    "attribution": "MeshCore community mesh via gomesh.dev",
+    "fetchedAt": "2026-11-14T09:23:44.192288326Z",
+    "sourceId": "meshcore",
+    "sourceName": "MeshCore Mesh",
+    "sourceUrl": "https://www.gomesh.dev/"
+   },
+   "revision": 81,
+   "severity": "INFO",
+   "status": "EXPIRED"
+  },
+  {
+   "canonicalUrl": "https://corescope.stonekitty.net/#/nodes/f2c3a5a1a51ead0796a69c21edbc266373bc577bb2e9b471ab66bac14dfd4650",
+   "category": "repeater",
+   "headline": "HWY 4 V2",
+   "id": "meshcore:f2c3a5a1a51ead0796a69c21edbc266373bc577bb2e9b471ab66bac14dfd4650",
+   "ingestedAt": "2026-11-15T01:27:27.451386257Z",
+   "layer": "MESH",
+   "mesh": {
+    "name": "HWY 4 V2",
+    "nodeType": "repeater",
+    "publicKey": "f2c3a5a1a51ead0796a69c21edbc266373bc577bb2e9b471ab66bac14dfd4650",
+    "reachability": "MESH_REACHABILITY_UNSPECIFIED"
+   },
+   "observedAt": "2026-11-15T01:26:56.686186144Z",
+   "provenance": {
+    "attribution": "MeshCore community mesh via gomesh.dev",
+    "fetchedAt": "2026-11-15T01:27:27.382295475Z",
+    "sourceId": "meshcore",
+    "sourceName": "MeshCore Mesh",
+    "sourceUrl": "https://www.gomesh.dev/"
+   },
+   "revision": 3,
+   "severity": "INFO",
+   "status": "ACTIVE"
+  },
+  {
+   "canonicalUrl": "https://corescope.stonekitty.net/#/nodes/30059adfc99019769d6ee095ed2dbf81c6cf2b640d8fafb0a2aa6249558a9656",
+   "category": "repeater",
+   "headline": "SIERRA Arnold Summit",
+   "id": "meshcore:30059adfc99019769d6ee095ed2dbf81c6cf2b640d8fafb0a2aa6249558a9656",
+   "ingestedAt": "2026-11-14T09:57:44.242791720Z",
+   "layer": "MESH",
+   "mesh": {
+    "name": "SIERRA Arnold Summit",
+    "nodeType": "repeater",
+    "publicKey": "30059adfc99019769d6ee095ed2dbf81c6cf2b640d8fafb0a2aa6249558a9656",
+    "reachability": "UNREACHABLE"
+   },
+   "observedAt": "2026-11-14T09:57:06.384762470Z",
+   "provenance": {
+    "attribution": "MeshCore community mesh via gomesh.dev",
+    "fetchedAt": "2026-11-14T09:57:44.211649588Z",
+    "sourceId": "meshcore",
+    "sourceName": "MeshCore Mesh",
+    "sourceUrl": "https://www.gomesh.dev/"
+   },
+   "revision": 85,
+   "severity": "INFO",
+   "status": "ACTIVE"
+  },
+  {
+   "canonicalUrl": "https://pgealerts.alerts.pge.com/psps-updates/",
+   "category": "psps",
+   "effective": "2026-10-15T03:00:00Z",
+   "headline": "PSPS Warning \u2014 23,491 customers, 1,372 medical baseline",
+   "id": "psps:23794:TP07_10142026",
+   "ingestedAt": "2026-10-18T02:52:04.071825558Z",
+   "layer": "POWER",
+   "observedAt": "2026-10-18T02:52:03.942685321Z",
+   "power": {
+    "allClear": "2026-10-16T19:00:00Z",
+    "cause": "",
+    "crewStatus": "",
+    "customersAffected": 23491,
+    "deEnergizationEnd": "2026-10-15T06:00:00Z",
+    "deEnergizationStart": "2026-10-15T03:00:00Z",
+    "estimatedRestoration": "2026-10-17T19:00:00Z",
+    "eventId": "23794",
+    "eventName": "PSPS_10142026",
+    "medicalBaselineAffected": 1372,
+    "outageId": "",
+    "stage": "Warning",
+    "timePeriod": "TP07_10142026"
+   },
+   "provenance": {
+    "attribution": "Pacific Gas and Electric",
+    "fetchedAt": "2026-10-16T00:07:04.127083958Z",
+    "sourceId": "psps",
+    "sourceName": "PG&E PSPS",
+    "sourceUrl": "https://pgealerts.alerts.pge.com/psps-updates/"
+   },
+   "revision": 11,
+   "severity": "SEVERE",
+   "status": "RESOLVED"
+  },
+  {
+   "category": "Winter Storm Warning",
+   "description": "* WHAT...Additional snow accumulations up to one inch.\n\n* WHERE...Sierra (El Dorado-Amador) Above 5000 ft, Lassen Volcanic\nNP, Sierra (Cal-Tuo) Above 5000 ft, and Sierra (Sierra-Placer)\nAbove 5000 ft.\n\n* WHEN...Until 4 AM PST early this morning.\n\n* IMPACTS...Expect slippery roads, along with chain controls and\ntravel delays.\n\n* ADDITIONAL DETAILS...Snow showers with an additional inch of snow\naccumulation possible down to 5000 feet through 4 AM PST this\nmorning. There will be a lull in activity for the rest of the day\nthrough Sunday, followed by additional snow Sunday night through\nMonday, bringing potential travel delays.",
+   "effective": "2026-11-14T09:26:00Z",
+   "expires": "2026-11-14T12:00:00Z",
+   "headline": "Winter Storm Warning",
+   "id": "wx:urn:oid:2.49.0.1.840.0.02f6d8463f18ad66c73444c601b890a94b4bd8d6.001.1",
+   "ingestedAt": "2026-11-14T12:13:42.680181136Z",
+   "layer": "WEATHER_ALERT",
+   "observedAt": "2026-11-14T12:13:42.674947235Z",
+   "provenance": {
+    "attribution": "NOAA / National Weather Service",
+    "fetchedAt": "2026-11-14T09:43:42.495607668Z",
+    "sourceId": "nws",
+    "sourceName": "NWS Sacramento CA",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "severity": "SEVERE",
+   "status": "RESOLVED",
+   "summary": "Additional snow accumulations up to one inch possible down to 5000 feet for Ebbetts Pass Corridor, producing slippery roads and travel delays. There will be a lull through Sunday, then additional snow Sunday night through Monday.",
+   "weatherAlert": {
+    "areaDesc": "Lassen Volcanic National Park; Sierra Nevada of Sierra-Nevada-Placer Counties Above 5000 ft Including Interstate 80; Sierra Nevada of El Dorado-Amador-Northern Alpine Counties Above 5000 ft Including Highway 50; Sierra Nevada of Calaveras-Tuolumne-Southern Alpine Counties Above 5000 ft",
+    "certainty": "Likely",
+    "instruction": "Check the latest road conditions from Caltrans online at\nquickmap.dot.ca.gov or dial 5 1 1.",
+    "nwsSeverity": "Severe",
+    "replacedByEventId": "",
+    "urgency": "Expected",
+    "zones": [
+     "CAZ128",
+     "CAZ133",
+     "CAZ136",
+     "CAZ139"
+    ]
+   }
+  },
+  {
+   "category": "Red Flag Warning",
+   "description": "...RED FLAG WARNING REMAINS IN EFFECT UNTIL 10 AM PDT THIS MORNING\nDUE TO WIND AND LOW RELATIVE HUMIDITY FOR PORTIONS OF CENTRAL AND\nNORTHERN CALIFORNIA...\n\n* AFFECTED AREA...Portions of central and northern California.\n\n* TIMING...Until 10 AM PDT this morning.\n\n* WINDS...Northeast to east winds 15 to 25 mph with gusts 25 to 45\nmph.\n\n* RELATIVE HUMIDITY...Daytime humidity 10 to 20% with single digits\npossible and very poor overnight recoveries.\n\n* IMPACTS...Any fires that develop will spread rapidly. Outdoor\nburning is not recommended.",
+   "effective": "2026-10-16T09:15:00Z",
+   "expires": "2026-10-16T17:00:00Z",
+   "headline": "Red Flag Warning",
+   "id": "wx:urn:oid:2.49.0.1.840.0.7f31159f520854deebb669f0bb7e8b8c747bbc8a.001.1",
+   "ingestedAt": "2026-10-16T17:08:14.274498680Z",
+   "layer": "WEATHER_ALERT",
+   "observedAt": "2026-10-16T17:08:14.160079559Z",
+   "provenance": {
+    "attribution": "NOAA / National Weather Service",
+    "fetchedAt": "2026-10-16T09:18:12.611671741Z",
+    "sourceId": "nws",
+    "sourceName": "NWS Sacramento CA",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "severity": "SEVERE",
+   "status": "EXPIRED",
+   "summary": "Red Flag conditions: northeast to east winds 15\u201325 mph with gusts 25\u201345 mph and daytime relative humidity 10\u201320% (single digits possible) affecting Ebbetts Pass Corridor. Any fires that develop will spread rapidly.",
+   "weatherAlert": {
+    "areaDesc": "Sierra Nevada of Tehama-Butte-Plumas Counties Between 1000-3000 ft; Sierra Nevada of Tehama-Butte-Plumas Counties Above 3000 ft; Northern Motherlode Between 1000-3000 ft; Sierra Nevada of Yuba-Sierra-Nevada-Placer Counties Between 3000-5000 ft Including Interstate 80; Sierra Nevada of Sierra-Nevada-Placer Counties Above 5000 ft Including Interstate 80; Central Motherlode Between 1000-3000 ft; Sierra Nevada of El Dorado and Amador Counties Between 3000-5000 ft Including Highway 50; Sierra Nevada of El Dorado-Amador-Northern Alpine Counties Above 5000 ft Including Highway 50; Southern Motherlode Between 1000-3000 ft; Sierra Nevada of Calaveras and Tuolumne Counties Between 3000-5000 ft; Sierra Nevada of Calaveras-Tuolumne-Southern Alpine Counties Above 5000 ft",
+    "certainty": "Likely",
+    "instruction": "Please advise the appropriate officials or fire crews in the field of\nthis Red Flag Warning.",
+    "nwsSeverity": "Severe",
+    "replacedByEventId": "",
+    "urgency": "Expected",
+    "zones": [
+     "CAZ129",
+     "CAZ130",
+     "CAZ131",
+     "CAZ132",
+     "CAZ133",
+     "CAZ134",
+     "CAZ135",
+     "CAZ136",
+     "CAZ137",
+     "CAZ138",
+     "CAZ139"
+    ]
+   }
+  },
+  {
+   "areaLabel": "TUOLUMNE",
+   "category": "warning",
+   "description": "Twin Pines Mobile Home Park",
+   "evacuation": {
+    "county": "TUOLUMNE",
+    "eventType": "",
+    "level": "WARNING",
+    "zoneId": "US-CA-Toulumne118"
+   },
+   "headline": "Evacuation Warning \u2014 US-CA-Toulumne118",
+   "id": "evac:US-CA-Toulumne118",
+   "ingestedAt": "2026-10-12T00:00:54.701891296Z",
+   "layer": "EVACUATION",
+   "observedAt": "2026-10-12T00:00:54.650497979Z",
+   "provenance": {
+    "attribution": "Cal OES \u2014 reference only",
+    "fetchedAt": "2026-10-11T21:46:54.643478281Z",
+    "sourceId": "caloes",
+    "sourceName": "Cal OES",
+    "sourceUrl": "https://experience.arcgis.com/experience/701c7fd899574b6ea6c1596cbbd1dcc6/page/Page?org=Tuolumne"
+   },
+   "revision": 3,
+   "severity": "SEVERE",
+   "status": "RESOLVED"
+  },
+  {
+   "areaLabel": "Ellenwood Rd / Oakdale Waterford Hwy",
+   "category": "incident",
+   "description": "CHP Incident 260925MR0672 1183-Trfc Collision-Unkn Inj Sep 25 2026 11:52PM Ellenwood Rd / Oakdale Waterford Hwy Sep 26 2026 1:00AM [39] 1039 SRCC- NEG PREMISE HISTORY / THEY ADV'D MOD PD UNIT ENRT TO ADDRESS AS WELL Sep 26 2026 12:31AM [24] 48-S7 NEG ELECTRICAL WIRES DOWN / POLE and GUY WIRES ONLY and START 1185 FORD PK Sep 26 2026 12:11AM [21] PG/E NOT THEIR EQUP - COPIES LN 20 Sep 26 2026 12:07AM [20] 1039 MODESTO IRRIGATION DISTRICT Sep 26 2026 12:00AM [19] 1039 PGE, WILL CB W/ ETA Sep 25 2026 11:57PM [18] 1039 SRCC/FIRE Sep 25 2026 11:54PM [10] VEH 1124 Sep 25 2026 11:53PM [6] POLES AND LNS 1125 Sep 25 2026 11:52PM [2] POLE IS DOWN Sep 25 2026 11:52PM [1] VEH VS POLE Information courtesy of CHP",
+   "effective": "2026-09-26T06:52:00Z",
+   "headline": "Vehicle hit a utility pole; pole and power lines down, responders and utility crews en route.",
+   "id": "chp:260925MR0672",
+   "ingestedAt": "2026-09-26T08:31:00.310172138Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-09-26T08:31:00.128040518Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-09-26T08:01:21.484924233Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 6,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "moderate",
+    "log": [],
+    "logNumber": "260925MR0672",
+    "metadata": {
+     "emergency_services": "police, fire, SRCC",
+     "incident_type": "traffic collision",
+     "injuries": "unknown",
+     "lanes_blocked": "unspecified",
+     "pge_equipment": "PG&E reported not their equipment",
+     "power_lines_down": "reported",
+     "utilities_contacted": "PG&E, Modesto Irrigation District",
+     "vehicles_involved": "vehicle vs pole"
+    }
+   },
+   "severity": "MODERATE",
+   "status": "RESOLVED",
+   "summary": "A vehicle struck a utility pole at Ellenwood Road and Oakdale Waterford Highway, causing the pole to fall and power lines to come down. Multiple agencies (police, fire, SRCC) responded and units are en route. PG&E and Modesto Irrigation District were contacted; PG&E reported the downed lines are not their equipment and will call back with an ETA. The collision resulted in downed pole(s) and lines obstructing the roadway; crews are working to secure the scene and restore utilities. Injury status is unknown."
+  },
+  {
+   "areaLabel": "State Route 120 at Valley Home Road",
+   "category": "incident",
+   "description": "CHP Incident 260821MR0290 20002-Hit and Run No Injuries Aug 21 2026 12:23PM Sr120 / Valley Home Rd Aug 21 2026 3:26PM [31] 1039 ATandT Aug 21 2026 1:41PM [28] 48-23 KEEP LOG OPEN [Shared] Aug 21 2026 1:41PM [27] [Notification] [CHP]-Problem changed from 1125-Traffic Hazard to 20002-Hit and Run No Injuries by CHP [Shared] Aug 21 2026 1:39PM [26] A48-023 2 VEH 20002 F/ NOW Aug 21 2026 1:06PM [25] 48-23 O/W 1182 VEH [Shared] Aug 21 2026 12:51PM [22] [Notification] [CHP]-PER STANCO UNK DESCRIPTION VEH BO WINDSHIELD FROM WIRE // 1023 FOR CHP [Shared] Aug 21 2026 12:32PM [19] PGE ETA 10 [Shared] Aug 21 2026 12:26PM [17] PGE WILL CB W/ ETA [Shared] Aug 21 2026 12:26PM [15] 1039 PGE [Shared] Aug 21 2026 12:25PM [14] 1039 48-23 MR291 [Shared] Aug 21 2026 12:24PM [13] 1039 FIRE [Shared] Aug 21 2026 12:24PM [10] [Appended, 12:24:34] [7] BIG RIG HAULING A TANK Aug 21 2026 12:23PM [7] [Appended, 12:24:34] [4] DRVR OO VEH Aug 21 2026 12:23PM [6] [Appended, 12:24:34] [3] WIRES HIT VEH Aug 21 2026 12:23PM [5] [Appended, 12:24:34] [2] LINES DOWN 1125 Aug 21 2026 12:22PM [4] [Appended, 12:24:34] [1] BIG RIG HIT POWERLINES Information courtesy of CHP",
+   "effective": "2026-08-21T19:23:00Z",
+   "headline": "Big rig struck power lines; wires down, hit-and-run reported, no injuries",
+   "id": "chp:260821MR0290",
+   "ingestedAt": "2026-08-21T22:38:39.082600759Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-08-21T22:38:38.529594035Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-08-21T22:28:42.283128695Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 7,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "moderate",
+    "log": [],
+    "logNumber": "260821MR0290",
+    "metadata": {
+     "emergency_services": "CHP and fire on scene; PGE notified",
+     "incident_type": "hit and run; downed power lines",
+     "injuries": "no injuries reported",
+     "utility_eta": "PGE en route",
+     "vehicles_involved": "big rig hauling a tank; at least one other vehicle struck by wires"
+    }
+   },
+   "severity": "MODERATE",
+   "status": "RESOLVED",
+   "summary": "A big rig hauling a tank struck overhead power lines at State Route 120 and Valley Home Road. Power lines came down and struck a vehicle; the driver is out of the vehicle. A hit-and-run is reported. No injuries have been reported. CHP and fire responded and Pacific Gas & Electric (PGE) was notified and en route. Utility crews and emergency responders are on scene handling the downed lines and traffic hazard."
+  },
+  {
+   "areaLabel": "N Waverly Rd at E Copperopolis Rd",
+   "category": "incident",
+   "description": "CHP Incident 261106ST0458 1182-Trfc Collision-No Inj Nov 6 2026 10:55PM N Waverly Rd / E Copperopolis Rd Nov 6 2026 11:42PM [21] [Rotation Request Comment] 1039 TO FRIENDLY TOW (XXX) XXX-XXXX [Shared] Nov 6 2026 11:40PM [19] C62-003 1185R TESLA [Shared] Nov 6 2026 11:21PM [17] PER PGandE 30 MIN ETA [Shared] Nov 6 2026 11:11PM [16] 1039 WILL CB WITH ETA [Shared] Nov 6 2026 11:06PM [13] WILL BE POWER POLE [Shared] Nov 6 2026 11:06PM [12] PER OFF DUTY CHP - POLE SHEARED AT THE BASE / BLOCKING WAVERLY /// RIGHT AT COPPEROPOLIS [Shared] Nov 6 2026 11:04PM [8] [Appended, 23:06:11] [2] LINES DOWN IN THE RDWY Nov 6 2026 10:56PM [3] NEG 1125 Nov 6 2026 10:56PM [2] BLKD TESL MODEL 3 VS PHONE POLE Information courtesy of CHP",
+   "effective": "2026-11-07T06:55:00Z",
+   "headline": "Tesla collided with a utility pole; pole down and power lines blocking the roadway, no injuries reported.",
+   "id": "chp:261106ST0458",
+   "ingestedAt": "2026-11-07T09:03:30.234188822Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-07T09:03:29.838721011Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-11-07T07:48:27.360654783Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 5,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "severe",
+    "log": [],
+    "logNumber": "261106ST0458",
+    "metadata": {
+     "emergency_services": "off-duty CHP on scene; PG&E notified; tow requested",
+     "hazard": "sheared power pole and downed power lines",
+     "incident_type": "traffic collision",
+     "injuries": "none reported",
+     "response_eta": "PG&E 30 min ETA",
+     "vehicles_involved": "Tesla Model 3"
+    }
+   },
+   "severity": "SEVERE",
+   "status": "RESOLVED",
+   "summary": "Collision involving a Tesla Model 3 and a utility pole at the intersection of N Waverly Road and E Copperopolis Road. The pole was sheared at the base and fallen power lines are in the roadway, blocking traffic on Waverly near Copperopolis. No injuries reported. Off-duty CHP on scene; PG&E notified with an estimated 30-minute ETA to respond. Tow requested."
+  },
+  {
+   "areaLabel": "eastbound I-80 at Elm Avenue",
+   "category": "incident",
+   "description": "CHP Incident 260731SA0372 1125-Traffic Hazard Jul 31 2026 10:57AM I80 E / Elm Ave Jul 31 2026 10:58AM [2] ALL LNS Information courtesy of CHP",
+   "effective": "2026-07-31T17:57:00Z",
+   "headline": "Traffic hazard blocking all eastbound lanes; full mainline closure, CHP on scene.",
+   "id": "chp:260731SA0372",
+   "ingestedAt": "2026-07-31T18:21:11.608842565Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-07-31T18:21:09.830652681Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-07-31T18:01:45.654675263Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "severe",
+    "log": [],
+    "logNumber": "260731SA0372",
+    "metadata": {
+     "emergency_services": "CHP on scene",
+     "incident_type": "traffic hazard",
+     "injuries": "unknown",
+     "lanes_blocked": "all eastbound lanes",
+     "location_note": "eastbound mainline at Elm Ave",
+     "reported_by": "CHP"
+    }
+   },
+   "severity": "SEVERE",
+   "status": "RESOLVED",
+   "summary": "CHP reports a traffic hazard on eastbound I-80 at Elm Avenue. All eastbound lanes are blocked. CHP is on scene; emergency response status and injuries are not specified. Expect a full mainline closure and significant delays in the eastbound direction until the hazard is cleared."
+  },
+  {
+   "areaLabel": "near SR 89 (mile unspecified)",
+   "category": "incident",
+   "description": "CHP Incident 260809BI0018 1125-Traffic Hazard Aug 9 2026 4:35AM 0 Sr89 Aug 9 2026 5:57AM [39] [Rotation Request Comment] 1039 CAL NV - ENRT Aug 9 2026 5:24AM [35] Tow Request Cancelled: 1204955 [Shared] Aug 9 2026 5:21AM [32] SILVER STATE - ADV RDWY IS CLOSUED FOR WILFIRE IN NV - UNABLE TO MAKE IT [Shared] Aug 9 2026 5:12AM [29] 71-31 REQ 1185 HD - SILVER STATE - MOVE VEH FROM 89 TO 395 [Shared] Aug 9 2026 4:35AM [1] RV 1125 IN WW - VEH LOST BREAKS Information courtesy of CHP",
+   "effective": "2026-08-09T11:35:00Z",
+   "headline": "RV lost brakes, disabled vehicle creating roadway hazard; tow/assistance requested.",
+   "id": "chp:260809BI0018",
+   "ingestedAt": "2026-08-09T13:51:52.801309785Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-08-09T13:51:52.184952074Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-08-09T13:02:18.102939307Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 5,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "moderate",
+    "log": [],
+    "logNumber": "260809BI0018",
+    "metadata": {
+     "emergency_services": "towing and CHP involved",
+     "incident_type": "traffic hazard",
+     "injuries": "unknown",
+     "location_note": "vehicle to be moved from SR 89 to US 395",
+     "resource_limitations": "nearby roadway closed for wildfire in NV, affecting response",
+     "tow_status": "heavy-duty tow requested; later cancelled",
+     "vehicles_involved": "rv (lost brakes)"
+    }
+   },
+   "severity": "MODERATE",
+   "status": "RESOLVED",
+   "summary": "A recreational vehicle (RV) lost its brakes and became a traffic hazard on SR 89. A heavy-duty tow was requested to move the vehicle from SR 89 to US 395; the tow request was later cancelled. Response and recovery were complicated because an adjacent roadway in Nevada is closed for wildfire activity, limiting available resources. Emergency services were notified and towing/relocation is being coordinated. Traffic may be slowed or partially blocked at the scene."
+  },
+  {
+   "areaLabel": "Mormon Emigrant Trail at North South Road",
+   "category": "incident",
+   "description": "CHP Incident 261101SA0803 SLIDE-Mud/Dirt/Rock Nov 1 2026 5:23PM Mormon Emigrant Trl / North South Rd Nov 1 2026 5:25PM [3] BLKING BOTH DOT Nov 1 2026 5:24PM [1] BOULDERS IN THE RDWY Information courtesy of CHP",
+   "effective": "2026-11-02T01:23:00Z",
+   "headline": "Mud/rock slide with boulders blocking both directions; roadway closed.",
+   "id": "chp:261101SA0803",
+   "ingestedAt": "2026-11-02T05:25:34.443659228Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-02T05:25:34.129966295Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-11-02T01:35:41.759955322Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "severe",
+    "log": [],
+    "logNumber": "261101SA0803",
+    "metadata": {
+     "hazard": "boulders in roadway",
+     "incident_type": "slide - mud/dirt/rock",
+     "lanes_blocked": "both directions blocked",
+     "reported_times": "first report 17:23, updates through 17:35",
+     "roadway_status": "mainline closed"
+    }
+   },
+   "severity": "SEVERE",
+   "status": "RESOLVED",
+   "summary": "A mud/rock slide deposited boulders and debris in the roadway at the intersection of Mormon Emigrant Trail and North South Road. Boulders are blocking travel in both directions. Incident was first reported at 5:23 PM; crews were notified and the situation was updated at 5:35 PM."
+  },
+  {
+   "areaLabel": "State Route 140 at 6700-6743",
+   "category": "incident",
+   "description": "CHP Incident 261022MR0299 SLIDE-Mud/Dirt/Rock Oct 22 2026 1:40PM 6700-6743 Sr140 Oct 22 2026 1:49PM [5] 1039 57-76 Oct 22 2026 1:48PM [3] 1039 57-71 Oct 22 2026 1:44PM [1] ROCK SLIDE BLOCKING BOTH LNS OF TRAFFIC Information courtesy of CHP",
+   "effective": "2026-10-22T20:40:00Z",
+   "headline": "Rock and mud slide blocking both lanes, roadway closed",
+   "id": "chp:261022MR0299",
+   "ingestedAt": "2026-10-22T21:38:05.620961789Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-10-22T21:38:01.053730131Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-10-22T20:58:06.585260422Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 2,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "severe",
+    "log": [],
+    "logNumber": "261022MR0299",
+    "metadata": {
+     "emergency_services": "responding",
+     "hazard_components": "mud, dirt, rock",
+     "incident_type": "rock slide",
+     "lanes_blocked": "both lanes",
+     "reported_times": "1:40PM initial report; follow-ups at 1:44PM, 1:48PM, 1:49PM",
+     "roadway_status": "mainline blocked"
+    }
+   },
+   "severity": "SEVERE",
+   "status": "RESOLVED",
+   "summary": "Rock and mud slide blocking both lanes of State Route 140 between mileposts 6700 and 6743. Traffic is unable to pass; emergency response noted. Clearance and towing/status unknown."
+  },
+  {
+   "areaLabel": "SR 132 at Reservoir Road",
+   "category": "incident",
+   "description": "CHP Incident 261031MR0082 1125-Traffic Hazard Oct 31 2026 5:49AM Sr132 / Reservoir Rd Oct 31 2026 8:43AM [14] 1039 STK CT - WILL CB WITH ETA [Shared] Oct 31 2026 8:42AM [13] 32 REQ UPDATED ETA [Shared] Oct 31 2026 7:13AM [12] PER CT ETA 60 MINS [Shared] Oct 31 2026 7:07AM [11] ETA FRM CT [Shared] Oct 31 2026 5:50AM [3] RIG 1125 WB LNS W/ FLASHERS ON Oct 31 2026 5:50AM [2] ROCKS 1125 BOTH LNS Oct 31 2026 5:50AM [1] BIG RIG HAULING ROCKS Information courtesy of CHP",
+   "effective": "2026-10-31T12:49:00Z",
+   "headline": "Disabled rock-hauling truck with rock debris blocking both lanes, responders en route.",
+   "id": "chp:261031MR0082",
+   "ingestedAt": "2026-10-31T16:22:18.370847533Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-10-31T16:22:17.812511352Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-10-31T15:52:08.476439047Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 5,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "severe",
+    "log": [],
+    "logNumber": "261031MR0082",
+    "metadata": {
+     "incident_type": "traffic hazard",
+     "injuries": "unknown",
+     "lanes_blocked": "both mainline lanes",
+     "response": "CHP responding, ETAs provided",
+     "vehicle_status": "disabled, flashers on",
+     "vehicles_involved": "big rig hauling rocks"
+    }
+   },
+   "severity": "SEVERE",
+   "status": "RESOLVED",
+   "summary": "A large truck hauling rocks is disabled near SR 132 and Reservoir Road. The truck is stopped with flashers on and rocks are in the roadway, blocking both mainline lanes. CHP is responding; crews have provided ETAs and updates. Road is not passable at the immediate location while debris and the disabled vehicle are being dealt with."
+  },
+  {
+   "areaLabel": "SR-49 at Chicken Flat Boulevard",
+   "category": "incident",
+   "description": "CHP Incident 261113ST0280 1181-Trfc Collision-Minor Inj Nov 13 2026 4:50PM Sr49 / Chicken Flat Blvd Nov 13 2026 5:29PM [34] [Notification] [CHP]-Problem changed from 1179-Trfc Collision-1141 Enrt to 1181-Trfc Collision-Minor Inj [Shared] Nov 13 2026 5:10PM [28] [Notification] [CHP]-[27] FIRE 97 / STARTING AIR 1141 // TWO PATIENTS // FIRE HAS HARD STOP ON HWY 49 [Shared] [Shared] Nov 13 2026 5:10PM [27] FIRE 97 / STARTING AIR 1141 // TWO PATIENTS // FIRE HAS HARD STOP ON HWY 49 [Shared] Nov 13 2026 5:00PM [26] [Rotation Request Comment] 1039 BRUSATORI / JACKS // (XXX) XXX-XXXX ---------------- [Shared] Nov 13 2026 4:59PM [24] UNKN PTYS TRYING TO CLEAN UP RDWY [Shared] Nov 13 2026 4:59PM [22] Tow Request Cancelled: 882581 [Shared] Nov 13 2026 4:59PM [21] DEBRIS IN RDWY [Shared] Nov 13 2026 4:59PM [19] B94-002 1185 ROT FOR NISS SEDAN ON ITS ROOF [Shared] Nov 13 2026 4:58PM [17] VEH 1125 [Shared] Nov 13 2026 4:55PM [13] POSS 2 INJ [Shared] Nov 13 2026 4:53PM [7] 1039 AMA SO Nov 13 2026 4:52PM [4] DRVR AND PSNGR OO VEH Nov 13 2026 4:51PM [3] 1125 Nov 13 2026 4:51PM [1] NISS MORANO O/T Information courtesy of CHP",
+   "effective": "2026-11-14T00:50:00Z",
+   "headline": "Single-vehicle crash with overturned sedan, debris, two patients",
+   "id": "chp:261113ST0280",
+   "ingestedAt": "2026-11-14T02:19:43.802652283Z",
+   "layer": "ROAD_INCIDENT",
+   "observedAt": "2026-11-14T02:19:43.760767694Z",
+   "provenance": {
+    "attribution": "quickmap.dot.ca.gov",
+    "fetchedAt": "2026-11-14T01:49:53.193794892Z",
+    "sourceId": "chp",
+    "sourceName": "CHP / Caltrans",
+    "sourceUrl": ""
+   },
+   "revision": 5,
+   "roadIncident": {
+    "closure": null,
+    "duration": "",
+    "impact": "severe",
+    "log": [
+     {
+      "at": "2026-11-14T00:51:00Z",
+      "number": 1,
+      "text": "NISS MORANO O/T"
+     },
+     {
+      "at": "2026-11-14T00:51:00Z",
+      "number": 3,
+      "text": "1125"
+     },
+     {
+      "at": "2026-11-14T00:52:00Z",
+      "number": 4,
+      "text": "DRVR AND PSNGR OO VEH"
+     },
+     {
+      "at": "2026-11-14T00:53:00Z",
+      "number": 7,
+      "text": "1039 AMA SO"
+     },
+     {
+      "at": "2026-11-14T00:55:00Z",
+      "number": 13,
+      "text": "POSS 2 INJ [Shared]"
+     },
+     {
+      "at": "2026-11-14T00:58:00Z",
+      "number": 17,
+      "text": "VEH 1125 [Shared]"
+     },
+     {
+      "at": "2026-11-14T00:59:00Z",
+      "number": 19,
+      "text": "B94-002 1185 ROT FOR NISS SEDAN ON ITS ROOF [Shared]"
+     },
+     {
+      "at": "2026-11-14T00:59:00Z",
+      "number": 21,
+      "text": "DEBRIS IN RDWY [Shared]"
+     },
+     {
+      "at": "2026-11-14T00:59:00Z",
+      "number": 22,
+      "text": "Tow Request Cancelled: 882581 [Shared]"
+     },
+     {
+      "at": "2026-11-14T00:59:00Z",
+      "number": 24,
+      "text": "UNKN PTYS TRYING TO CLEAN UP RDWY [Shared]"
+     },
+     {
+      "at": "2026-11-14T01:00:00Z",
+      "number": 26,
+      "text": "[Rotation Request Comment] 1039 BRUSATORI / JACKS // (XXX) XXX-XXXX ---------------- [Shared]"
+     },
+     {
+      "at": "2026-11-14T01:10:00Z",
+      "number": 27,
+      "text": "FIRE 97 / STARTING AIR 1141 // TWO PATIENTS // FIRE HAS HARD STOP ON HWY 49 [Shared]"
+     },
+     {
+      "at": "2026-11-14T01:10:00Z",
+      "number": 28,
+      "text": "[Notification] [CHP]-[27] FIRE 97 / STARTING AIR 1141 // TWO PATIENTS // FIRE HAS HARD STOP ON HWY 49 [Shared] [Shared]"
+     },
+     {
+      "at": "2026-11-14T01:29:00Z",
+      "number": 34,
+      "text": "[Notification] [CHP]-Problem changed from 1179-Trfc Collision-1141 Enrt to 1181-Trfc Collision-Minor Inj [Shared]"
+     }
+    ],
+    "logNumber": "261113ST0280",
+    "metadata": {
+     "emergency_services": "fire department and EMS",
+     "incident_type": "traffic collision",
+     "injuries": "minor",
+     "lanes_blocked": "all lanes",
+     "vehicles_involved": "nissan sedan"
+    }
+   },
+   "severity": "SEVERE",
+   "status": "RESOLVED",
+   "summary": "Single-vehicle traffic collision at State Route 49 and Chicken Flat Boulevard. A Nissan sedan overturned onto its roof; debris is in the roadway. Two patients reported; minor injuries indicated. Fire personnel established a hard stop on the highway and responders including fire and EMS are on scene. Tow request was cancelled and unlisted parties were trying to clear the roadway."
+  },
+  {
+   "areaLabel": "Calaveras County",
+   "burnStatus": {
+    "burnDay": "BURN_DAY_YES",
+    "burnLines": [
+     {
+      "burnDay": "BURN_DAY_YES",
+      "id": "calaveras-apcd",
+      "name": "Calaveras County burn line",
+      "phone": "+12097546600"
+     }
+    ],
+    "calfireArea": "All SRA",
+    "calfireEffective": "2026-11-06T16:00:00Z",
+    "calfireObservedAt": "2026-11-06T17:09:21.449568466Z",
+    "calfireStatus": "CALFIRE_PERMIT_REQUIRED",
+    "permission": "BURN_PERMISSION_ALLOWED"
+   },
+   "canonicalUrl": "https://burnpermit.fire.ca.gov/current-burn-status",
+   "category": "burn_status",
+   "headline": "Burn day",
+   "id": "burn:calaveras-county",
+   "ingestedAt": "2026-11-11T18:41:50.792634603Z",
+   "layer": "BURN_STATUS",
+   "observedAt": "2026-11-15T05:09:41.017267913Z",
+   "provenance": {
+    "attribution": "County air district burn information line",
+    "fetchedAt": "2026-11-15T05:09:41.017277588Z",
+    "sourceId": "burnline",
+    "sourceName": "County Burn Line",
+    "sourceUrl": ""
+   },
+   "revision": 7,
+   "severity": "INFO",
+   "status": "ACTIVE"
+  },
+  {
+   "areaLabel": "Highway 395 just south of Highway 89, Topaz",
+   "canonicalUrl": "https://www.fire.ca.gov/incidents/2026/10/3/slink-fire/",
+   "category": "wildfire",
+   "effective": "2026-10-03T22:57:17Z",
+   "headline": "Slink Fire \u2014 196 ac, 0% contained",
+   "id": "calfire:033439b0-d0ed-435a-a61b-d3dabb77d4b3",
+   "ingestedAt": "2026-10-07T22:13:20.481397310Z",
+   "layer": "WILDFIRE",
+   "observedAt": "2026-10-07T22:13:20.226675664Z",
+   "provenance": {
+    "attribution": "CAL FIRE / FIRIS",
+    "fetchedAt": "2026-10-05T17:58:20.506983876Z",
+    "sourceId": "calfire",
+    "sourceName": "CAL FIRE",
+    "sourceUrl": "https://www.fire.ca.gov/incidents/2026/10/3/slink-fire/"
+   },
+   "revision": 6,
+   "severity": "SEVERE",
+   "status": "RESOLVED",
+   "wildfire": {
+    "acres": 196,
+    "cause": "",
+    "containment": 0,
+    "county": "Mono",
+    "hasPerimeter": true
+   }
+  },
+  {
+   "areaLabel": "Hwy 49 & Mormon Creek Road, Tuttletown",
+   "canonicalUrl": "https://www.fire.ca.gov/incidents/2026/7/27/oneil-fire/",
+   "category": "wildfire",
+   "effective": "2026-07-28T02:44:17Z",
+   "headline": "Oneil Fire \u2014 3 ac, 0% contained",
+   "id": "calfire:3b2dab20-c160-4a55-a79b-69eaec06c730",
+   "ingestedAt": "2026-07-28T03:49:52.605016272Z",
+   "layer": "WILDFIRE",
+   "observedAt": "2026-07-28T03:49:52.414097080Z",
+   "provenance": {
+    "attribution": "CAL FIRE / FIRIS",
+    "fetchedAt": "2026-07-28T02:54:52.660803766Z",
+    "sourceId": "calfire",
+    "sourceName": "CAL FIRE",
+    "sourceUrl": "https://www.fire.ca.gov/incidents/2026/7/27/oneil-fire/"
+   },
+   "revision": 2,
+   "severity": "SEVERE",
+   "status": "RESOLVED",
+   "wildfire": {
+    "acres": 3,
+    "cause": "",
+    "containment": 0,
+    "county": "Tuolumne",
+    "hasPerimeter": false
+   }
+  }
+ ]
+}

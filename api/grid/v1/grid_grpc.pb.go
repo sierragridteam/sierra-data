@@ -25,6 +25,7 @@ const (
 	GridService_ListRelatedEvents_FullMethodName = "/grid.v1.GridService/ListRelatedEvents"
 	GridService_GetEventHistory_FullMethodName   = "/grid.v1.GridService/GetEventHistory"
 	GridService_ListHistory_FullMethodName       = "/grid.v1.GridService/ListHistory"
+	GridService_Search_FullMethodName            = "/grid.v1.GridService/Search"
 	GridService_ListPlaces_FullMethodName        = "/grid.v1.GridService/ListPlaces"
 	GridService_ResolvePlace_FullMethodName      = "/grid.v1.GridService/ResolvePlace"
 	GridService_GetPlace_FullMethodName          = "/grid.v1.GridService/GetPlace"
@@ -62,6 +63,22 @@ type GridServiceClient interface {
 	// observed. A page holds at most `pageSize` events and stops early at about
 	// 3 MiB encoded, so follow `nextPageToken` until it is empty. Supports
 	// ETag / If-None-Match.
+	//
+	// **Text search.** `q` keeps only events whose text matches: headline,
+	// location, summary, the source's description and incident log, typed facts
+	// (incident type, cause, zone id), node names and public keys, and the
+	// source's name. Every word is required; `"quoted words"` must appear
+	// together; `-word` excludes; `OR` between terms starts an alternative.
+	// Words are matched by stem ("flooded" finds "flooding") and a numbered
+	// road in any spelling finds every spelling (`hwy 4`, `SR-4`, `state route
+	// 4`). With `q` the order is newest `observedAt` first, not severity, and
+	// the response adds `totalMatches`, `counts`, a `matches` snippet per event
+	// and `search` (how the query was read and what it covers). The other
+	// filters still apply, including the status default: add `status` to search
+	// ended events. No matches means no stored event's text matched, not that
+	// nothing happened: collection began at `search.since`, and weather
+	// readings and road conditions are not events. `counts=true` returns the
+	// total and its breakdown without a text query.
 	ListEvents(ctx context.Context, in *ListEventsRequest, opts ...grpc.CallOption) (*EventList, error)
 	// Get one event.
 	//
@@ -128,7 +145,40 @@ type GridServiceClient interface {
 	// "what happened here last week". A page holds at most `pageSize` revisions
 	// and stops early at about 3 MiB encoded, so follow `nextPageToken` until it
 	// is empty. Supports ETag / If-None-Match.
+	//
+	// **Text search.** `q` (same syntax as on `/api/v1/events`) keeps only
+	// revisions whose text matched as it stood at that revision, so it finds
+	// what a report once said and no longer says. Each revision gains a
+	// `match` snippet and the response `totalMatches` and `search`. With
+	// `collapse=event` the answer is one row per event in `collapsed` instead
+	// of `revisions`: the first matching revision in full, the last one's
+	// number and time, and how many matched. That is the form for "when did
+	// this first say X, and when did it stop". Limits: only stored revisions
+	// are searched (collection began at `search.since`; a source that was down
+	// left a gap), a revision is stored when content changes, not on every
+	// poll, and place and layer are the event's current ones.
 	ListHistory(ctx context.Context, in *ListHistoryRequest, opts ...grpc.CallOption) (*EventRevisionList, error)
+	// Find things by name or text, across kinds.
+	//
+	// One search box for the whole Grid: the best few matches of each kind for
+	// `q`, in a fixed kind order (places, roads, events, mesh nodes, cameras,
+	// scanner feeds). Use it to turn a name into an id ("priest fire", a node's
+	// name or the start of its public key, "bear valley camera", "hwy 4") and
+	// then call the endpoint in each hit's `apiPath`. It does not page: for
+	// every matching event, in date order, with a total, use `q` on
+	// `/api/v1/events`. An event or mesh-node hit carries its layer, status,
+	// severity and `observedAt` in `event`; that field is null for other kinds.
+	//
+	// Same `q` syntax as `/api/v1/events`. Events and mesh nodes are ranked by
+	// relevance (a match in the headline, location or an identifier counts
+	// most), raised for active and for recent ones; every status is searched
+	// and each hit says its own. The other kinds are short lists matched on
+	// their names and locations. `totals` says how many of each kind matched,
+	// so a caller knows when the few shown are not all. A kind listed in
+	// `unavailable` could not be searched (the camera list's source is down):
+	// no hits of that kind means unknown, not none. No hit at all means nothing
+	// stored matched, not that nothing happened.
+	Search(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResults, error)
 	// List places.
 	//
 	// The place directory, with geometry: coverage areas, counties, towns and
@@ -296,6 +346,16 @@ func (c *gridServiceClient) ListHistory(ctx context.Context, in *ListHistoryRequ
 	return out, nil
 }
 
+func (c *gridServiceClient) Search(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResults, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchResults)
+	err := c.cc.Invoke(ctx, GridService_Search_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *gridServiceClient) ListPlaces(ctx context.Context, in *ListPlacesRequest, opts ...grpc.CallOption) (*PlaceList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PlaceList)
@@ -430,6 +490,22 @@ type GridServiceServer interface {
 	// observed. A page holds at most `pageSize` events and stops early at about
 	// 3 MiB encoded, so follow `nextPageToken` until it is empty. Supports
 	// ETag / If-None-Match.
+	//
+	// **Text search.** `q` keeps only events whose text matches: headline,
+	// location, summary, the source's description and incident log, typed facts
+	// (incident type, cause, zone id), node names and public keys, and the
+	// source's name. Every word is required; `"quoted words"` must appear
+	// together; `-word` excludes; `OR` between terms starts an alternative.
+	// Words are matched by stem ("flooded" finds "flooding") and a numbered
+	// road in any spelling finds every spelling (`hwy 4`, `SR-4`, `state route
+	// 4`). With `q` the order is newest `observedAt` first, not severity, and
+	// the response adds `totalMatches`, `counts`, a `matches` snippet per event
+	// and `search` (how the query was read and what it covers). The other
+	// filters still apply, including the status default: add `status` to search
+	// ended events. No matches means no stored event's text matched, not that
+	// nothing happened: collection began at `search.since`, and weather
+	// readings and road conditions are not events. `counts=true` returns the
+	// total and its breakdown without a text query.
 	ListEvents(context.Context, *ListEventsRequest) (*EventList, error)
 	// Get one event.
 	//
@@ -496,7 +572,40 @@ type GridServiceServer interface {
 	// "what happened here last week". A page holds at most `pageSize` revisions
 	// and stops early at about 3 MiB encoded, so follow `nextPageToken` until it
 	// is empty. Supports ETag / If-None-Match.
+	//
+	// **Text search.** `q` (same syntax as on `/api/v1/events`) keeps only
+	// revisions whose text matched as it stood at that revision, so it finds
+	// what a report once said and no longer says. Each revision gains a
+	// `match` snippet and the response `totalMatches` and `search`. With
+	// `collapse=event` the answer is one row per event in `collapsed` instead
+	// of `revisions`: the first matching revision in full, the last one's
+	// number and time, and how many matched. That is the form for "when did
+	// this first say X, and when did it stop". Limits: only stored revisions
+	// are searched (collection began at `search.since`; a source that was down
+	// left a gap), a revision is stored when content changes, not on every
+	// poll, and place and layer are the event's current ones.
 	ListHistory(context.Context, *ListHistoryRequest) (*EventRevisionList, error)
+	// Find things by name or text, across kinds.
+	//
+	// One search box for the whole Grid: the best few matches of each kind for
+	// `q`, in a fixed kind order (places, roads, events, mesh nodes, cameras,
+	// scanner feeds). Use it to turn a name into an id ("priest fire", a node's
+	// name or the start of its public key, "bear valley camera", "hwy 4") and
+	// then call the endpoint in each hit's `apiPath`. It does not page: for
+	// every matching event, in date order, with a total, use `q` on
+	// `/api/v1/events`. An event or mesh-node hit carries its layer, status,
+	// severity and `observedAt` in `event`; that field is null for other kinds.
+	//
+	// Same `q` syntax as `/api/v1/events`. Events and mesh nodes are ranked by
+	// relevance (a match in the headline, location or an identifier counts
+	// most), raised for active and for recent ones; every status is searched
+	// and each hit says its own. The other kinds are short lists matched on
+	// their names and locations. `totals` says how many of each kind matched,
+	// so a caller knows when the few shown are not all. A kind listed in
+	// `unavailable` could not be searched (the camera list's source is down):
+	// no hits of that kind means unknown, not none. No hit at all means nothing
+	// stored matched, not that nothing happened.
+	Search(context.Context, *SearchRequest) (*SearchResults, error)
 	// List places.
 	//
 	// The place directory, with geometry: coverage areas, counties, towns and
@@ -621,6 +730,9 @@ func (UnimplementedGridServiceServer) GetEventHistory(context.Context, *GetEvent
 }
 func (UnimplementedGridServiceServer) ListHistory(context.Context, *ListHistoryRequest) (*EventRevisionList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListHistory not implemented")
+}
+func (UnimplementedGridServiceServer) Search(context.Context, *SearchRequest) (*SearchResults, error) {
+	return nil, status.Error(codes.Unimplemented, "method Search not implemented")
 }
 func (UnimplementedGridServiceServer) ListPlaces(context.Context, *ListPlacesRequest) (*PlaceList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPlaces not implemented")
@@ -780,6 +892,24 @@ func _GridService_ListHistory_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GridServiceServer).ListHistory(ctx, req.(*ListHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GridService_Search_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GridServiceServer).Search(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GridService_Search_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GridServiceServer).Search(ctx, req.(*SearchRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1012,6 +1142,10 @@ var GridService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListHistory",
 			Handler:    _GridService_ListHistory_Handler,
+		},
+		{
+			MethodName: "Search",
+			Handler:    _GridService_Search_Handler,
 		},
 		{
 			MethodName: "ListPlaces",

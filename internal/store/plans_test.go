@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gridv1 "github.com/sierragridteam/sierra-data/api/grid/v1"
+	"github.com/sierragridteam/sierra-data/internal/search"
 )
 
 // Query-plan tests for the hot statements. The statements are not copied
@@ -78,6 +79,14 @@ var keepSort = map[string]bool{
 	"tick: events by source+status": true,
 }
 
+// keepBitmap names the calls whose index is GIN, which PostgreSQL can only
+// read through a bitmap scan: with bitmap scans off the full-text index is
+// unusable by construction, and the check would be vacuous.
+var keepBitmap = map[string]bool{
+	"events text search":  true,
+	"history text search": true,
+}
+
 // hotCalls is every statement the API and the scheduler run per request or
 // per tick, with the index each must be able to use. ids name rows that exist
 // at scale (and anything at test size).
@@ -136,6 +145,37 @@ func hotCalls(ids hotIDs) []planTarget {
 		{"history place+layer", hist(HistoryQuery{PlaceID: ids.place, Layers: []gridv1.Layer{gridv1.Layer_WILDFIRE}}),
 			[]string{"idx_revisions_observed"}},
 		{"history window", hist(HistoryQuery{From: since}), []string{"idx_revisions_observed"}},
+		// Text search. The index has to be marked complete first (a search
+		// against an unfinished index is refused); on an empty database that
+		// is one backfill step each.
+		{"events text search", func(ctx context.Context, s *Store) error {
+			if _, err := s.BackfillEventSearch(ctx, "", 1); err != nil {
+				return err
+			}
+			q, err := search.ParseQuery("flooded hwy 4", true)
+			if err != nil {
+				return err
+			}
+			if _, err = s.SearchEvents(ctx, EventQuery{Search: &q, Statuses: all}); err != nil {
+				return err
+			}
+			_, _, err = s.SearchTopEvents(ctx, q, "", nil, []gridv1.Layer{gridv1.Layer_MESH}, 5)
+			return err
+		}, []string{"idx_event_search_tsv"}},
+		{"history text search", func(ctx context.Context, s *Store) error {
+			if _, err := s.BackfillRevisionSearch(ctx, "", 0, 1); err != nil {
+				return err
+			}
+			q, err := search.ParseQuery("chain controls", true)
+			if err != nil {
+				return err
+			}
+			if _, err = s.SearchHistory(ctx, HistoryQuery{Search: &q}); err != nil {
+				return err
+			}
+			_, err = s.SearchHistoryByEvent(ctx, HistoryQuery{Search: &q})
+			return err
+		}, []string{"idx_event_revision_search_tsv"}},
 		{"stats place", func(ctx context.Context, s *Store) error { _, err := s.Totals(ctx, ids.place); return err }, nil},
 		{"stats all", func(ctx context.Context, s *Store) error { _, err := s.Totals(ctx, ""); return err }, nil},
 		{"mesh links", func(ctx context.Context, s *Store) error { _, err := s.MeshLinks(ctx, since); return err },
@@ -277,6 +317,9 @@ func indexesUsed(t *testing.T, s *Store, rec *statementRecorder, h planTarget) (
 		knobs := []string{"enable_seqscan = off", "enable_bitmapscan = off", "enable_sort = off"}
 		if keepSort[h.name] {
 			knobs = knobs[:2]
+		}
+		if keepBitmap[h.name] {
+			knobs = []string{"enable_seqscan = off", "enable_indexscan = off", "enable_sort = off"}
 		}
 		plan, _, err := planOf(ctx, s, st, false, knobs...)
 		require.NoError(t, err)
