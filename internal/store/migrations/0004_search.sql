@@ -11,10 +11,12 @@
 --
 --   * event_search: one row per event, its CURRENT text. category sits beside
 --     the vector so matches can be counted by layer and category without
---     reading blobs. revision is the event revision the row was built from and
---     doc_version the builder's rules (search.DocVersion): the writer's
---     backfill rebuilds a row whose revision or version is behind (an older
---     release's writer, which does not know these tables, or a rule change).
+--     reading blobs. revision and refreshes are the event's stamp (its
+--     revision, and its count of in-place rewrites) when the row was built,
+--     and doc_version the builder's rules (search.DocVersion): the writer's
+--     backfill rebuilds a row whose stamp or version differs from its event's
+--     (an older release's writer, which does not know these tables, or a rule
+--     change).
 --   * event_revision_search: one row per stored revision, append-only like
 --     event_revisions. observed_at is copied so a window over matches needs
 --     no join.
@@ -32,7 +34,8 @@ CREATE TABLE event_search (
   tsv         tsvector NOT NULL,
   text_hash   text NOT NULL,
   doc_version integer NOT NULL,
-  revision    bigint NOT NULL
+  revision    bigint NOT NULL,
+  refreshes   bigint NOT NULL DEFAULT 0
 );
 CREATE INDEX idx_event_search_tsv ON event_search USING gin (tsv);
 

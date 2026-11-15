@@ -67,11 +67,12 @@ that nothing happened: only events collected since `search.since` are stored,
 a source that was down left a gap, a revision is stored when content changes
 (not on every poll), and weather readings and road conditions are not events.
 
-**503 while the index is built.** The first minutes after this release
-deploys, `q` and `counts` answer 503 `UNAVAILABLE` until the index is complete,
-rather than "no matches" from a partial one. Requests without them are
-unaffected. The same happens briefly after a release that changes the search
-rules.
+**503 while the index is checked.** `q`, `counts` and `/api/v1/search` answer
+503 `UNAVAILABLE` whenever the index is not known to be complete, rather than
+"no matches" from a partial one. That is the first minutes after this release
+deploys (the index is built then), and about a second each time the service's
+writer changes, which is every deploy. Requests without them are unaffected.
+Retry.
 
 ### The finder: `GET /api/v1/search`
 

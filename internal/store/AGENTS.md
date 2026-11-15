@@ -395,15 +395,38 @@ home of a value.
   `TouchSeen` leave the row's `xmin` alone).
 - **History is a snapshot.** `event_revision_search` holds each revision's text
   as stored and is never updated by a later refresh, like `event_revisions`.
-- **Readiness is explicit.** A text query against an index that is not known
-  complete returns `ErrSearchNotReady` (503 at the API), never an empty page.
-  "Complete" is the `search_ready:*` rows in `versions`, set when a backfill
-  walk reaches the end of the table. The scheduler runs the walk at the start
-  of every writer term (`runSearchBackfill`): it builds rows for events and
-  revisions that have none, rows whose `revision` is behind their event (the
-  previous release's writer does not know these tables and keeps writing
-  during a deploy) and rows built by other rules (`doc_version`). After the
-  first walk it finds nothing and costs one scan.
+- **Readiness is explicit, and per writer term.** A text query against an
+  index that is not known complete returns `ErrSearchNotReady` (503 at the
+  API), never an empty page. The `search_ready:*` rows in `versions` hold the
+  writer-lease epoch of the term whose backfill walk last reached the end of
+  the table, and the index is ready only while that is the current epoch. So
+  every change of writer refuses search until the new writer has walked: about
+  a second when the previous writer kept the index, and as long as the
+  catch-up takes when it did not (the release before search, after a
+  rollback). A flag set once would have answered from an index missing what
+  that writer stored. The scheduler runs the walk at the start of every term
+  (`runSearchBackfill`): it builds rows that are missing, rows whose
+  `revision` or `refreshes` differs from their event's (the second catches an
+  AI summary rewritten in place without a revision) and rows built by other
+  rules (`doc_version`).
+- **Readiness is read in the search's own transaction** (`readyExpr`), never
+  through the versions cache. A search already holds a pooled connection; a
+  cache refresh takes a second one under the mutex every validator shares, and
+  with the pool full of searches that stalled every read
+  (`TestSearchNeedsOnlyItsOwnConnection`).
+- **Indexing must never cost the event.** `to_tsvector` fails the statement
+  when a vector would pass 1 MiB, so `indexedText` cuts each weight
+  (`maxIndexA`..`D`) and cleans the category; the event keeps all of its text.
+  The live write has no savepoint (it would add two round trips to every
+  revision), so anything else that could make `putSearch` fail must be
+  prevented the same way, before the statement. The backfill does use
+  savepoints: a row that will not index is logged and left out
+  (`writeSkippingPoison`), because one failing batch would otherwise restart
+  the walk for ever and search would never become ready.
+- **A query needs something to find.** English drops "the", so
+  `the -flooded` would be NOT flooded and match nearly everything.
+  `checkSearchable` requires each alternative's positive terms to leave at
+  least one lexeme.
 - **Changing the rules.** Bump `search.DocVersion` with any change to
   `search.Build`'s output or to `tsvExpr`. The next writer term rebuilds every
   row. While it runs, results mix old and new rules; they are not refused.

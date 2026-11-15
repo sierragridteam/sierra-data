@@ -258,14 +258,16 @@ var (
 const liteBackfillBatch = 50
 
 // The search backfill (store event_search, event_revision_search). It starts
-// soon after the writer term does, because until its first walk finishes a
-// text query is refused (503) rather than answered from a partial index.
+// as soon as the writer term does, because the index counts as complete only
+// for the term whose walk finished: until this one's does, a text query is
+// refused (503) rather than answered from an index the previous writer may
+// not have kept.
 // Batches are short writer transactions with a pause between them, so polls
 // interleave. Sizes from the stored data on 2026-11-15: 12k events and 75k
 // revisions, a few minutes in all on the first run and one cheap scan on
 // every later one.
 var (
-	searchBackfillAfter = 5 * time.Second
+	searchBackfillAfter = time.Second
 	searchBackfillPause = 200 * time.Millisecond
 	searchBackfillRetry = time.Minute
 )

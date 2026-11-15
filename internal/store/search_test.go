@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/sierragridteam/sierra-data/internal/search"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -694,4 +696,166 @@ func TestRevisionBackfillIsBoundedByBytes(t *testing.T) {
 	p, err := s.SearchHistory(ctx, HistoryQuery{Search: mustQuery(t, "perimeter "), PageSize: 1})
 	require.NoError(t, err)
 	assert.Equal(t, 7, p.Total)
+}
+
+// A search holds one pooled connection for its transaction. Reading readiness
+// through the versions cache asked for a second one under the mutex every
+// validator shares, so a pool busy with searches stalled every read. With one
+// connection and a dirty cache the search must simply work.
+func TestSearchNeedsOnlyItsOwnConnection(t *testing.T) {
+	s := newTestStore(t, WithMaxConns(1))
+	seedSource(t, s, "usgs")
+	seedRoads(t, s)
+	finishSearchBackfill(t, s)
+	s.versions.markDirty()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	p, err := s.SearchEvents(ctx, EventQuery{Search: mustQuery(t, "flooded ")})
+	require.NoError(t, err)
+	assert.Equal(t, 1, p.Total)
+	s.versions.markDirty()
+	_, err = s.SearchEvents(ctx, EventQuery{Counts: true})
+	require.NoError(t, err)
+	s.versions.markDirty()
+	_, _, err = s.SearchTopEvents(ctx, *mustQuery(t, "flooded "), "", nil, nil, 3)
+	require.NoError(t, err)
+	s.versions.markDirty()
+	_, err = s.SearchHistoryByEvent(ctx, HistoryQuery{Search: mustQuery(t, "flooded ")})
+	require.NoError(t, err)
+}
+
+// The index is complete for a writer term. After the lease has been held by a
+// writer that does not keep it (a rollback to the previous release), a search
+// is refused until this term's walk has caught up, and the walk also rebuilds
+// what that writer rewrote in place without a revision.
+func TestSearchIsNotReadyUntilThisTermHasWalked(t *testing.T) {
+	s := searchStore(t)
+	seedRoads(t, s)
+	ctx := context.Background()
+	require.Equal(t, []string{"chp:1"}, searchIDs(t, s, "flooded "))
+
+	// As a writer of an earlier term left it: the ready rows name an older
+	// epoch, an event was added with no search row, and one event's summary
+	// was rewritten in place (refreshes moved, the revision did not).
+	exec := func(q string, args ...any) {
+		t.Helper()
+		_, err := s.db.Exec(q, args...)
+		require.NoError(t, err)
+	}
+	exec(`UPDATE versions SET value = value - 1 WHERE key LIKE 'search_ready:%'`)
+	upsert(t, s, roadEvent("chp:late", "Rockslide", "SR 4", "", "", 9*time.Hour))
+	exec(`DELETE FROM event_search WHERE event_id = 'chp:late'`)
+	exec(`DELETE FROM event_revision_search WHERE event_id = 'chp:late'`)
+	rewritten := roadEvent("chp:2", "Single-vehicle crash, both lanes blocked", "State Route 26 westbound",
+		"Tow truck requested for a sedan in the culvert.", "1182-Trfc Collision-No Inj Sr26 VEH OTD", 2*time.Hour)
+	rewritten.Revision = 1
+	blob, err := proto.Marshal(rewritten)
+	require.NoError(t, err)
+	exec(`UPDATE events SET proto = $1, refreshes = refreshes + 1 WHERE id = 'chp:2'`, blob)
+	// The previous release keeps the shape-free copy in step, as it always has.
+	exec(`UPDATE event_lite SET proto = $1 WHERE event_id = 'chp:2'`, blob)
+
+	_, err = s.SearchEvents(ctx, EventQuery{Search: mustQuery(t, "flooded ")})
+	assert.ErrorIs(t, err, ErrSearchNotReady, "an earlier term's flag does not vouch for the index")
+	_, err = s.SearchHistory(ctx, HistoryQuery{Search: mustQuery(t, "flooded ")})
+	assert.ErrorIs(t, err, ErrSearchNotReady)
+	_, err = s.SearchEvents(ctx, EventQuery{Counts: true})
+	assert.ErrorIs(t, err, ErrSearchNotReady)
+	ev, rev, err := s.SearchReady(ctx)
+	require.NoError(t, err)
+	assert.False(t, ev || rev)
+
+	events, revisions := finishSearchBackfill(t, s)
+	assert.Equal(t, 2, events, "the missing event and the one rewritten in place")
+	assert.Equal(t, 1, revisions)
+	assert.Equal(t, []string{"chp:late"}, searchIDs(t, s, "rockslide "))
+	assert.Equal(t, []string{"chp:2"}, searchIDs(t, s, "culvert "), "the summary the earlier writer stored is searchable")
+	assert.Empty(t, searchIDs(t, s, "shoulder "), "and the one it replaced is not")
+}
+
+// Text PostgreSQL cannot index must never cost the event: a megabyte of
+// description is cut for the index and stored whole; a NUL in the category is
+// cleaned for the index.
+func TestUnindexableTextNeverFailsTheEventWrite(t *testing.T) {
+	s := searchStore(t)
+	ctx := context.Background()
+	var sb strings.Builder
+	sb.WriteString("landslide ")
+	for i := 0; sb.Len() < 1300000; i++ {
+		fmt.Fprintf(&sb, "w%dx ", i)
+	}
+	huge := roadEvent("chp:huge", "Road closed", "SR 4", "", sb.String(), time.Hour)
+	_, err := s.UpsertEvent(ctx, huge)
+	require.NoError(t, err, "a tsvector cannot pass 1 MiB; the write must not depend on that")
+	stored, err := s.GetEvent(ctx, "chp:huge")
+	require.NoError(t, err)
+	assert.Len(t, stored.GetDescription(), sb.Len(), "the event keeps all of its text")
+	assert.Equal(t, []string{"chp:huge"}, searchIDs(t, s, "landslide "), "what fits is searchable")
+
+	nul := roadEvent("chp:nul", "Odd category", "SR 4", "", "", 2*time.Hour)
+	nul.Category = "inci\x00dent"
+	_, err = s.UpsertEvent(ctx, nul)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"chp:nul"}, searchIDs(t, s, "odd "))
+
+	assert.Equal(t, "ab", capText("ab", 5))
+	assert.Equal(t, "é", capText("éé", 3), "cut on a rune boundary")
+	assert.Equal(t, "", capText("é", 1))
+}
+
+// One row that will not index is left out of a backfill step; the rest of the
+// step and the surrounding transaction go on.
+func TestBackfillWriteSkipsARowThatFails(t *testing.T) {
+	s := searchStore(t)
+	ctx := context.Background()
+	seedRoads(t, s)
+	rows := []searchRow{{id: "a", revision: 1}, {id: "poison", revision: 1}, {id: "c", revision: 1}}
+	var wrote []string
+	err := s.inTx(ctx, func(tx *sql.Tx) error {
+		written, skipped, err := writeSkippingPoison(ctx, tx, rows, func(part []searchRow) error {
+			for _, r := range part {
+				if r.id == "poison" {
+					// A real failed statement, which aborts a transaction
+					// that has no savepoint to return to.
+					_, err := tx.ExecContext(ctx, `SELECT to_tsvector('english', repeat('x', 10)) / 0`)
+					return err
+				}
+			}
+			if len(part) == 1 {
+				wrote = append(wrote, part[0].id)
+			}
+			return nil
+		})
+		require.NoError(t, err)
+		assert.Equal(t, 2, written)
+		assert.Equal(t, 1, skipped)
+		// The transaction is still usable.
+		var n int
+		return tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM events`).Scan(&n)
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"a", "c"}, wrote)
+}
+
+// English drops "the"; what is left of "the -flooded" is NOT flooded, which
+// matches nearly every event. Each alternative needs a word to look for.
+func TestSearchRefusesAnExclusionWithNothingToFind(t *testing.T) {
+	s := searchStore(t)
+	seedRoads(t, s)
+	ctx := context.Background()
+	for _, q := range []string{"the -flooded ", "of -zzzz ", `"of the" -tree `, "flooded OR the -tree ", "the", "th"} {
+		_, err := s.SearchEvents(ctx, EventQuery{Search: mustQuery(t, q), Statuses: allStatuses})
+		if q == "th" {
+			// A prefix still being typed is a word to look for.
+			require.NoError(t, err, q)
+			continue
+		}
+		assert.ErrorIs(t, err, search.ErrQueryEmpty, q)
+	}
+	_, _, err := s.SearchTopEvents(ctx, *mustQuery(t, "the -flooded "), "", nil, nil, 5)
+	assert.ErrorIs(t, err, search.ErrQueryEmpty)
+	_, err = s.SearchHistory(ctx, HistoryQuery{Search: mustQuery(t, "the -flooded ")})
+	assert.ErrorIs(t, err, search.ErrQueryEmpty)
+	// A real word with an exclusion still works.
+	assert.Equal(t, []string{"chp:4"}, searchIDs(t, s, "collision -shoulder "))
 }

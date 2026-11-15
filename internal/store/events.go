@@ -691,15 +691,6 @@ func (s *Store) refreshEventPlaces(tx *sql.Tx, ev *gridv1.Event, pre *storedForR
 	if err := putLite(tx, stored); err != nil {
 		return false, err
 	}
-	// Of everything this path rewrites, only the AI summary is search text
-	// (search.Build leaves telemetry, observations and place ids out), so a
-	// telemetry refresh costs no search write. History is not touched: the
-	// revision's snapshot row keeps the text it was stored with.
-	if enhChanged {
-		if err := putSearch(context.Background(), tx, []searchRow{newSearchRow(stored, stored.GetRevision(), 0)}, false); err != nil {
-			return false, err
-		}
-	}
 	if stored.GetObservedAt() != nil {
 		if _, err := tx.Exec(`UPDATE events SET proto = $1, observed_at = $2, refreshes = refreshes + 1 WHERE id = $3`,
 			newBlob, stored.GetObservedAt().AsTime().Unix(), ev.GetId()); err != nil {
@@ -707,6 +698,16 @@ func (s *Store) refreshEventPlaces(tx *sql.Tx, ev *gridv1.Event, pre *storedForR
 		}
 	} else if _, err := tx.Exec(`UPDATE events SET proto = $1, refreshes = refreshes + 1 WHERE id = $2`, newBlob, ev.GetId()); err != nil {
 		return false, fmt.Errorf("store: update event %s for refresh: %w", ev.GetId(), err)
+	}
+	// Of everything this path rewrites, only the AI summary is search text
+	// (search.Build leaves telemetry, observations and place ids out), so a
+	// telemetry refresh costs no search write. After the UPDATE, so the row
+	// records the refreshes count it was built from. History is not touched:
+	// the revision's snapshot row keeps the text it was stored with.
+	if enhChanged {
+		if err := putSearch(context.Background(), tx, []searchRow{newSearchRow(stored, stored.GetRevision(), 0)}, false); err != nil {
+			return false, err
+		}
 	}
 	// Same transaction as the rewrite: a reader can never pair the new
 	// version with the old blob.

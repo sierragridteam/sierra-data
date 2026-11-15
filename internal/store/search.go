@@ -7,9 +7,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	gridv1 "github.com/sierragridteam/sierra-data/api/grid/v1"
@@ -144,12 +146,18 @@ func newSearchRow(ev *gridv1.Event, revision uint32, observedAt int64) searchRow
 // only the bookkeeping moves.
 const eventSearchUpsert = `
 	ON CONFLICT (event_id) DO UPDATE SET
-	  category = excluded.category, revision = excluded.revision, doc_version = excluded.doc_version,
-	  text_hash = excluded.text_hash,
+	  category = excluded.category, revision = excluded.revision, refreshes = excluded.refreshes,
+	  doc_version = excluded.doc_version, text_hash = excluded.text_hash,
 	  tsv = CASE WHEN event_search.text_hash = excluded.text_hash AND event_search.doc_version = excluded.doc_version
 	             THEN event_search.tsv ELSE excluded.tsv END
 	WHERE event_search.text_hash <> excluded.text_hash OR event_search.doc_version <> excluded.doc_version
-	   OR event_search.revision <> excluded.revision OR event_search.category <> excluded.category`
+	   OR event_search.revision <> excluded.revision OR event_search.refreshes <> excluded.refreshes
+	   OR event_search.category <> excluded.category`
+
+// eventRefreshes reads the event's own refreshes counter for the row being
+// written, so the search row records the stamp it was built from. The event
+// row is written earlier in the same transaction.
+const eventRefreshes = `COALESCE((SELECT e.refreshes FROM events e WHERE e.id = v.id), 0)`
 
 // putSearch writes the search rows for events in one statement: the current
 // text of each (event_search) and, when withRevisions, the snapshot row of the
@@ -164,10 +172,9 @@ func putSearch(ctx context.Context, tx *sql.Tx, rows []searchRow, withRevisions 
 	revs, obs := make([]int64, n), make([]int64, n)
 	a, b, c, d := make([]string, n), make([]string, n), make([]string, n), make([]string, n)
 	for i, r := range rows {
-		ids[i], cats[i], hashes[i] = r.id, r.doc.Category, docHash(r.doc)
+		ids[i], cats[i], hashes[i] = r.id, pgText(r.doc.Category), docHash(r.doc)
 		revs[i], obs[i] = r.revision, r.observedAt
-		da, db, dc, dd := r.doc.Indexed()
-		a[i], b[i], c[i], d[i] = indexText(da), indexText(db), indexText(dc), indexText(dd)
+		a[i], b[i], c[i], d[i] = indexedText(r.doc)
 	}
 	stmt := `
 		WITH v AS (
@@ -178,8 +185,8 @@ func putSearch(ctx context.Context, tx *sql.Tx, rows []searchRow, withRevisions 
 		)`
 	if withRevisions {
 		stmt += `, cur AS (
-		  INSERT INTO event_search (event_id, category, tsv, text_hash, doc_version, revision)
-		  SELECT id, category, tsv, text_hash, $10, revision FROM v` + eventSearchUpsert + `
+		  INSERT INTO event_search (event_id, category, tsv, text_hash, doc_version, revision, refreshes)
+		  SELECT id, category, tsv, text_hash, $10, revision, ` + eventRefreshes + ` FROM v` + eventSearchUpsert + `
 		)
 		INSERT INTO event_revision_search (event_id, revision, observed_at, tsv, doc_version)
 		SELECT id, revision, observed_at, tsv, $10 FROM v
@@ -187,8 +194,8 @@ func putSearch(ctx context.Context, tx *sql.Tx, rows []searchRow, withRevisions 
 		  observed_at = excluded.observed_at, tsv = excluded.tsv, doc_version = excluded.doc_version`
 	} else {
 		stmt += `
-		INSERT INTO event_search (event_id, category, tsv, text_hash, doc_version, revision)
-		SELECT id, category, tsv, text_hash, $10, revision FROM v` + eventSearchUpsert
+		INSERT INTO event_search (event_id, category, tsv, text_hash, doc_version, revision, refreshes)
+		SELECT id, category, tsv, text_hash, $10, revision, ` + eventRefreshes + ` FROM v` + eventSearchUpsert
 	}
 	if _, err := tx.ExecContext(ctx, stmt, ids, cats, hashes, revs, obs, a, b, c, d, search.DocVersion); err != nil {
 		return fmt.Errorf("store: write search rows for %d events: %w", n, err)
@@ -213,6 +220,37 @@ func indexText(s string) string {
 
 var hyphenDigit = regexp.MustCompile(`([\pL\pN])-(\pN)|(\pN)-([\pL\pN])`)
 
+// Most bytes of each weight that are indexed. A tsvector cannot pass 1 MiB,
+// and to_tsvector fails the whole statement when it would: an event with a
+// megabyte of description must still be stored, so its text is cut instead.
+// The sum (A and B are indexed twice) leaves room for the vector's own
+// overhead on text made of short distinct words. Real events are a few
+// kilobytes; the longest stored description on 2026-11-15 was under 20.
+const (
+	maxIndexA = 16 << 10
+	maxIndexB = 64 << 10
+	maxIndexC = 128 << 10
+	maxIndexD = 4 << 10
+)
+
+// indexedText is a document's four weights as they go to to_tsvector.
+func indexedText(doc search.Doc) (a, b, c, d string) {
+	da, db, dc, dd := doc.Indexed()
+	return capText(indexText(da), maxIndexA), capText(indexText(db), maxIndexB),
+		capText(indexText(dc), maxIndexC), capText(indexText(dd), maxIndexD)
+}
+
+// capText cuts s to at most n bytes, on a rune boundary.
+func capText(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
+	}
+	return s[:n]
+}
+
 // pgText makes s storable as PostgreSQL text: no NUL byte, valid UTF-8.
 // Upstream text is neither guaranteed.
 func pgText(s string) string {
@@ -224,18 +262,38 @@ func pgText(s string) string {
 
 // --- readiness ---
 
-// SearchReady reports whether a complete index exists for current events and
-// for revisions. False until the writer's first backfill walk has finished.
-func (s *Store) SearchReady(ctx context.Context) (events, revisions bool, err error) {
-	vals, err := s.versions.get(ctx, s.db)
-	if err != nil {
-		return false, false, fmt.Errorf("store: search readiness: %w", err)
-	}
-	return vals[versionSearchReady] > 0, vals[versionSearchHistoryReady] > 0, nil
+// The index is complete for a writer term, not for all time. The ready rows
+// in versions hold the writer-lease epoch of the term whose backfill walk
+// last reached the end of the table; the index is ready only while that is
+// still the current epoch. So whenever the lease changes hands, search is
+// refused until the new writer has walked the tables: a moment when the
+// previous writer kept the index itself, and for as long as the catch-up takes
+// when it did not (a release that does not know these tables, after a
+// rollback). A flag that was set once and never cleared would have answered
+// from an index missing whatever that writer stored.
+//
+// Readiness is read in the search's own transaction (readyExpr), never
+// through the versions cache: a search already holds a pooled connection, and
+// a cache refresh asks for a second one under a mutex every validator shares,
+// which stalls every read when the pool is busy with searches.
+func readyExpr(key string, args *sqlArgs) string {
+	return `COALESCE((SELECT value > 0 AND value = (SELECT epoch FROM writer_lease WHERE id = 1) FROM versions WHERE key = ` + args.add(key) + `), false)`
 }
 
-// SearchVersion changes whenever a backfill rewrites search rows, which moves
-// search results without a revision. Validators of a text query fold it in.
+// SearchReady reports whether a complete index exists, for current events
+// and for revisions, under the current writer term.
+func (s *Store) SearchReady(ctx context.Context) (events, revisions bool, err error) {
+	var args sqlArgs
+	query := `SELECT ` + readyExpr(versionSearchReady, &args) + `, ` + readyExpr(versionSearchHistoryReady, &args)
+	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&events, &revisions); err != nil {
+		return false, false, fmt.Errorf("store: search readiness: %w", err)
+	}
+	return events, revisions, nil
+}
+
+// SearchVersion changes whenever a backfill rewrites search rows or a new
+// writer term completes its walk, both of which move search results without a
+// revision. Validators of a text query fold it in.
 func (s *Store) SearchVersion(ctx context.Context) (int64, error) {
 	vals, err := s.versions.get(ctx, s.db)
 	if err != nil {
@@ -244,11 +302,13 @@ func (s *Store) SearchVersion(ctx context.Context) (int64, error) {
 	return vals[versionSearch] + vals[versionSearchReady] + vals[versionSearchHistoryReady], nil
 }
 
-func setVersion(ctx context.Context, tx *sql.Tx, key string, value int64) error {
+// markSearchReady records, inside a write of this term, that the walk over
+// the table behind key has reached its end.
+func (s *Store) markSearchReady(ctx context.Context, tx *sql.Tx, key string) error {
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO versions (key, value) VALUES ($1, $2)
-		ON CONFLICT (key) DO UPDATE SET value = excluded.value WHERE versions.value <> excluded.value`, key, value); err != nil {
-		return fmt.Errorf("store: set version %s: %w", key, err)
+		ON CONFLICT (key) DO UPDATE SET value = excluded.value WHERE versions.value <> excluded.value`, key, s.txEpoch); err != nil {
+		return fmt.Errorf("store: mark %s: %w", key, err)
 	}
 	return nil
 }
@@ -259,20 +319,83 @@ func setVersion(ctx context.Context, tx *sql.Tx, key string, value int64) error 
 type SearchBackfill struct {
 	// Done is true when the walk reached the end of the table.
 	Done bool
-	// Written counts rows built in this step, Skipped blobs that would not
-	// unmarshal (left without a row, like a lite copy).
+	// Written counts rows built in this step. Skipped counts rows left
+	// without one: a blob that would not unmarshal, or text PostgreSQL
+	// refused to index. A skipped row is not searchable; the walk goes on.
 	Written, Skipped int
 	// The cursor for the next step.
 	NextID  string
 	NextRev int64
 }
 
+// writeSkippingPoison runs write for all rows; if that fails it runs it for
+// each row alone and leaves out the ones that still fail. One row PostgreSQL
+// will not index (indexedText caps what is known to break it) must not fail
+// its batch for ever: the walk would restart every minute and never finish,
+// and search would never become available. Savepoints keep the surrounding
+// transaction usable after a failed statement. It returns how many rows were
+// written and how many left out.
+func writeSkippingPoison(ctx context.Context, tx *sql.Tx, rows []searchRow, write func([]searchRow) error) (written, skipped int, err error) {
+	if len(rows) == 0 {
+		return 0, 0, nil
+	}
+	attempt := func(part []searchRow) (bool, error) {
+		if _, err := tx.ExecContext(ctx, `SAVEPOINT search_rows`); err != nil {
+			return false, fmt.Errorf("store: search backfill savepoint: %w", err)
+		}
+		werr := write(part)
+		if werr == nil {
+			_, err := tx.ExecContext(ctx, `RELEASE SAVEPOINT search_rows`)
+			return true, err
+		}
+		// Cancelled or disconnected: not this row's fault, stop.
+		if ctx.Err() != nil {
+			return false, werr
+		}
+		if _, err := tx.ExecContext(ctx, `ROLLBACK TO SAVEPOINT search_rows`); err != nil {
+			return false, fmt.Errorf("store: search backfill: %w (after %v)", err, werr)
+		}
+		if len(part) == 1 {
+			log.Printf("store: search backfill: %s revision %d left unindexed: %v", part[0].id, part[0].revision, werr)
+		}
+		return false, nil
+	}
+	ok, err := attempt(rows)
+	if err != nil {
+		return 0, 0, err
+	}
+	if ok {
+		return len(rows), 0, nil
+	}
+	if len(rows) == 1 {
+		return 0, 1, nil
+	}
+	for i := range rows {
+		ok, err := attempt(rows[i : i+1])
+		if err != nil {
+			return written, skipped, err
+		}
+		if ok {
+			written++
+		} else {
+			skipped++
+		}
+	}
+	return written, skipped, nil
+}
+
 // BackfillEventSearch builds event_search rows for up to batch events after
-// the cursor that have none, or whose row was built from another revision or
-// by other rules (an older release's writer does not maintain the table; a
-// search.DocVersion bump rebuilds everything). The read and the write share
-// one writer transaction, so no upsert can land between them. When the walk
-// reaches the end it marks the index complete.
+// the cursor that have none, or whose row was built from another state of
+// the event (its revision or its count of in-place rewrites differs) or by
+// other rules. An older release's writer does not maintain the table, and it
+// can both add revisions and rewrite an AI summary in place; a
+// search.DocVersion bump rebuilds everything. A mesh node whose telemetry was
+// refreshed since its row was written is rebuilt too, which costs a write of
+// bookkeeping only (the text is equal, so the stored vector is kept).
+//
+// The read and the write share one writer transaction, so no upsert can land
+// between them. When the walk reaches the end it marks the index complete
+// for this writer term.
 func (s *Store) BackfillEventSearch(ctx context.Context, after string, batch int) (SearchBackfill, error) {
 	var res SearchBackfill
 	err := s.inTx(ctx, func(tx *sql.Tx) error {
@@ -283,7 +406,8 @@ func (s *Store) BackfillEventSearch(ctx context.Context, after string, batch int
 			SELECT e.id, e.revision, e.observed_at, COALESCE(l.proto, e.proto)
 			FROM events e LEFT JOIN event_search s ON s.event_id = e.id
 			LEFT JOIN event_lite l ON l.event_id = e.id
-			WHERE e.id > $1 AND (s.event_id IS NULL OR s.revision <> e.revision OR s.doc_version <> $2)
+			WHERE e.id > $1 AND (s.event_id IS NULL OR s.revision <> e.revision
+			   OR s.refreshes <> e.refreshes OR s.doc_version <> $2)
 			ORDER BY e.id LIMIT $3`, after, search.DocVersion, batch)
 		if err != nil {
 			return fmt.Errorf("store: search backfill scan: %w", err)
@@ -313,18 +437,19 @@ func (s *Store) BackfillEventSearch(ctx context.Context, after string, batch int
 		if err := rows.Err(); err != nil {
 			return fmt.Errorf("store: search backfill scan: %w", err)
 		}
-		res.Written = len(out)
-		if err := putSearch(ctx, tx, out, false); err != nil {
+		written, skipped, err := writeSkippingPoison(ctx, tx, out, func(part []searchRow) error { return putSearch(ctx, tx, part, false) })
+		if err != nil {
 			return err
 		}
-		if len(out) > 0 {
-			if err := bumpVersion(tx, versionSearch, int64(len(out))); err != nil {
+		res.Written, res.Skipped = written, res.Skipped+skipped
+		if written > 0 {
+			if err := bumpVersion(tx, versionSearch, int64(written)); err != nil {
 				return err
 			}
 		}
 		if n < batch {
 			res.Done = true
-			return setVersion(ctx, tx, versionSearchReady, search.DocVersion)
+			return s.markSearchReady(ctx, tx, versionSearchReady)
 		}
 		return nil
 	})
@@ -338,9 +463,33 @@ func (s *Store) BackfillEventSearch(ctx context.Context, after string, batch int
 // reads (after its first row).
 const revisionBackfillBytes = 8 << 20
 
+// putRevisionSearch writes snapshot rows alone (the backfill; a live write
+// goes through putSearch with its current row).
+func putRevisionSearch(ctx context.Context, tx *sql.Tx, rows []searchRow) error {
+	n := len(rows)
+	ids, revs, obs := make([]string, n), make([]int64, n), make([]int64, n)
+	a, b, c, d := make([]string, n), make([]string, n), make([]string, n), make([]string, n)
+	for i, r := range rows {
+		ids[i], revs[i], obs[i] = r.id, r.revision, r.observedAt
+		a[i], b[i], c[i], d[i] = indexedText(r.doc)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO event_revision_search (event_id, revision, observed_at, tsv, doc_version)
+		SELECT id, revision, observed_at, `+tsvExpr("a", "b", "c", "d")+`, $8
+		FROM unnest($1::text[], $2::bigint[], $3::bigint[], $4::text[], $5::text[], $6::text[], $7::text[])
+		     AS u(id, revision, observed_at, a, b, c, d)
+		ON CONFLICT (event_id, revision) DO UPDATE SET
+		  observed_at = excluded.observed_at, tsv = excluded.tsv, doc_version = excluded.doc_version`,
+		ids, revs, obs, a, b, c, d, search.DocVersion); err != nil {
+		return fmt.Errorf("store: write %d revision search rows: %w", n, err)
+	}
+	return nil
+}
+
 // BackfillRevisionSearch is BackfillEventSearch for event_revision_search:
 // revisions after (afterID, afterRev) in primary-key order that have no row
-// or one built by other rules.
+// or one built by other rules. A revision never changes, so there is no
+// stamp to compare.
 func (s *Store) BackfillRevisionSearch(ctx context.Context, afterID string, afterRev int64, batch int) (SearchBackfill, error) {
 	var res SearchBackfill
 	err := s.inTx(ctx, func(tx *sql.Tx) error {
@@ -366,9 +515,7 @@ func (s *Store) BackfillRevisionSearch(ctx context.Context, afterID string, afte
 		if err != nil {
 			return fmt.Errorf("store: revision search backfill scan: %w", err)
 		}
-		var ids []string
-		var revs, obs []int64
-		var a, b, c, d []string
+		var out []searchRow
 		n, candidates := 0, 0
 		for rows.Next() {
 			var id string
@@ -385,10 +532,7 @@ func (s *Store) BackfillRevisionSearch(ctx context.Context, afterID string, afte
 				res.Skipped++
 				continue
 			}
-			doc := search.Build(ev)
-			ids, revs, obs = append(ids, id), append(revs, rev), append(obs, o)
-			da, db, dc, dd := doc.Indexed()
-			a, b, c, d = append(a, indexText(da)), append(b, indexText(db)), append(c, indexText(dc)), append(d, indexText(dd))
+			out = append(out, searchRow{id: id, revision: rev, observedAt: o, doc: search.Build(ev)})
 		}
 		if err := rows.Close(); err != nil {
 			return fmt.Errorf("store: revision search backfill scan: %w", err)
@@ -396,19 +540,13 @@ func (s *Store) BackfillRevisionSearch(ctx context.Context, afterID string, afte
 		if err := rows.Err(); err != nil {
 			return fmt.Errorf("store: revision search backfill scan: %w", err)
 		}
-		res.Written = len(ids)
-		if len(ids) > 0 {
-			if _, err := tx.ExecContext(ctx, `
-				INSERT INTO event_revision_search (event_id, revision, observed_at, tsv, doc_version)
-				SELECT id, revision, observed_at, `+tsvExpr("a", "b", "c", "d")+`, $8
-				FROM unnest($1::text[], $2::bigint[], $3::bigint[], $4::text[], $5::text[], $6::text[], $7::text[])
-				     AS u(id, revision, observed_at, a, b, c, d)
-				ON CONFLICT (event_id, revision) DO UPDATE SET
-				  observed_at = excluded.observed_at, tsv = excluded.tsv, doc_version = excluded.doc_version`,
-				ids, revs, obs, a, b, c, d, search.DocVersion); err != nil {
-				return fmt.Errorf("store: write %d revision search rows: %w", len(ids), err)
-			}
-			if err := bumpVersion(tx, versionSearch, int64(len(ids))); err != nil {
+		written, skipped, err := writeSkippingPoison(ctx, tx, out, func(part []searchRow) error { return putRevisionSearch(ctx, tx, part) })
+		if err != nil {
+			return err
+		}
+		res.Written, res.Skipped = written, res.Skipped+skipped
+		if written > 0 {
+			if err := bumpVersion(tx, versionSearch, int64(written)); err != nil {
 				return err
 			}
 		}
@@ -416,7 +554,7 @@ func (s *Store) BackfillRevisionSearch(ctx context.Context, afterID string, afte
 		// the byte cut kept them all.
 		if candidates < batch && n == candidates {
 			res.Done = true
-			return setVersion(ctx, tx, versionSearchHistoryReady, search.DocVersion)
+			return s.markSearchReady(ctx, tx, versionSearchHistoryReady)
 		}
 		return nil
 	})
@@ -522,24 +660,64 @@ func eventsFilterSQL(q EventQuery, args *sqlArgs) string {
 	return sb.String()
 }
 
-// checkSearchable fails a text query that cannot be answered: the index is
-// not complete, or the words are all ones the language drops ("the", "of"),
-// which would match nothing and read as "no results".
+// checkSearchable fails a text query that cannot be answered, in one
+// statement inside the search's own transaction:
+//
+//   - the index is not complete for the current writer term (ErrSearchNotReady);
+//   - an alternative has no word left to look for once the language drops its
+//     common ones (search.ErrQueryEmpty). Each alternative is checked by its
+//     positive terms alone: "the -flooded" parses to a query, but English drops
+//     "the", which leaves NOT flooded and matches nearly every event.
 func (s *Store) checkSearchable(ctx context.Context, tx *sql.Tx, q search.Query, revisions bool) error {
-	ev, rev, err := s.SearchReady(ctx)
-	if err != nil {
-		return err
-	}
-	if (!revisions && !ev) || (revisions && !rev) {
-		return ErrSearchNotReady
+	key := versionSearchReady
+	if revisions {
+		key = versionSearchHistoryReady
 	}
 	var args sqlArgs
-	var nodes int
-	if err := tx.QueryRowContext(ctx, `SELECT numnode(`+tsqueryExpr(q, &args)+`)`, args...).Scan(&nodes); err != nil {
-		return fmt.Errorf("store: parse search query: %w", err)
+	cols := []string{readyExpr(key, &args)}
+	for _, g := range q.Any {
+		var positive search.Group
+		for _, t := range g.Terms {
+			if !t.Exclude {
+				positive.Terms = append(positive.Terms, t)
+			}
+		}
+		if len(positive.Terms) == 0 { // ParseQuery drops such a group; be sure
+			return search.ErrQueryEmpty
+		}
+		cols = append(cols, `numnode(`+tsqueryExpr(search.Query{Any: []search.Group{positive}}, &args)+`)`)
 	}
-	if nodes == 0 {
-		return search.ErrQueryEmpty
+	dest := make([]any, len(cols))
+	var ready bool
+	nodes := make([]int, len(cols)-1)
+	dest[0] = &ready
+	for i := range nodes {
+		dest[i+1] = &nodes[i]
+	}
+	if err := tx.QueryRowContext(ctx, `SELECT `+strings.Join(cols, `, `), args...).Scan(dest...); err != nil {
+		return fmt.Errorf("store: check search query: %w", err)
+	}
+	if !ready {
+		return ErrSearchNotReady
+	}
+	for _, n := range nodes {
+		if n == 0 {
+			return search.ErrQueryEmpty
+		}
+	}
+	return nil
+}
+
+// requireSearchReady is checkSearchable's readiness half, for a request that
+// reads the search tables without a text query (counts by category).
+func (s *Store) requireSearchReady(ctx context.Context, tx *sql.Tx) error {
+	var args sqlArgs
+	var ready bool
+	if err := tx.QueryRowContext(ctx, `SELECT `+readyExpr(versionSearchReady, &args), args...).Scan(&ready); err != nil {
+		return fmt.Errorf("store: search readiness: %w", err)
+	}
+	if !ready {
+		return ErrSearchNotReady
 	}
 	return nil
 }
@@ -565,10 +743,8 @@ func (s *Store) SearchEvents(ctx context.Context, q EventQuery) (EventSearchPage
 		// Counts by category read event_search even without a text query,
 		// so they need the index complete too.
 		if q.Search == nil {
-			if ev, _, err := s.SearchReady(ctx); err != nil {
+			if err := s.requireSearchReady(ctx, tx); err != nil {
 				return err
-			} else if !ev {
-				return ErrSearchNotReady
 			}
 		}
 		var args sqlArgs
