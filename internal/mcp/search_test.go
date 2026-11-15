@@ -43,10 +43,10 @@ func (g *recordingGrid) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/api/v1/search":
 		g.search = r.URL.Query()
 		_, _ = w.Write([]byte(`{"hits":[
-			{"kind":"PLACE","id":"arnold","title":"Arnold","detail":"Town","match":null,"apiPath":"/api/v1/places/arnold/summary","url":"","layer":"LAYER_UNSPECIFIED","category":"","status":"EVENT_STATUS_UNSPECIFIED","severity":"SEVERITY_UNSPECIFIED","observedAt":null},
-			{"kind":"ROAD","id":"hwy4-arnold-bearvalley","title":"Hwy 4","detail":"Arnold to Bear Valley","match":null,"apiPath":"/api/v1/roads/hwy4-arnold-bearvalley/history","url":"","layer":"LAYER_UNSPECIFIED","category":"","status":"EVENT_STATUS_UNSPECIFIED","severity":"SEVERITY_UNSPECIFIED","observedAt":null},
-			{"kind":"EVENT","id":"calfire:x","title":"Arnold Fire","detail":"","match":{"field":"title","parts":[{"text":"Arnold","hit":true},{"text":" Fire","hit":false}]},"apiPath":"/api/v1/events/calfire:x","url":"https://fire.ca.gov/x","layer":"WILDFIRE","category":"wildfire","status":"RESOLVED","severity":"SEVERE","observedAt":"2026-08-01T00:00:00Z"},
-			{"kind":"CAMERA","id":"c1","title":"Hwy 4 at Arnold","detail":"SR-4, Arnold","match":null,"apiPath":"/api/v1/cameras","url":"https://cwwp2.dot.ca.gov/c1.jpg","layer":"LAYER_UNSPECIFIED","category":"","status":"EVENT_STATUS_UNSPECIFIED","severity":"SEVERITY_UNSPECIFIED","observedAt":null}],
+			{"kind":"PLACE","id":"arnold","title":"Arnold","detail":"Town","match":null,"apiPath":"/api/v1/places/arnold/summary","url":"","event":null},
+			{"kind":"ROAD","id":"hwy4-arnold-bearvalley","title":"Hwy 4","detail":"Arnold to Bear Valley","match":null,"apiPath":"/api/v1/roads/hwy4-arnold-bearvalley/history","url":"","event":null},
+			{"kind":"EVENT","id":"calfire:x","title":"Arnold Fire","detail":"","match":{"field":"title","parts":[{"text":"Arnold","hit":true},{"text":" Fire","hit":false}]},"apiPath":"/api/v1/events/calfire:x","url":"https://fire.ca.gov/x","event":{"layer":"WILDFIRE","category":"wildfire","status":"RESOLVED","severity":"SEVERE","observedAt":"2026-08-01T00:00:00Z"}},
+			{"kind":"CAMERA","id":"c1","title":"Hwy 4 at Arnold","detail":"SR-4, Arnold","match":null,"apiPath":"/api/v1/cameras","url":"https://cwwp2.dot.ca.gov/c1.jpg","event":null}],
 			"totals":[{"kind":"PLACE","matches":1},{"kind":"ROAD","matches":1},{"kind":"EVENT","matches":12},{"kind":"MESH_NODE","matches":0},{"kind":"SCANNER","matches":0}],
 			"unavailable":[],"search":{"query":"arnold","since":"2026-07-07T00:19:16Z","note":"n"}}`))
 	default:
@@ -83,9 +83,9 @@ func TestGridSearch(t *testing.T) {
 				t.Error("an empty detail should be dropped")
 			}
 		case "PLACE", "ROAD", "CAMERA":
-			// Fields that only mean something for an event are not sent as
-			// "unspecified" for a model to misread.
-			for _, k := range []string{"layer", "status", "severity", "observedAt", "match"} {
+			// Fields that only mean something for an event are absent, not
+			// null or "unspecified" for a model to misread.
+			for _, k := range []string{"layer", "status", "severity", "observedAt", "match", "event"} {
 				if _, ok := hit[k]; ok {
 					t.Errorf("%s hit carries %s", kind, k)
 				}

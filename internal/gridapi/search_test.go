@@ -394,13 +394,13 @@ func TestFinderSearchesEveryKind(t *testing.T) {
 				assert.Equal(t, "/api/v1/places/arnold/summary", h.GetApiPath())
 				assert.Equal(t, "Town", h.GetDetail())
 			}
-			assert.Equal(t, gridv1.Layer_LAYER_UNSPECIFIED, h.GetLayer())
-			assert.Nil(t, h.GetObservedAt())
+			assert.Nil(t, h.GetEvent(), "only an event hit carries event facts")
 		case gridv1.SearchKind_EVENT:
 			assert.Equal(t, "/api/v1/events/usgs:q1", h.GetApiPath())
-			assert.Equal(t, gridv1.Layer_EARTHQUAKE, h.GetLayer())
-			assert.Equal(t, gridv1.EventStatus_ACTIVE, h.GetStatus())
-			assert.NotNil(t, h.GetObservedAt())
+			assert.Equal(t, gridv1.Layer_EARTHQUAKE, h.GetEvent().GetLayer())
+			assert.Equal(t, gridv1.EventStatus_ACTIVE, h.GetEvent().GetStatus())
+			assert.Equal(t, gridv1.Severity_MODERATE, h.GetEvent().GetSeverity())
+			assert.NotNil(t, h.GetEvent().GetObservedAt())
 			_, hits := matchText(h.GetMatch())
 			assert.Equal(t, []string{"Arnold"}, hits)
 		}
@@ -412,7 +412,7 @@ func TestFinderSearchesEveryKind(t *testing.T) {
 	res, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "roadway"})
 	require.NoError(t, err)
 	require.Equal(t, []string{"chp:i1"}, hitIDs(res, gridv1.SearchKind_EVENT))
-	assert.Equal(t, gridv1.EventStatus_RESOLVED, res.GetHits()[0].GetStatus())
+	assert.Equal(t, gridv1.EventStatus_RESOLVED, res.GetHits()[0].GetEvent().GetStatus())
 
 	// kind narrows; limit caps a kind but not its total.
 	res, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "arnold", Kind: []string{"place,mesh_node"}})

@@ -321,8 +321,10 @@ func (g *GridServer) Search(ctx context.Context, req *gridv1.SearchRequest) (*gr
 			hit := &gridv1.SearchHit{
 				Kind: k, Id: ev.GetId(), Title: ev.GetHeadline(), Detail: ev.GetAreaLabel(),
 				ApiPath: "/api/v1/events/" + ev.GetId(), Url: ev.GetCanonicalUrl(),
-				Layer: ev.GetLayer(), Category: ev.GetCategory(), Status: ev.GetStatus(),
-				Severity: ev.GetSeverity(), ObservedAt: ev.GetObservedAt(),
+				Event: &gridv1.SearchHitEvent{
+					Layer: ev.GetLayer(), Category: ev.GetCategory(), Status: ev.GetStatus(),
+					Severity: ev.GetSeverity(), ObservedAt: ev.GetObservedAt(),
+				},
 			}
 			if len(r.Snippet.Parts) > 0 {
 				hit.Match = searchMatch(r.Snippet)

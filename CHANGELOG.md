@@ -82,8 +82,9 @@ fire", a node's name or the start of its public key, "bear valley", "hwy 4")
 and then call the endpoint in the hit's `apiPath`.
 
 - `hits[]`: `kind`, `id`, `title`, `detail`, `match` (an excerpt, as on the
-  events search), `apiPath`, `url`, and for events and mesh nodes `layer`,
-  `category`, `status`, `severity`, `observedAt`.
+  events search), `apiPath`, `url`, and `event`: for events and mesh nodes
+  their `layer`, `category`, `status`, `severity` and `observedAt`; `null` for
+  every other kind.
 - `totals[]`: how many of each kind matched in all, zero included, so a caller
   knows when the few shown are not all.
 - `unavailable[]`: kinds that could not be searched (the camera list when its

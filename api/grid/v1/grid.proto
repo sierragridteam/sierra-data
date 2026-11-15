@@ -1688,7 +1688,8 @@ service GridService {
   // name or the start of its public key, "bear valley camera", "hwy 4") and
   // then call the endpoint in each hit's `apiPath`. It does not page: for
   // every matching event, in date order, with a total, use `q` on
-  // `/api/v1/events`.
+  // `/api/v1/events`. An event or mesh-node hit carries its layer, status,
+  // severity and `observedAt` in `event`; that field is null for other kinds.
   //
   // Same `q` syntax as `/api/v1/events`. Events and mesh nodes are ranked by
   // relevance (a match in the headline, location or an identifier counts
@@ -2646,12 +2647,17 @@ message SearchHit {
   // Broadcastify page, a camera's snapshot. May be empty.
   string url = 7;
   // EVENT and MESH_NODE only: the event's layer, category, status, severity
-  // and `observedAt`. Unspecified, empty and null for other kinds.
-  Layer layer = 8;
-  string category = 9;
-  EventStatus status = 10;
-  Severity severity = 11;
-  google.protobuf.Timestamp observed_at = 12;
+  // and `observedAt`. Null for every other kind.
+  SearchHitEvent event = 8;
+}
+
+// SearchHitEvent is what a finder hit says about an event without fetching it.
+message SearchHitEvent {
+  Layer layer = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"ROAD_INCIDENT\""}];
+  string category = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"incident\""}];
+  EventStatus status = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"RESOLVED\""}];
+  Severity severity = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"MINOR\""}];
+  google.protobuf.Timestamp observed_at = 5;
 }
 
 // ListPlacesRequest filters the place directory.

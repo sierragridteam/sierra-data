@@ -3135,7 +3135,7 @@
     },
     "/api/v1/search": {
       "get": {
-        "description": "One search box for the whole Grid: the best few matches of each kind for\n`q`, in a fixed kind order (places, roads, events, mesh nodes, cameras,\nscanner feeds). Use it to turn a name into an id (\"priest fire\", a node's\nname or the start of its public key, \"bear valley camera\", \"hwy 4\") and\nthen call the endpoint in each hit's `apiPath`. It does not page: for\nevery matching event, in date order, with a total, use `q` on\n`/api/v1/events`.\n\nSame `q` syntax as `/api/v1/events`. Events and mesh nodes are ranked by\nrelevance (a match in the headline, location or an identifier counts\nmost), raised for active and for recent ones; every status is searched\nand each hit says its own. The other kinds are short lists matched on\ntheir names and locations. `totals` says how many of each kind matched,\nso a caller knows when the few shown are not all. A kind listed in\n`unavailable` could not be searched (the camera list's source is down):\nno hits of that kind means unknown, not none. No hit at all means nothing\nstored matched, not that nothing happened.",
+        "description": "One search box for the whole Grid: the best few matches of each kind for\n`q`, in a fixed kind order (places, roads, events, mesh nodes, cameras,\nscanner feeds). Use it to turn a name into an id (\"priest fire\", a node's\nname or the start of its public key, \"bear valley camera\", \"hwy 4\") and\nthen call the endpoint in each hit's `apiPath`. It does not page: for\nevery matching event, in date order, with a total, use `q` on\n`/api/v1/events`. An event or mesh-node hit carries its layer, status,\nseverity and `observedAt` in `event`; that field is null for other kinds.\n\nSame `q` syntax as `/api/v1/events`. Events and mesh nodes are ranked by\nrelevance (a match in the headline, location or an identifier counts\nmost), raised for active and for recent ones; every status is searched\nand each hit says its own. The other kinds are short lists matched on\ntheir names and locations. `totals` says how many of each kind matched,\nso a caller knows when the few shown are not all. A kind listed in\n`unavailable` could not be searched (the camera list's source is down):\nno hits of that kind means unknown, not none. No hit at all means nothing\nstored matched, not that nothing happened.",
         "operationId": "GridService_Search",
         "parameters": [
           {
@@ -7921,13 +7921,20 @@
             "example": "/api/v1/events/chp:261114MR0161",
             "type": "string"
           },
-          "category": {
-            "type": "string"
-          },
           "detail": {
             "description": "One line of context: an event's location, a place's kind, a camera's\nroute and nearby place, a feed's agency. May be empty.",
             "example": "Lime Kiln Rd at SR 108, near Sonora",
             "type": "string"
+          },
+          "event": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/v1SearchHitEvent"
+              }
+            ],
+            "description": "EVENT and MESH_NODE only: the event's layer, category, status, severity\nand `observedAt`. Null for every other kind.",
+            "nullable": true,
+            "type": "object"
           },
           "id": {
             "description": "The thing's id within its kind: an event id, a place slug, a road id, a\ncamera id, a scanner feed id.",
@@ -7942,14 +7949,6 @@
             ],
             "example": "EVENT"
           },
-          "layer": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/v1Layer"
-              }
-            ],
-            "description": "EVENT and MESH_NODE only: the event's layer, category, status, severity\nand `observedAt`. Unspecified, empty and null for other kinds."
-          },
           "match": {
             "allOf": [
               {
@@ -7959,17 +7958,6 @@
             "description": "Where the text matched. Null for kinds matched by name alone.",
             "nullable": true,
             "type": "object"
-          },
-          "observedAt": {
-            "format": "date-time",
-            "nullable": true,
-            "type": "string"
-          },
-          "severity": {
-            "$ref": "#/components/schemas/v1Severity"
-          },
-          "status": {
-            "$ref": "#/components/schemas/v1EventStatus"
           },
           "title": {
             "description": "Its name: an event's headline, a place's or camera's name, a road's name\nand section, a feed's channel.",
@@ -7983,17 +7971,59 @@
         },
         "required": [
           "apiPath",
-          "category",
           "detail",
+          "event",
           "id",
           "kind",
-          "layer",
           "match",
-          "observedAt",
-          "severity",
-          "status",
           "title",
           "url"
+        ],
+        "type": "object"
+      },
+      "v1SearchHitEvent": {
+        "description": "SearchHitEvent is what a finder hit says about an event without fetching it.",
+        "properties": {
+          "category": {
+            "example": "incident",
+            "type": "string"
+          },
+          "layer": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/v1Layer"
+              }
+            ],
+            "example": "ROAD_INCIDENT"
+          },
+          "observedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "severity": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/v1Severity"
+              }
+            ],
+            "example": "MINOR"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/v1EventStatus"
+              }
+            ],
+            "example": "RESOLVED"
+          }
+        },
+        "required": [
+          "category",
+          "layer",
+          "observedAt",
+          "severity",
+          "status"
         ],
         "type": "object"
       },

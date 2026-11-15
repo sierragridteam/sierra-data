@@ -6906,12 +6906,8 @@ type SearchHit struct {
 	// Broadcastify page, a camera's snapshot. May be empty.
 	Url string `protobuf:"bytes,7,opt,name=url,proto3" json:"url,omitempty"`
 	// EVENT and MESH_NODE only: the event's layer, category, status, severity
-	// and `observedAt`. Unspecified, empty and null for other kinds.
-	Layer         Layer                  `protobuf:"varint,8,opt,name=layer,proto3,enum=grid.v1.Layer" json:"layer,omitempty"`
-	Category      string                 `protobuf:"bytes,9,opt,name=category,proto3" json:"category,omitempty"`
-	Status        EventStatus            `protobuf:"varint,10,opt,name=status,proto3,enum=grid.v1.EventStatus" json:"status,omitempty"`
-	Severity      Severity               `protobuf:"varint,11,opt,name=severity,proto3,enum=grid.v1.Severity" json:"severity,omitempty"`
-	ObservedAt    *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
+	// and `observedAt`. Null for every other kind.
+	Event         *SearchHitEvent `protobuf:"bytes,8,opt,name=event,proto3" json:"event,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6995,35 +6991,84 @@ func (x *SearchHit) GetUrl() string {
 	return ""
 }
 
-func (x *SearchHit) GetLayer() Layer {
+func (x *SearchHit) GetEvent() *SearchHitEvent {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
+// SearchHitEvent is what a finder hit says about an event without fetching it.
+type SearchHitEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Layer         Layer                  `protobuf:"varint,1,opt,name=layer,proto3,enum=grid.v1.Layer" json:"layer,omitempty"`
+	Category      string                 `protobuf:"bytes,2,opt,name=category,proto3" json:"category,omitempty"`
+	Status        EventStatus            `protobuf:"varint,3,opt,name=status,proto3,enum=grid.v1.EventStatus" json:"status,omitempty"`
+	Severity      Severity               `protobuf:"varint,4,opt,name=severity,proto3,enum=grid.v1.Severity" json:"severity,omitempty"`
+	ObservedAt    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchHitEvent) Reset() {
+	*x = SearchHitEvent{}
+	mi := &file_grid_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchHitEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchHitEvent) ProtoMessage() {}
+
+func (x *SearchHitEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_grid_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchHitEvent.ProtoReflect.Descriptor instead.
+func (*SearchHitEvent) Descriptor() ([]byte, []int) {
+	return file_grid_proto_rawDescGZIP(), []int{61}
+}
+
+func (x *SearchHitEvent) GetLayer() Layer {
 	if x != nil {
 		return x.Layer
 	}
 	return Layer_LAYER_UNSPECIFIED
 }
 
-func (x *SearchHit) GetCategory() string {
+func (x *SearchHitEvent) GetCategory() string {
 	if x != nil {
 		return x.Category
 	}
 	return ""
 }
 
-func (x *SearchHit) GetStatus() EventStatus {
+func (x *SearchHitEvent) GetStatus() EventStatus {
 	if x != nil {
 		return x.Status
 	}
 	return EventStatus_EVENT_STATUS_UNSPECIFIED
 }
 
-func (x *SearchHit) GetSeverity() Severity {
+func (x *SearchHitEvent) GetSeverity() Severity {
 	if x != nil {
 		return x.Severity
 	}
 	return Severity_INFO
 }
 
-func (x *SearchHit) GetObservedAt() *timestamppb.Timestamp {
+func (x *SearchHitEvent) GetObservedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.ObservedAt
 	}
@@ -7047,7 +7092,7 @@ type ListPlacesRequest struct {
 
 func (x *ListPlacesRequest) Reset() {
 	*x = ListPlacesRequest{}
-	mi := &file_grid_proto_msgTypes[61]
+	mi := &file_grid_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7059,7 +7104,7 @@ func (x *ListPlacesRequest) String() string {
 func (*ListPlacesRequest) ProtoMessage() {}
 
 func (x *ListPlacesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[61]
+	mi := &file_grid_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7072,7 +7117,7 @@ func (x *ListPlacesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPlacesRequest.ProtoReflect.Descriptor instead.
 func (*ListPlacesRequest) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{61}
+	return file_grid_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *ListPlacesRequest) GetKind() string {
@@ -7109,7 +7154,7 @@ type GetPlaceRequest struct {
 
 func (x *GetPlaceRequest) Reset() {
 	*x = GetPlaceRequest{}
-	mi := &file_grid_proto_msgTypes[62]
+	mi := &file_grid_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7121,7 +7166,7 @@ func (x *GetPlaceRequest) String() string {
 func (*GetPlaceRequest) ProtoMessage() {}
 
 func (x *GetPlaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[62]
+	mi := &file_grid_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7134,7 +7179,7 @@ func (x *GetPlaceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPlaceRequest.ProtoReflect.Descriptor instead.
 func (*GetPlaceRequest) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{62}
+	return file_grid_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *GetPlaceRequest) GetPlace() string {
@@ -7174,7 +7219,7 @@ type ResolvePlaceRequest struct {
 
 func (x *ResolvePlaceRequest) Reset() {
 	*x = ResolvePlaceRequest{}
-	mi := &file_grid_proto_msgTypes[63]
+	mi := &file_grid_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7186,7 +7231,7 @@ func (x *ResolvePlaceRequest) String() string {
 func (*ResolvePlaceRequest) ProtoMessage() {}
 
 func (x *ResolvePlaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[63]
+	mi := &file_grid_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7199,7 +7244,7 @@ func (x *ResolvePlaceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolvePlaceRequest.ProtoReflect.Descriptor instead.
 func (*ResolvePlaceRequest) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{63}
+	return file_grid_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *ResolvePlaceRequest) GetLat() string {
@@ -7246,7 +7291,7 @@ type ResolveQuery struct {
 
 func (x *ResolveQuery) Reset() {
 	*x = ResolveQuery{}
-	mi := &file_grid_proto_msgTypes[64]
+	mi := &file_grid_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7258,7 +7303,7 @@ func (x *ResolveQuery) String() string {
 func (*ResolveQuery) ProtoMessage() {}
 
 func (x *ResolveQuery) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[64]
+	mi := &file_grid_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7271,7 +7316,7 @@ func (x *ResolveQuery) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveQuery.ProtoReflect.Descriptor instead.
 func (*ResolveQuery) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{64}
+	return file_grid_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *ResolveQuery) GetLat() float64 {
@@ -7309,7 +7354,7 @@ type ResolvePlaceResponse struct {
 
 func (x *ResolvePlaceResponse) Reset() {
 	*x = ResolvePlaceResponse{}
-	mi := &file_grid_proto_msgTypes[65]
+	mi := &file_grid_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7321,7 +7366,7 @@ func (x *ResolvePlaceResponse) String() string {
 func (*ResolvePlaceResponse) ProtoMessage() {}
 
 func (x *ResolvePlaceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[65]
+	mi := &file_grid_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7334,7 +7379,7 @@ func (x *ResolvePlaceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolvePlaceResponse.ProtoReflect.Descriptor instead.
 func (*ResolvePlaceResponse) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{65}
+	return file_grid_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *ResolvePlaceResponse) GetQuery() *ResolveQuery {
@@ -7363,7 +7408,7 @@ type ListScannersRequest struct {
 
 func (x *ListScannersRequest) Reset() {
 	*x = ListScannersRequest{}
-	mi := &file_grid_proto_msgTypes[66]
+	mi := &file_grid_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7375,7 +7420,7 @@ func (x *ListScannersRequest) String() string {
 func (*ListScannersRequest) ProtoMessage() {}
 
 func (x *ListScannersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[66]
+	mi := &file_grid_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7388,7 +7433,7 @@ func (x *ListScannersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListScannersRequest.ProtoReflect.Descriptor instead.
 func (*ListScannersRequest) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{66}
+	return file_grid_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *ListScannersRequest) GetPlace() string {
@@ -7415,7 +7460,7 @@ type Scanner struct {
 
 func (x *Scanner) Reset() {
 	*x = Scanner{}
-	mi := &file_grid_proto_msgTypes[67]
+	mi := &file_grid_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7427,7 +7472,7 @@ func (x *Scanner) String() string {
 func (*Scanner) ProtoMessage() {}
 
 func (x *Scanner) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[67]
+	mi := &file_grid_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7440,7 +7485,7 @@ func (x *Scanner) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Scanner.ProtoReflect.Descriptor instead.
 func (*Scanner) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{67}
+	return file_grid_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *Scanner) GetFeedId() string {
@@ -7482,7 +7527,7 @@ type ScannerList struct {
 
 func (x *ScannerList) Reset() {
 	*x = ScannerList{}
-	mi := &file_grid_proto_msgTypes[68]
+	mi := &file_grid_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7494,7 +7539,7 @@ func (x *ScannerList) String() string {
 func (*ScannerList) ProtoMessage() {}
 
 func (x *ScannerList) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[68]
+	mi := &file_grid_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7507,7 +7552,7 @@ func (x *ScannerList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScannerList.ProtoReflect.Descriptor instead.
 func (*ScannerList) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{68}
+	return file_grid_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *ScannerList) GetScanners() []*Scanner {
@@ -7529,7 +7574,7 @@ type ListCamerasRequest struct {
 
 func (x *ListCamerasRequest) Reset() {
 	*x = ListCamerasRequest{}
-	mi := &file_grid_proto_msgTypes[69]
+	mi := &file_grid_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7541,7 +7586,7 @@ func (x *ListCamerasRequest) String() string {
 func (*ListCamerasRequest) ProtoMessage() {}
 
 func (x *ListCamerasRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[69]
+	mi := &file_grid_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7554,7 +7599,7 @@ func (x *ListCamerasRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCamerasRequest.ProtoReflect.Descriptor instead.
 func (*ListCamerasRequest) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{69}
+	return file_grid_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *ListCamerasRequest) GetPlace() string {
@@ -7601,7 +7646,7 @@ type Camera struct {
 
 func (x *Camera) Reset() {
 	*x = Camera{}
-	mi := &file_grid_proto_msgTypes[70]
+	mi := &file_grid_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7613,7 +7658,7 @@ func (x *Camera) String() string {
 func (*Camera) ProtoMessage() {}
 
 func (x *Camera) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[70]
+	mi := &file_grid_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7626,7 +7671,7 @@ func (x *Camera) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Camera.ProtoReflect.Descriptor instead.
 func (*Camera) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{70}
+	return file_grid_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *Camera) GetId() string {
@@ -7739,7 +7784,7 @@ type CameraList struct {
 
 func (x *CameraList) Reset() {
 	*x = CameraList{}
-	mi := &file_grid_proto_msgTypes[71]
+	mi := &file_grid_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7751,7 +7796,7 @@ func (x *CameraList) String() string {
 func (*CameraList) ProtoMessage() {}
 
 func (x *CameraList) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[71]
+	mi := &file_grid_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7764,7 +7809,7 @@ func (x *CameraList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CameraList.ProtoReflect.Descriptor instead.
 func (*CameraList) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{71}
+	return file_grid_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *CameraList) GetCameras() []*Camera {
@@ -7807,7 +7852,7 @@ type GetConditionsRequest struct {
 
 func (x *GetConditionsRequest) Reset() {
 	*x = GetConditionsRequest{}
-	mi := &file_grid_proto_msgTypes[72]
+	mi := &file_grid_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7819,7 +7864,7 @@ func (x *GetConditionsRequest) String() string {
 func (*GetConditionsRequest) ProtoMessage() {}
 
 func (x *GetConditionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[72]
+	mi := &file_grid_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7832,7 +7877,7 @@ func (x *GetConditionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetConditionsRequest.ProtoReflect.Descriptor instead.
 func (*GetConditionsRequest) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{72}
+	return file_grid_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *GetConditionsRequest) GetPlace() string {
@@ -7881,7 +7926,7 @@ type WeatherConditions struct {
 
 func (x *WeatherConditions) Reset() {
 	*x = WeatherConditions{}
-	mi := &file_grid_proto_msgTypes[73]
+	mi := &file_grid_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7893,7 +7938,7 @@ func (x *WeatherConditions) String() string {
 func (*WeatherConditions) ProtoMessage() {}
 
 func (x *WeatherConditions) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[73]
+	mi := &file_grid_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7906,7 +7951,7 @@ func (x *WeatherConditions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WeatherConditions.ProtoReflect.Descriptor instead.
 func (*WeatherConditions) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{73}
+	return file_grid_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *WeatherConditions) GetLocationId() string {
@@ -8011,7 +8056,7 @@ type FireWeatherConditions struct {
 
 func (x *FireWeatherConditions) Reset() {
 	*x = FireWeatherConditions{}
-	mi := &file_grid_proto_msgTypes[74]
+	mi := &file_grid_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8023,7 +8068,7 @@ func (x *FireWeatherConditions) String() string {
 func (*FireWeatherConditions) ProtoMessage() {}
 
 func (x *FireWeatherConditions) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[74]
+	mi := &file_grid_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8036,7 +8081,7 @@ func (x *FireWeatherConditions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FireWeatherConditions.ProtoReflect.Descriptor instead.
 func (*FireWeatherConditions) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{74}
+	return file_grid_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *FireWeatherConditions) GetState() string {
@@ -8102,7 +8147,7 @@ type ForecastPeriod struct {
 
 func (x *ForecastPeriod) Reset() {
 	*x = ForecastPeriod{}
-	mi := &file_grid_proto_msgTypes[75]
+	mi := &file_grid_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8114,7 +8159,7 @@ func (x *ForecastPeriod) String() string {
 func (*ForecastPeriod) ProtoMessage() {}
 
 func (x *ForecastPeriod) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[75]
+	mi := &file_grid_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8127,7 +8172,7 @@ func (x *ForecastPeriod) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ForecastPeriod.ProtoReflect.Descriptor instead.
 func (*ForecastPeriod) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{75}
+	return file_grid_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *ForecastPeriod) GetTime() *timestamppb.Timestamp {
@@ -8242,7 +8287,7 @@ type DailyForecastPeriod struct {
 
 func (x *DailyForecastPeriod) Reset() {
 	*x = DailyForecastPeriod{}
-	mi := &file_grid_proto_msgTypes[76]
+	mi := &file_grid_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8254,7 +8299,7 @@ func (x *DailyForecastPeriod) String() string {
 func (*DailyForecastPeriod) ProtoMessage() {}
 
 func (x *DailyForecastPeriod) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[76]
+	mi := &file_grid_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8267,7 +8312,7 @@ func (x *DailyForecastPeriod) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DailyForecastPeriod.ProtoReflect.Descriptor instead.
 func (*DailyForecastPeriod) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{76}
+	return file_grid_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *DailyForecastPeriod) GetName() string {
@@ -8359,7 +8404,7 @@ type WeatherLocation struct {
 
 func (x *WeatherLocation) Reset() {
 	*x = WeatherLocation{}
-	mi := &file_grid_proto_msgTypes[77]
+	mi := &file_grid_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8371,7 +8416,7 @@ func (x *WeatherLocation) String() string {
 func (*WeatherLocation) ProtoMessage() {}
 
 func (x *WeatherLocation) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[77]
+	mi := &file_grid_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8384,7 +8429,7 @@ func (x *WeatherLocation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WeatherLocation.ProtoReflect.Descriptor instead.
 func (*WeatherLocation) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{77}
+	return file_grid_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *WeatherLocation) GetId() string {
@@ -8466,7 +8511,7 @@ type WeatherForecast struct {
 
 func (x *WeatherForecast) Reset() {
 	*x = WeatherForecast{}
-	mi := &file_grid_proto_msgTypes[78]
+	mi := &file_grid_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8478,7 +8523,7 @@ func (x *WeatherForecast) String() string {
 func (*WeatherForecast) ProtoMessage() {}
 
 func (x *WeatherForecast) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[78]
+	mi := &file_grid_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8491,7 +8536,7 @@ func (x *WeatherForecast) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WeatherForecast.ProtoReflect.Descriptor instead.
 func (*WeatherForecast) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{78}
+	return file_grid_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *WeatherForecast) GetLocationId() string {
@@ -8596,7 +8641,7 @@ type Conditions struct {
 
 func (x *Conditions) Reset() {
 	*x = Conditions{}
-	mi := &file_grid_proto_msgTypes[79]
+	mi := &file_grid_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8608,7 +8653,7 @@ func (x *Conditions) String() string {
 func (*Conditions) ProtoMessage() {}
 
 func (x *Conditions) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[79]
+	mi := &file_grid_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8621,7 +8666,7 @@ func (x *Conditions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Conditions.ProtoReflect.Descriptor instead.
 func (*Conditions) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{79}
+	return file_grid_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *Conditions) GetWeather() []*WeatherConditions {
@@ -8675,7 +8720,7 @@ type ListSourcesRequest struct {
 
 func (x *ListSourcesRequest) Reset() {
 	*x = ListSourcesRequest{}
-	mi := &file_grid_proto_msgTypes[80]
+	mi := &file_grid_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8687,7 +8732,7 @@ func (x *ListSourcesRequest) String() string {
 func (*ListSourcesRequest) ProtoMessage() {}
 
 func (x *ListSourcesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[80]
+	mi := &file_grid_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8700,7 +8745,7 @@ func (x *ListSourcesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSourcesRequest.ProtoReflect.Descriptor instead.
 func (*ListSourcesRequest) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{80}
+	return file_grid_proto_rawDescGZIP(), []int{81}
 }
 
 // GetStatsRequest optionally narrows the totals to one place.
@@ -8715,7 +8760,7 @@ type GetStatsRequest struct {
 
 func (x *GetStatsRequest) Reset() {
 	*x = GetStatsRequest{}
-	mi := &file_grid_proto_msgTypes[81]
+	mi := &file_grid_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8727,7 +8772,7 @@ func (x *GetStatsRequest) String() string {
 func (*GetStatsRequest) ProtoMessage() {}
 
 func (x *GetStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[81]
+	mi := &file_grid_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8740,7 +8785,7 @@ func (x *GetStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetStatsRequest) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{81}
+	return file_grid_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *GetStatsRequest) GetPlace() string {
@@ -8776,7 +8821,7 @@ type Stats struct {
 
 func (x *Stats) Reset() {
 	*x = Stats{}
-	mi := &file_grid_proto_msgTypes[82]
+	mi := &file_grid_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8788,7 +8833,7 @@ func (x *Stats) String() string {
 func (*Stats) ProtoMessage() {}
 
 func (x *Stats) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[82]
+	mi := &file_grid_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8801,7 +8846,7 @@ func (x *Stats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Stats.ProtoReflect.Descriptor instead.
 func (*Stats) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{82}
+	return file_grid_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *Stats) GetPlace() string {
@@ -8865,7 +8910,7 @@ type LayerStats struct {
 
 func (x *LayerStats) Reset() {
 	*x = LayerStats{}
-	mi := &file_grid_proto_msgTypes[83]
+	mi := &file_grid_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8877,7 +8922,7 @@ func (x *LayerStats) String() string {
 func (*LayerStats) ProtoMessage() {}
 
 func (x *LayerStats) ProtoReflect() protoreflect.Message {
-	mi := &file_grid_proto_msgTypes[83]
+	mi := &file_grid_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8890,7 +8935,7 @@ func (x *LayerStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LayerStats.ProtoReflect.Descriptor instead.
 func (*LayerStats) Descriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{83}
+	return file_grid_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *LayerStats) GetLayer() Layer {
@@ -9432,7 +9477,7 @@ const file_grid_proto_rawDesc = "" +
 	"\x06search\x18\x04 \x01(\v2\x13.grid.v1.SearchInfoB\x04\xe2A\x01\x02R\x06search\"l\n" +
 	"\x0fSearchKindTotal\x125\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x13.grid.v1.SearchKindB\f\x92A\tJ\a\"EVENT\"R\x04kind\x12\"\n" +
-	"\amatches\x18\x02 \x01(\x05B\b\x92A\x05J\x03557R\amatches\"\xc6\x04\n" +
+	"\amatches\x18\x02 \x01(\x05B\b\x92A\x05J\x03557R\amatches\"\x99\x03\n" +
 	"\tSearchHit\x125\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x13.grid.v1.SearchKindB\f\x92A\tJ\a\"EVENT\"R\x04kind\x12'\n" +
 	"\x02id\x18\x02 \x01(\tB\x17\x92A\x14J\x12\"chp:261114MR0161\"R\x02id\x128\n" +
@@ -9440,13 +9485,16 @@ const file_grid_proto_rawDesc = "" +
 	"\x06detail\x18\x04 \x01(\tB*\x92A'J%\"Lime Kiln Rd at SR 108, near Sonora\"R\x06detail\x12*\n" +
 	"\x05match\x18\x05 \x01(\v2\x14.grid.v1.SearchMatchR\x05match\x12A\n" +
 	"\bapi_path\x18\x06 \x01(\tB&\x92A#J!\"/api/v1/events/chp:261114MR0161\"R\aapiPath\x12\x10\n" +
-	"\x03url\x18\a \x01(\tR\x03url\x12$\n" +
-	"\x05layer\x18\b \x01(\x0e2\x0e.grid.v1.LayerR\x05layer\x12\x1a\n" +
-	"\bcategory\x18\t \x01(\tR\bcategory\x12,\n" +
-	"\x06status\x18\n" +
-	" \x01(\x0e2\x14.grid.v1.EventStatusR\x06status\x12-\n" +
-	"\bseverity\x18\v \x01(\x0e2\x11.grid.v1.SeverityR\bseverity\x12;\n" +
-	"\vobserved_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"\x03url\x18\a \x01(\tR\x03url\x12-\n" +
+	"\x05event\x18\b \x01(\v2\x17.grid.v1.SearchHitEventR\x05event\"\xb2\x02\n" +
+	"\x0eSearchHitEvent\x12:\n" +
+	"\x05layer\x18\x01 \x01(\x0e2\x0e.grid.v1.LayerB\x14\x92A\x11J\x0f\"ROAD_INCIDENT\"R\x05layer\x12+\n" +
+	"\bcategory\x18\x02 \x01(\tB\x0f\x92A\fJ\n" +
+	"\"incident\"R\bcategory\x12=\n" +
+	"\x06status\x18\x03 \x01(\x0e2\x14.grid.v1.EventStatusB\x0f\x92A\fJ\n" +
+	"\"RESOLVED\"R\x06status\x12;\n" +
+	"\bseverity\x18\x04 \x01(\x0e2\x11.grid.v1.SeverityB\f\x92A\tJ\a\"MINOR\"R\bseverity\x12;\n" +
+	"\vobserved_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"observedAt\"\xb7\x01\n" +
 	"\x11ListPlacesRequest\x12L\n" +
 	"\x04kind\x18\x01 \x01(\tB8\x92A5\xf2\x02\x04AREA\xf2\x02\x06COUNTY\xf2\x02\x04TOWN\xf2\x02\bCORRIDOR\xf2\x02\tEVAC_ZONE\xf2\x02\x04SITER\x04kind\x12\f\n" +
@@ -9909,7 +9957,7 @@ func file_grid_proto_rawDescGZIP() []byte {
 }
 
 var file_grid_proto_enumTypes = make([]protoimpl.EnumInfo, 14)
-var file_grid_proto_msgTypes = make([]protoimpl.MessageInfo, 87)
+var file_grid_proto_msgTypes = make([]protoimpl.MessageInfo, 88)
 var file_grid_proto_goTypes = []any{
 	(Layer)(0),                       // 0: grid.v1.Layer
 	(Severity)(0),                    // 1: grid.v1.Severity
@@ -9986,38 +10034,39 @@ var file_grid_proto_goTypes = []any{
 	(*SearchResults)(nil),            // 72: grid.v1.SearchResults
 	(*SearchKindTotal)(nil),          // 73: grid.v1.SearchKindTotal
 	(*SearchHit)(nil),                // 74: grid.v1.SearchHit
-	(*ListPlacesRequest)(nil),        // 75: grid.v1.ListPlacesRequest
-	(*GetPlaceRequest)(nil),          // 76: grid.v1.GetPlaceRequest
-	(*ResolvePlaceRequest)(nil),      // 77: grid.v1.ResolvePlaceRequest
-	(*ResolveQuery)(nil),             // 78: grid.v1.ResolveQuery
-	(*ResolvePlaceResponse)(nil),     // 79: grid.v1.ResolvePlaceResponse
-	(*ListScannersRequest)(nil),      // 80: grid.v1.ListScannersRequest
-	(*Scanner)(nil),                  // 81: grid.v1.Scanner
-	(*ScannerList)(nil),              // 82: grid.v1.ScannerList
-	(*ListCamerasRequest)(nil),       // 83: grid.v1.ListCamerasRequest
-	(*Camera)(nil),                   // 84: grid.v1.Camera
-	(*CameraList)(nil),               // 85: grid.v1.CameraList
-	(*GetConditionsRequest)(nil),     // 86: grid.v1.GetConditionsRequest
-	(*WeatherConditions)(nil),        // 87: grid.v1.WeatherConditions
-	(*FireWeatherConditions)(nil),    // 88: grid.v1.FireWeatherConditions
-	(*ForecastPeriod)(nil),           // 89: grid.v1.ForecastPeriod
-	(*DailyForecastPeriod)(nil),      // 90: grid.v1.DailyForecastPeriod
-	(*WeatherLocation)(nil),          // 91: grid.v1.WeatherLocation
-	(*WeatherForecast)(nil),          // 92: grid.v1.WeatherForecast
-	(*Conditions)(nil),               // 93: grid.v1.Conditions
-	(*ListSourcesRequest)(nil),       // 94: grid.v1.ListSourcesRequest
-	(*GetStatsRequest)(nil),          // 95: grid.v1.GetStatsRequest
-	(*Stats)(nil),                    // 96: grid.v1.Stats
-	(*LayerStats)(nil),               // 97: grid.v1.LayerStats
-	nil,                              // 98: grid.v1.RoadIncidentDetail.MetadataEntry
-	nil,                              // 99: grid.v1.EventList.MatchesEntry
-	nil,                              // 100: grid.v1.SummaryStats.SeverityCountsEntry
-	(*timestamppb.Timestamp)(nil),    // 101: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),          // 102: google.protobuf.Struct
-	(*wrapperspb.DoubleValue)(nil),   // 103: google.protobuf.DoubleValue
-	(*wrapperspb.Int32Value)(nil),    // 104: google.protobuf.Int32Value
-	(*wrapperspb.UInt32Value)(nil),   // 105: google.protobuf.UInt32Value
-	(*wrapperspb.Int64Value)(nil),    // 106: google.protobuf.Int64Value
+	(*SearchHitEvent)(nil),           // 75: grid.v1.SearchHitEvent
+	(*ListPlacesRequest)(nil),        // 76: grid.v1.ListPlacesRequest
+	(*GetPlaceRequest)(nil),          // 77: grid.v1.GetPlaceRequest
+	(*ResolvePlaceRequest)(nil),      // 78: grid.v1.ResolvePlaceRequest
+	(*ResolveQuery)(nil),             // 79: grid.v1.ResolveQuery
+	(*ResolvePlaceResponse)(nil),     // 80: grid.v1.ResolvePlaceResponse
+	(*ListScannersRequest)(nil),      // 81: grid.v1.ListScannersRequest
+	(*Scanner)(nil),                  // 82: grid.v1.Scanner
+	(*ScannerList)(nil),              // 83: grid.v1.ScannerList
+	(*ListCamerasRequest)(nil),       // 84: grid.v1.ListCamerasRequest
+	(*Camera)(nil),                   // 85: grid.v1.Camera
+	(*CameraList)(nil),               // 86: grid.v1.CameraList
+	(*GetConditionsRequest)(nil),     // 87: grid.v1.GetConditionsRequest
+	(*WeatherConditions)(nil),        // 88: grid.v1.WeatherConditions
+	(*FireWeatherConditions)(nil),    // 89: grid.v1.FireWeatherConditions
+	(*ForecastPeriod)(nil),           // 90: grid.v1.ForecastPeriod
+	(*DailyForecastPeriod)(nil),      // 91: grid.v1.DailyForecastPeriod
+	(*WeatherLocation)(nil),          // 92: grid.v1.WeatherLocation
+	(*WeatherForecast)(nil),          // 93: grid.v1.WeatherForecast
+	(*Conditions)(nil),               // 94: grid.v1.Conditions
+	(*ListSourcesRequest)(nil),       // 95: grid.v1.ListSourcesRequest
+	(*GetStatsRequest)(nil),          // 96: grid.v1.GetStatsRequest
+	(*Stats)(nil),                    // 97: grid.v1.Stats
+	(*LayerStats)(nil),               // 98: grid.v1.LayerStats
+	nil,                              // 99: grid.v1.RoadIncidentDetail.MetadataEntry
+	nil,                              // 100: grid.v1.EventList.MatchesEntry
+	nil,                              // 101: grid.v1.SummaryStats.SeverityCountsEntry
+	(*timestamppb.Timestamp)(nil),    // 102: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),          // 103: google.protobuf.Struct
+	(*wrapperspb.DoubleValue)(nil),   // 104: google.protobuf.DoubleValue
+	(*wrapperspb.Int32Value)(nil),    // 105: google.protobuf.Int32Value
+	(*wrapperspb.UInt32Value)(nil),   // 106: google.protobuf.UInt32Value
+	(*wrapperspb.Int64Value)(nil),    // 107: google.protobuf.Int64Value
 }
 var file_grid_proto_depIdxs = []int32{
 	0,   // 0: grid.v1.Event.layer:type_name -> grid.v1.Layer
@@ -10025,10 +10074,10 @@ var file_grid_proto_depIdxs = []int32{
 	2,   // 2: grid.v1.Event.status:type_name -> grid.v1.EventStatus
 	15,  // 3: grid.v1.Event.geometry:type_name -> grid.v1.Geometry
 	18,  // 4: grid.v1.Event.provenance:type_name -> grid.v1.Provenance
-	101, // 5: grid.v1.Event.effective:type_name -> google.protobuf.Timestamp
-	101, // 6: grid.v1.Event.expires:type_name -> google.protobuf.Timestamp
-	101, // 7: grid.v1.Event.observed_at:type_name -> google.protobuf.Timestamp
-	101, // 8: grid.v1.Event.ingested_at:type_name -> google.protobuf.Timestamp
+	102, // 5: grid.v1.Event.effective:type_name -> google.protobuf.Timestamp
+	102, // 6: grid.v1.Event.expires:type_name -> google.protobuf.Timestamp
+	102, // 7: grid.v1.Event.observed_at:type_name -> google.protobuf.Timestamp
+	102, // 8: grid.v1.Event.ingested_at:type_name -> google.protobuf.Timestamp
 	19,  // 9: grid.v1.Event.enhancement:type_name -> grid.v1.Enhancement
 	22,  // 10: grid.v1.Event.wildfire:type_name -> grid.v1.WildfireDetail
 	23,  // 11: grid.v1.Event.evacuation:type_name -> grid.v1.EvacuationDetail
@@ -10041,112 +10090,112 @@ var file_grid_proto_depIdxs = []int32{
 	34,  // 18: grid.v1.Event.burn_status:type_name -> grid.v1.BurnStatusDetail
 	16,  // 19: grid.v1.Geometry.bbox:type_name -> grid.v1.BoundingBox
 	17,  // 20: grid.v1.Geometry.centroid:type_name -> grid.v1.LatLng
-	102, // 21: grid.v1.Geometry.object:type_name -> google.protobuf.Struct
-	101, // 22: grid.v1.Provenance.fetched_at:type_name -> google.protobuf.Timestamp
-	101, // 23: grid.v1.Enhancement.enhanced_at:type_name -> google.protobuf.Timestamp
+	103, // 21: grid.v1.Geometry.object:type_name -> google.protobuf.Struct
+	102, // 22: grid.v1.Provenance.fetched_at:type_name -> google.protobuf.Timestamp
+	102, // 23: grid.v1.Enhancement.enhanced_at:type_name -> google.protobuf.Timestamp
 	3,   // 24: grid.v1.Source.kind:type_name -> grid.v1.SourceKind
-	101, // 25: grid.v1.Source.last_success_at:type_name -> google.protobuf.Timestamp
-	101, // 26: grid.v1.Source.last_attempt_at:type_name -> google.protobuf.Timestamp
+	102, // 25: grid.v1.Source.last_success_at:type_name -> google.protobuf.Timestamp
+	102, // 26: grid.v1.Source.last_attempt_at:type_name -> google.protobuf.Timestamp
 	4,   // 27: grid.v1.Source.status:type_name -> grid.v1.SourceStatus
 	5,   // 28: grid.v1.Place.kind:type_name -> grid.v1.PlaceKind
 	15,  // 29: grid.v1.Place.geometry:type_name -> grid.v1.Geometry
-	98,  // 30: grid.v1.RoadIncidentDetail.metadata:type_name -> grid.v1.RoadIncidentDetail.MetadataEntry
+	99,  // 30: grid.v1.RoadIncidentDetail.metadata:type_name -> grid.v1.RoadIncidentDetail.MetadataEntry
 	29,  // 31: grid.v1.RoadIncidentDetail.closure:type_name -> grid.v1.LaneClosureDetail
 	28,  // 32: grid.v1.RoadIncidentDetail.log:type_name -> grid.v1.IncidentLogEntry
-	101, // 33: grid.v1.IncidentLogEntry.at:type_name -> google.protobuf.Timestamp
-	101, // 34: grid.v1.LaneClosureDetail.planned_start:type_name -> google.protobuf.Timestamp
-	101, // 35: grid.v1.LaneClosureDetail.planned_end:type_name -> google.protobuf.Timestamp
-	101, // 36: grid.v1.LaneClosureDetail.set_up_at:type_name -> google.protobuf.Timestamp
+	102, // 33: grid.v1.IncidentLogEntry.at:type_name -> google.protobuf.Timestamp
+	102, // 34: grid.v1.LaneClosureDetail.planned_start:type_name -> google.protobuf.Timestamp
+	102, // 35: grid.v1.LaneClosureDetail.planned_end:type_name -> google.protobuf.Timestamp
+	102, // 36: grid.v1.LaneClosureDetail.set_up_at:type_name -> google.protobuf.Timestamp
 	17,  // 37: grid.v1.LaneClosureDetail.begin:type_name -> grid.v1.LatLng
 	17,  // 38: grid.v1.LaneClosureDetail.end:type_name -> grid.v1.LatLng
 	31,  // 39: grid.v1.MeshDetail.telemetry:type_name -> grid.v1.MeshTelemetry
 	6,   // 40: grid.v1.MeshDetail.reachability:type_name -> grid.v1.MeshReachability
-	103, // 41: grid.v1.MeshTelemetry.snr:type_name -> google.protobuf.DoubleValue
-	104, // 42: grid.v1.MeshTelemetry.rssi:type_name -> google.protobuf.Int32Value
-	105, // 43: grid.v1.MeshTelemetry.hop_count:type_name -> google.protobuf.UInt32Value
-	101, // 44: grid.v1.MeshTelemetry.last_advert_at:type_name -> google.protobuf.Timestamp
+	104, // 41: grid.v1.MeshTelemetry.snr:type_name -> google.protobuf.DoubleValue
+	105, // 42: grid.v1.MeshTelemetry.rssi:type_name -> google.protobuf.Int32Value
+	106, // 43: grid.v1.MeshTelemetry.hop_count:type_name -> google.protobuf.UInt32Value
+	102, // 44: grid.v1.MeshTelemetry.last_advert_at:type_name -> google.protobuf.Timestamp
 	32,  // 45: grid.v1.MeshTelemetry.admin:type_name -> grid.v1.MeshAdminTelemetry
-	101, // 46: grid.v1.MeshTelemetry.last_heard_at:type_name -> google.protobuf.Timestamp
-	101, // 47: grid.v1.MeshTelemetry.last_relayed_at:type_name -> google.protobuf.Timestamp
-	101, // 48: grid.v1.MeshAdminTelemetry.reported_at:type_name -> google.protobuf.Timestamp
-	101, // 49: grid.v1.MeshAdminTelemetry.last_success_at:type_name -> google.protobuf.Timestamp
-	101, // 50: grid.v1.MeshAdminTelemetry.last_attempt_at:type_name -> google.protobuf.Timestamp
-	103, // 51: grid.v1.MeshAdminTelemetry.battery_volts:type_name -> google.protobuf.DoubleValue
-	103, // 52: grid.v1.MeshAdminTelemetry.battery_percent:type_name -> google.protobuf.DoubleValue
-	103, // 53: grid.v1.MeshAdminTelemetry.temperature_c:type_name -> google.protobuf.DoubleValue
-	103, // 54: grid.v1.MeshAdminTelemetry.humidity:type_name -> google.protobuf.DoubleValue
-	103, // 55: grid.v1.MeshAdminTelemetry.pressure:type_name -> google.protobuf.DoubleValue
-	104, // 56: grid.v1.MeshAdminTelemetry.noise_floor_dbm:type_name -> google.protobuf.Int32Value
-	103, // 57: grid.v1.MeshAdminTelemetry.last_snr_db:type_name -> google.protobuf.DoubleValue
-	104, // 58: grid.v1.MeshAdminTelemetry.last_rssi_dbm:type_name -> google.protobuf.Int32Value
-	104, // 59: grid.v1.MeshAdminTelemetry.tx_queue_len:type_name -> google.protobuf.Int32Value
-	101, // 60: grid.v1.PowerDetail.estimated_restoration:type_name -> google.protobuf.Timestamp
-	101, // 61: grid.v1.PowerDetail.de_energization_start:type_name -> google.protobuf.Timestamp
-	101, // 62: grid.v1.PowerDetail.de_energization_end:type_name -> google.protobuf.Timestamp
-	101, // 63: grid.v1.PowerDetail.all_clear:type_name -> google.protobuf.Timestamp
+	102, // 46: grid.v1.MeshTelemetry.last_heard_at:type_name -> google.protobuf.Timestamp
+	102, // 47: grid.v1.MeshTelemetry.last_relayed_at:type_name -> google.protobuf.Timestamp
+	102, // 48: grid.v1.MeshAdminTelemetry.reported_at:type_name -> google.protobuf.Timestamp
+	102, // 49: grid.v1.MeshAdminTelemetry.last_success_at:type_name -> google.protobuf.Timestamp
+	102, // 50: grid.v1.MeshAdminTelemetry.last_attempt_at:type_name -> google.protobuf.Timestamp
+	104, // 51: grid.v1.MeshAdminTelemetry.battery_volts:type_name -> google.protobuf.DoubleValue
+	104, // 52: grid.v1.MeshAdminTelemetry.battery_percent:type_name -> google.protobuf.DoubleValue
+	104, // 53: grid.v1.MeshAdminTelemetry.temperature_c:type_name -> google.protobuf.DoubleValue
+	104, // 54: grid.v1.MeshAdminTelemetry.humidity:type_name -> google.protobuf.DoubleValue
+	104, // 55: grid.v1.MeshAdminTelemetry.pressure:type_name -> google.protobuf.DoubleValue
+	105, // 56: grid.v1.MeshAdminTelemetry.noise_floor_dbm:type_name -> google.protobuf.Int32Value
+	104, // 57: grid.v1.MeshAdminTelemetry.last_snr_db:type_name -> google.protobuf.DoubleValue
+	105, // 58: grid.v1.MeshAdminTelemetry.last_rssi_dbm:type_name -> google.protobuf.Int32Value
+	105, // 59: grid.v1.MeshAdminTelemetry.tx_queue_len:type_name -> google.protobuf.Int32Value
+	102, // 60: grid.v1.PowerDetail.estimated_restoration:type_name -> google.protobuf.Timestamp
+	102, // 61: grid.v1.PowerDetail.de_energization_start:type_name -> google.protobuf.Timestamp
+	102, // 62: grid.v1.PowerDetail.de_energization_end:type_name -> google.protobuf.Timestamp
+	102, // 63: grid.v1.PowerDetail.all_clear:type_name -> google.protobuf.Timestamp
 	7,   // 64: grid.v1.BurnStatusDetail.burn_day:type_name -> grid.v1.BurnDay
 	8,   // 65: grid.v1.BurnStatusDetail.calfire_status:type_name -> grid.v1.CalfireBurnStatus
 	9,   // 66: grid.v1.BurnStatusDetail.permission:type_name -> grid.v1.BurnPermission
-	101, // 67: grid.v1.BurnStatusDetail.calfire_effective:type_name -> google.protobuf.Timestamp
+	102, // 67: grid.v1.BurnStatusDetail.calfire_effective:type_name -> google.protobuf.Timestamp
 	35,  // 68: grid.v1.BurnStatusDetail.burn_lines:type_name -> grid.v1.BurnLineReading
-	101, // 69: grid.v1.BurnStatusDetail.calfire_observed_at:type_name -> google.protobuf.Timestamp
+	102, // 69: grid.v1.BurnStatusDetail.calfire_observed_at:type_name -> google.protobuf.Timestamp
 	7,   // 70: grid.v1.BurnLineReading.burn_day:type_name -> grid.v1.BurnDay
 	36,  // 71: grid.v1.BurnLineReading.observation:type_name -> grid.v1.BurnObservation
-	101, // 72: grid.v1.BurnObservation.observed_at:type_name -> google.protobuf.Timestamp
+	102, // 72: grid.v1.BurnObservation.observed_at:type_name -> google.protobuf.Timestamp
 	14,  // 73: grid.v1.EventList.events:type_name -> grid.v1.Event
-	104, // 74: grid.v1.EventList.total_matches:type_name -> google.protobuf.Int32Value
+	105, // 74: grid.v1.EventList.total_matches:type_name -> google.protobuf.Int32Value
 	38,  // 75: grid.v1.EventList.counts:type_name -> grid.v1.EventCount
-	99,  // 76: grid.v1.EventList.matches:type_name -> grid.v1.EventList.MatchesEntry
+	100, // 76: grid.v1.EventList.matches:type_name -> grid.v1.EventList.MatchesEntry
 	41,  // 77: grid.v1.EventList.search:type_name -> grid.v1.SearchInfo
 	0,   // 78: grid.v1.EventCount.layer:type_name -> grid.v1.Layer
 	40,  // 79: grid.v1.SearchMatch.parts:type_name -> grid.v1.SearchMatchPart
-	101, // 80: grid.v1.SearchInfo.since:type_name -> google.protobuf.Timestamp
-	101, // 81: grid.v1.EventRevision.observed_at:type_name -> google.protobuf.Timestamp
-	101, // 82: grid.v1.EventRevision.ingested_at:type_name -> google.protobuf.Timestamp
+	102, // 80: grid.v1.SearchInfo.since:type_name -> google.protobuf.Timestamp
+	102, // 81: grid.v1.EventRevision.observed_at:type_name -> google.protobuf.Timestamp
+	102, // 82: grid.v1.EventRevision.ingested_at:type_name -> google.protobuf.Timestamp
 	14,  // 83: grid.v1.EventRevision.event:type_name -> grid.v1.Event
 	39,  // 84: grid.v1.EventRevision.match:type_name -> grid.v1.SearchMatch
 	42,  // 85: grid.v1.EventRevisionList.revisions:type_name -> grid.v1.EventRevision
-	104, // 86: grid.v1.EventRevisionList.total_matches:type_name -> google.protobuf.Int32Value
+	105, // 86: grid.v1.EventRevisionList.total_matches:type_name -> google.protobuf.Int32Value
 	44,  // 87: grid.v1.EventRevisionList.collapsed:type_name -> grid.v1.EventHistoryMatch
 	41,  // 88: grid.v1.EventRevisionList.search:type_name -> grid.v1.SearchInfo
 	42,  // 89: grid.v1.EventHistoryMatch.first:type_name -> grid.v1.EventRevision
-	101, // 90: grid.v1.EventHistoryMatch.last_observed_at:type_name -> google.protobuf.Timestamp
+	102, // 90: grid.v1.EventHistoryMatch.last_observed_at:type_name -> google.protobuf.Timestamp
 	21,  // 91: grid.v1.PlaceList.places:type_name -> grid.v1.Place
 	20,  // 92: grid.v1.SourceList.sources:type_name -> grid.v1.Source
-	101, // 93: grid.v1.GetRoadHistoryRequest.from:type_name -> google.protobuf.Timestamp
-	101, // 94: grid.v1.GetRoadHistoryRequest.to:type_name -> google.protobuf.Timestamp
-	101, // 95: grid.v1.RoadSample.at:type_name -> google.protobuf.Timestamp
-	104, // 96: grid.v1.RoadSample.duration_minutes:type_name -> google.protobuf.Int32Value
-	104, // 97: grid.v1.RoadSample.delay_minutes:type_name -> google.protobuf.Int32Value
-	101, // 98: grid.v1.RoadHistory.from:type_name -> google.protobuf.Timestamp
-	101, // 99: grid.v1.RoadHistory.to:type_name -> google.protobuf.Timestamp
+	102, // 93: grid.v1.GetRoadHistoryRequest.from:type_name -> google.protobuf.Timestamp
+	102, // 94: grid.v1.GetRoadHistoryRequest.to:type_name -> google.protobuf.Timestamp
+	102, // 95: grid.v1.RoadSample.at:type_name -> google.protobuf.Timestamp
+	105, // 96: grid.v1.RoadSample.duration_minutes:type_name -> google.protobuf.Int32Value
+	105, // 97: grid.v1.RoadSample.delay_minutes:type_name -> google.protobuf.Int32Value
+	102, // 98: grid.v1.RoadHistory.from:type_name -> google.protobuf.Timestamp
+	102, // 99: grid.v1.RoadHistory.to:type_name -> google.protobuf.Timestamp
 	48,  // 100: grid.v1.RoadHistory.samples:type_name -> grid.v1.RoadSample
-	101, // 101: grid.v1.GetMeshTelemetryRequest.from:type_name -> google.protobuf.Timestamp
-	101, // 102: grid.v1.GetMeshTelemetryRequest.to:type_name -> google.protobuf.Timestamp
-	101, // 103: grid.v1.MeshTelemetryArchive.from:type_name -> google.protobuf.Timestamp
-	101, // 104: grid.v1.MeshTelemetryArchive.to:type_name -> google.protobuf.Timestamp
+	102, // 101: grid.v1.GetMeshTelemetryRequest.from:type_name -> google.protobuf.Timestamp
+	102, // 102: grid.v1.GetMeshTelemetryRequest.to:type_name -> google.protobuf.Timestamp
+	102, // 103: grid.v1.MeshTelemetryArchive.from:type_name -> google.protobuf.Timestamp
+	102, // 104: grid.v1.MeshTelemetryArchive.to:type_name -> google.protobuf.Timestamp
 	52,  // 105: grid.v1.MeshTelemetryArchive.coverage:type_name -> grid.v1.MeshTelemetryCoverage
-	106, // 106: grid.v1.MeshTelemetryArchive.cadence_seconds:type_name -> google.protobuf.Int64Value
-	101, // 107: grid.v1.MeshTelemetryArchive.reboots:type_name -> google.protobuf.Timestamp
+	107, // 106: grid.v1.MeshTelemetryArchive.cadence_seconds:type_name -> google.protobuf.Int64Value
+	102, // 107: grid.v1.MeshTelemetryArchive.reboots:type_name -> google.protobuf.Timestamp
 	53,  // 108: grid.v1.MeshTelemetryArchive.samples:type_name -> grid.v1.MeshTelemetrySample
-	101, // 109: grid.v1.MeshTelemetryCoverage.from:type_name -> google.protobuf.Timestamp
-	101, // 110: grid.v1.MeshTelemetryCoverage.to:type_name -> google.protobuf.Timestamp
+	102, // 109: grid.v1.MeshTelemetryCoverage.from:type_name -> google.protobuf.Timestamp
+	102, // 110: grid.v1.MeshTelemetryCoverage.to:type_name -> google.protobuf.Timestamp
 	32,  // 111: grid.v1.MeshTelemetrySample.reading:type_name -> grid.v1.MeshAdminTelemetry
-	101, // 112: grid.v1.MeshTelemetrySample.received_at:type_name -> google.protobuf.Timestamp
-	101, // 113: grid.v1.PlaceSummary.generated_at:type_name -> google.protobuf.Timestamp
+	102, // 112: grid.v1.MeshTelemetrySample.received_at:type_name -> google.protobuf.Timestamp
+	102, // 113: grid.v1.PlaceSummary.generated_at:type_name -> google.protobuf.Timestamp
 	56,  // 114: grid.v1.PlaceSummary.summary:type_name -> grid.v1.SummaryStats
 	58,  // 115: grid.v1.PlaceSummary.domains:type_name -> grid.v1.SummaryDomain
 	60,  // 116: grid.v1.PlaceSummary.sources:type_name -> grid.v1.SummarySourceHealth
-	100, // 117: grid.v1.SummaryStats.severity_counts:type_name -> grid.v1.SummaryStats.SeverityCountsEntry
-	104, // 118: grid.v1.SummaryStats.active_evacuations:type_name -> google.protobuf.Int32Value
+	101, // 117: grid.v1.SummaryStats.severity_counts:type_name -> grid.v1.SummaryStats.SeverityCountsEntry
+	105, // 118: grid.v1.SummaryStats.active_evacuations:type_name -> google.protobuf.Int32Value
 	57,  // 119: grid.v1.SummaryStats.top_events:type_name -> grid.v1.SummaryTopEvent
 	59,  // 120: grid.v1.SummaryDomain.headlines:type_name -> grid.v1.SummaryDomainHeadline
-	101, // 121: grid.v1.SummarySourceHealth.last_success_at:type_name -> google.protobuf.Timestamp
+	102, // 121: grid.v1.SummarySourceHealth.last_success_at:type_name -> google.protobuf.Timestamp
 	65,  // 122: grid.v1.RelatedEventList.related:type_name -> grid.v1.RelatedEvent
 	14,  // 123: grid.v1.RelatedEvent.event:type_name -> grid.v1.Event
 	10,  // 124: grid.v1.RelatedEvent.confidence:type_name -> grid.v1.RelationConfidence
 	68,  // 125: grid.v1.EventTimeline.entries:type_name -> grid.v1.TimelineEntry
-	101, // 126: grid.v1.TimelineEntry.at:type_name -> google.protobuf.Timestamp
+	102, // 126: grid.v1.TimelineEntry.at:type_name -> google.protobuf.Timestamp
 	12,  // 127: grid.v1.TimelineEntry.kind:type_name -> grid.v1.TimelineKind
 	11,  // 128: grid.v1.TimelineEntry.clock:type_name -> grid.v1.TimelineClock
 	74,  // 129: grid.v1.SearchResults.hits:type_name -> grid.v1.SearchHit
@@ -10156,84 +10205,85 @@ var file_grid_proto_depIdxs = []int32{
 	13,  // 133: grid.v1.SearchKindTotal.kind:type_name -> grid.v1.SearchKind
 	13,  // 134: grid.v1.SearchHit.kind:type_name -> grid.v1.SearchKind
 	39,  // 135: grid.v1.SearchHit.match:type_name -> grid.v1.SearchMatch
-	0,   // 136: grid.v1.SearchHit.layer:type_name -> grid.v1.Layer
-	2,   // 137: grid.v1.SearchHit.status:type_name -> grid.v1.EventStatus
-	1,   // 138: grid.v1.SearchHit.severity:type_name -> grid.v1.Severity
-	101, // 139: grid.v1.SearchHit.observed_at:type_name -> google.protobuf.Timestamp
-	78,  // 140: grid.v1.ResolvePlaceResponse.query:type_name -> grid.v1.ResolveQuery
-	21,  // 141: grid.v1.ResolvePlaceResponse.places:type_name -> grid.v1.Place
-	81,  // 142: grid.v1.ScannerList.scanners:type_name -> grid.v1.Scanner
-	17,  // 143: grid.v1.Camera.location:type_name -> grid.v1.LatLng
-	84,  // 144: grid.v1.CameraList.cameras:type_name -> grid.v1.Camera
-	101, // 145: grid.v1.CameraList.last_source_update:type_name -> google.protobuf.Timestamp
-	101, // 146: grid.v1.WeatherConditions.observed_at:type_name -> google.protobuf.Timestamp
-	101, // 147: grid.v1.ForecastPeriod.time:type_name -> google.protobuf.Timestamp
-	104, // 148: grid.v1.ForecastPeriod.precipitation_probability_percent:type_name -> google.protobuf.Int32Value
-	103, // 149: grid.v1.ForecastPeriod.precipitation_mm:type_name -> google.protobuf.DoubleValue
-	103, // 150: grid.v1.ForecastPeriod.snowfall_mm:type_name -> google.protobuf.DoubleValue
-	104, // 151: grid.v1.ForecastPeriod.snow_level_meters:type_name -> google.protobuf.Int32Value
-	104, // 152: grid.v1.ForecastPeriod.sky_cover_percent:type_name -> google.protobuf.Int32Value
-	101, // 153: grid.v1.DailyForecastPeriod.start:type_name -> google.protobuf.Timestamp
-	101, // 154: grid.v1.DailyForecastPeriod.end:type_name -> google.protobuf.Timestamp
-	104, // 155: grid.v1.DailyForecastPeriod.precipitation_probability_percent:type_name -> google.protobuf.Int32Value
-	104, // 156: grid.v1.WeatherLocation.elevation_meters:type_name -> google.protobuf.Int32Value
-	101, // 157: grid.v1.WeatherForecast.issued_at:type_name -> google.protobuf.Timestamp
-	89,  // 158: grid.v1.WeatherForecast.periods:type_name -> grid.v1.ForecastPeriod
-	101, // 159: grid.v1.WeatherForecast.peak_wind_gust_at:type_name -> google.protobuf.Timestamp
-	104, // 160: grid.v1.WeatherForecast.grid_elevation_meters:type_name -> google.protobuf.Int32Value
-	90,  // 161: grid.v1.WeatherForecast.daily:type_name -> grid.v1.DailyForecastPeriod
-	87,  // 162: grid.v1.Conditions.weather:type_name -> grid.v1.WeatherConditions
-	88,  // 163: grid.v1.Conditions.fire_weather:type_name -> grid.v1.FireWeatherConditions
-	101, // 164: grid.v1.Conditions.last_updated:type_name -> google.protobuf.Timestamp
-	92,  // 165: grid.v1.Conditions.forecast:type_name -> grid.v1.WeatherForecast
-	91,  // 166: grid.v1.Conditions.locations:type_name -> grid.v1.WeatherLocation
-	4,   // 167: grid.v1.Conditions.weather_status:type_name -> grid.v1.SourceStatus
-	101, // 168: grid.v1.Stats.since:type_name -> google.protobuf.Timestamp
-	97,  // 169: grid.v1.Stats.layers:type_name -> grid.v1.LayerStats
-	101, // 170: grid.v1.Stats.computed_at:type_name -> google.protobuf.Timestamp
-	0,   // 171: grid.v1.LayerStats.layer:type_name -> grid.v1.Layer
-	39,  // 172: grid.v1.EventList.MatchesEntry.value:type_name -> grid.v1.SearchMatch
-	61,  // 173: grid.v1.GridService.ListEvents:input_type -> grid.v1.ListEventsRequest
-	62,  // 174: grid.v1.GridService.GetEvent:input_type -> grid.v1.GetEventRequest
-	66,  // 175: grid.v1.GridService.GetEventTimeline:input_type -> grid.v1.GetEventTimelineRequest
-	63,  // 176: grid.v1.GridService.ListRelatedEvents:input_type -> grid.v1.ListRelatedEventsRequest
-	69,  // 177: grid.v1.GridService.GetEventHistory:input_type -> grid.v1.GetEventHistoryRequest
-	70,  // 178: grid.v1.GridService.ListHistory:input_type -> grid.v1.ListHistoryRequest
-	71,  // 179: grid.v1.GridService.Search:input_type -> grid.v1.SearchRequest
-	75,  // 180: grid.v1.GridService.ListPlaces:input_type -> grid.v1.ListPlacesRequest
-	77,  // 181: grid.v1.GridService.ResolvePlace:input_type -> grid.v1.ResolvePlaceRequest
-	76,  // 182: grid.v1.GridService.GetPlace:input_type -> grid.v1.GetPlaceRequest
-	54,  // 183: grid.v1.GridService.GetPlaceSummary:input_type -> grid.v1.GetPlaceSummaryRequest
-	80,  // 184: grid.v1.GridService.ListScanners:input_type -> grid.v1.ListScannersRequest
-	83,  // 185: grid.v1.GridService.ListCameras:input_type -> grid.v1.ListCamerasRequest
-	86,  // 186: grid.v1.GridService.GetConditions:input_type -> grid.v1.GetConditionsRequest
-	94,  // 187: grid.v1.GridService.ListSources:input_type -> grid.v1.ListSourcesRequest
-	95,  // 188: grid.v1.GridService.GetStats:input_type -> grid.v1.GetStatsRequest
-	47,  // 189: grid.v1.GridService.GetRoadHistory:input_type -> grid.v1.GetRoadHistoryRequest
-	50,  // 190: grid.v1.GridService.GetMeshTelemetry:input_type -> grid.v1.GetMeshTelemetryRequest
-	37,  // 191: grid.v1.GridService.ListEvents:output_type -> grid.v1.EventList
-	14,  // 192: grid.v1.GridService.GetEvent:output_type -> grid.v1.Event
-	67,  // 193: grid.v1.GridService.GetEventTimeline:output_type -> grid.v1.EventTimeline
-	64,  // 194: grid.v1.GridService.ListRelatedEvents:output_type -> grid.v1.RelatedEventList
-	43,  // 195: grid.v1.GridService.GetEventHistory:output_type -> grid.v1.EventRevisionList
-	43,  // 196: grid.v1.GridService.ListHistory:output_type -> grid.v1.EventRevisionList
-	72,  // 197: grid.v1.GridService.Search:output_type -> grid.v1.SearchResults
-	45,  // 198: grid.v1.GridService.ListPlaces:output_type -> grid.v1.PlaceList
-	79,  // 199: grid.v1.GridService.ResolvePlace:output_type -> grid.v1.ResolvePlaceResponse
-	21,  // 200: grid.v1.GridService.GetPlace:output_type -> grid.v1.Place
-	55,  // 201: grid.v1.GridService.GetPlaceSummary:output_type -> grid.v1.PlaceSummary
-	82,  // 202: grid.v1.GridService.ListScanners:output_type -> grid.v1.ScannerList
-	85,  // 203: grid.v1.GridService.ListCameras:output_type -> grid.v1.CameraList
-	93,  // 204: grid.v1.GridService.GetConditions:output_type -> grid.v1.Conditions
-	46,  // 205: grid.v1.GridService.ListSources:output_type -> grid.v1.SourceList
-	96,  // 206: grid.v1.GridService.GetStats:output_type -> grid.v1.Stats
-	49,  // 207: grid.v1.GridService.GetRoadHistory:output_type -> grid.v1.RoadHistory
-	51,  // 208: grid.v1.GridService.GetMeshTelemetry:output_type -> grid.v1.MeshTelemetryArchive
-	191, // [191:209] is the sub-list for method output_type
-	173, // [173:191] is the sub-list for method input_type
-	173, // [173:173] is the sub-list for extension type_name
-	173, // [173:173] is the sub-list for extension extendee
-	0,   // [0:173] is the sub-list for field type_name
+	75,  // 136: grid.v1.SearchHit.event:type_name -> grid.v1.SearchHitEvent
+	0,   // 137: grid.v1.SearchHitEvent.layer:type_name -> grid.v1.Layer
+	2,   // 138: grid.v1.SearchHitEvent.status:type_name -> grid.v1.EventStatus
+	1,   // 139: grid.v1.SearchHitEvent.severity:type_name -> grid.v1.Severity
+	102, // 140: grid.v1.SearchHitEvent.observed_at:type_name -> google.protobuf.Timestamp
+	79,  // 141: grid.v1.ResolvePlaceResponse.query:type_name -> grid.v1.ResolveQuery
+	21,  // 142: grid.v1.ResolvePlaceResponse.places:type_name -> grid.v1.Place
+	82,  // 143: grid.v1.ScannerList.scanners:type_name -> grid.v1.Scanner
+	17,  // 144: grid.v1.Camera.location:type_name -> grid.v1.LatLng
+	85,  // 145: grid.v1.CameraList.cameras:type_name -> grid.v1.Camera
+	102, // 146: grid.v1.CameraList.last_source_update:type_name -> google.protobuf.Timestamp
+	102, // 147: grid.v1.WeatherConditions.observed_at:type_name -> google.protobuf.Timestamp
+	102, // 148: grid.v1.ForecastPeriod.time:type_name -> google.protobuf.Timestamp
+	105, // 149: grid.v1.ForecastPeriod.precipitation_probability_percent:type_name -> google.protobuf.Int32Value
+	104, // 150: grid.v1.ForecastPeriod.precipitation_mm:type_name -> google.protobuf.DoubleValue
+	104, // 151: grid.v1.ForecastPeriod.snowfall_mm:type_name -> google.protobuf.DoubleValue
+	105, // 152: grid.v1.ForecastPeriod.snow_level_meters:type_name -> google.protobuf.Int32Value
+	105, // 153: grid.v1.ForecastPeriod.sky_cover_percent:type_name -> google.protobuf.Int32Value
+	102, // 154: grid.v1.DailyForecastPeriod.start:type_name -> google.protobuf.Timestamp
+	102, // 155: grid.v1.DailyForecastPeriod.end:type_name -> google.protobuf.Timestamp
+	105, // 156: grid.v1.DailyForecastPeriod.precipitation_probability_percent:type_name -> google.protobuf.Int32Value
+	105, // 157: grid.v1.WeatherLocation.elevation_meters:type_name -> google.protobuf.Int32Value
+	102, // 158: grid.v1.WeatherForecast.issued_at:type_name -> google.protobuf.Timestamp
+	90,  // 159: grid.v1.WeatherForecast.periods:type_name -> grid.v1.ForecastPeriod
+	102, // 160: grid.v1.WeatherForecast.peak_wind_gust_at:type_name -> google.protobuf.Timestamp
+	105, // 161: grid.v1.WeatherForecast.grid_elevation_meters:type_name -> google.protobuf.Int32Value
+	91,  // 162: grid.v1.WeatherForecast.daily:type_name -> grid.v1.DailyForecastPeriod
+	88,  // 163: grid.v1.Conditions.weather:type_name -> grid.v1.WeatherConditions
+	89,  // 164: grid.v1.Conditions.fire_weather:type_name -> grid.v1.FireWeatherConditions
+	102, // 165: grid.v1.Conditions.last_updated:type_name -> google.protobuf.Timestamp
+	93,  // 166: grid.v1.Conditions.forecast:type_name -> grid.v1.WeatherForecast
+	92,  // 167: grid.v1.Conditions.locations:type_name -> grid.v1.WeatherLocation
+	4,   // 168: grid.v1.Conditions.weather_status:type_name -> grid.v1.SourceStatus
+	102, // 169: grid.v1.Stats.since:type_name -> google.protobuf.Timestamp
+	98,  // 170: grid.v1.Stats.layers:type_name -> grid.v1.LayerStats
+	102, // 171: grid.v1.Stats.computed_at:type_name -> google.protobuf.Timestamp
+	0,   // 172: grid.v1.LayerStats.layer:type_name -> grid.v1.Layer
+	39,  // 173: grid.v1.EventList.MatchesEntry.value:type_name -> grid.v1.SearchMatch
+	61,  // 174: grid.v1.GridService.ListEvents:input_type -> grid.v1.ListEventsRequest
+	62,  // 175: grid.v1.GridService.GetEvent:input_type -> grid.v1.GetEventRequest
+	66,  // 176: grid.v1.GridService.GetEventTimeline:input_type -> grid.v1.GetEventTimelineRequest
+	63,  // 177: grid.v1.GridService.ListRelatedEvents:input_type -> grid.v1.ListRelatedEventsRequest
+	69,  // 178: grid.v1.GridService.GetEventHistory:input_type -> grid.v1.GetEventHistoryRequest
+	70,  // 179: grid.v1.GridService.ListHistory:input_type -> grid.v1.ListHistoryRequest
+	71,  // 180: grid.v1.GridService.Search:input_type -> grid.v1.SearchRequest
+	76,  // 181: grid.v1.GridService.ListPlaces:input_type -> grid.v1.ListPlacesRequest
+	78,  // 182: grid.v1.GridService.ResolvePlace:input_type -> grid.v1.ResolvePlaceRequest
+	77,  // 183: grid.v1.GridService.GetPlace:input_type -> grid.v1.GetPlaceRequest
+	54,  // 184: grid.v1.GridService.GetPlaceSummary:input_type -> grid.v1.GetPlaceSummaryRequest
+	81,  // 185: grid.v1.GridService.ListScanners:input_type -> grid.v1.ListScannersRequest
+	84,  // 186: grid.v1.GridService.ListCameras:input_type -> grid.v1.ListCamerasRequest
+	87,  // 187: grid.v1.GridService.GetConditions:input_type -> grid.v1.GetConditionsRequest
+	95,  // 188: grid.v1.GridService.ListSources:input_type -> grid.v1.ListSourcesRequest
+	96,  // 189: grid.v1.GridService.GetStats:input_type -> grid.v1.GetStatsRequest
+	47,  // 190: grid.v1.GridService.GetRoadHistory:input_type -> grid.v1.GetRoadHistoryRequest
+	50,  // 191: grid.v1.GridService.GetMeshTelemetry:input_type -> grid.v1.GetMeshTelemetryRequest
+	37,  // 192: grid.v1.GridService.ListEvents:output_type -> grid.v1.EventList
+	14,  // 193: grid.v1.GridService.GetEvent:output_type -> grid.v1.Event
+	67,  // 194: grid.v1.GridService.GetEventTimeline:output_type -> grid.v1.EventTimeline
+	64,  // 195: grid.v1.GridService.ListRelatedEvents:output_type -> grid.v1.RelatedEventList
+	43,  // 196: grid.v1.GridService.GetEventHistory:output_type -> grid.v1.EventRevisionList
+	43,  // 197: grid.v1.GridService.ListHistory:output_type -> grid.v1.EventRevisionList
+	72,  // 198: grid.v1.GridService.Search:output_type -> grid.v1.SearchResults
+	45,  // 199: grid.v1.GridService.ListPlaces:output_type -> grid.v1.PlaceList
+	80,  // 200: grid.v1.GridService.ResolvePlace:output_type -> grid.v1.ResolvePlaceResponse
+	21,  // 201: grid.v1.GridService.GetPlace:output_type -> grid.v1.Place
+	55,  // 202: grid.v1.GridService.GetPlaceSummary:output_type -> grid.v1.PlaceSummary
+	83,  // 203: grid.v1.GridService.ListScanners:output_type -> grid.v1.ScannerList
+	86,  // 204: grid.v1.GridService.ListCameras:output_type -> grid.v1.CameraList
+	94,  // 205: grid.v1.GridService.GetConditions:output_type -> grid.v1.Conditions
+	46,  // 206: grid.v1.GridService.ListSources:output_type -> grid.v1.SourceList
+	97,  // 207: grid.v1.GridService.GetStats:output_type -> grid.v1.Stats
+	49,  // 208: grid.v1.GridService.GetRoadHistory:output_type -> grid.v1.RoadHistory
+	51,  // 209: grid.v1.GridService.GetMeshTelemetry:output_type -> grid.v1.MeshTelemetryArchive
+	192, // [192:210] is the sub-list for method output_type
+	174, // [174:192] is the sub-list for method input_type
+	174, // [174:174] is the sub-list for extension type_name
+	174, // [174:174] is the sub-list for extension extendee
+	0,   // [0:174] is the sub-list for field type_name
 }
 
 func init() { file_grid_proto_init() }
@@ -10259,7 +10309,7 @@ func file_grid_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_grid_proto_rawDesc), len(file_grid_proto_rawDesc)),
 			NumEnums:      14,
-			NumMessages:   87,
+			NumMessages:   88,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

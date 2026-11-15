@@ -166,7 +166,8 @@ type GridServiceClient interface {
 	// name or the start of its public key, "bear valley camera", "hwy 4") and
 	// then call the endpoint in each hit's `apiPath`. It does not page: for
 	// every matching event, in date order, with a total, use `q` on
-	// `/api/v1/events`.
+	// `/api/v1/events`. An event or mesh-node hit carries its layer, status,
+	// severity and `observedAt` in `event`; that field is null for other kinds.
 	//
 	// Same `q` syntax as `/api/v1/events`. Events and mesh nodes are ranked by
 	// relevance (a match in the headline, location or an identifier counts
@@ -592,7 +593,8 @@ type GridServiceServer interface {
 	// name or the start of its public key, "bear valley camera", "hwy 4") and
 	// then call the endpoint in each hit's `apiPath`. It does not page: for
 	// every matching event, in date order, with a total, use `q` on
-	// `/api/v1/events`.
+	// `/api/v1/events`. An event or mesh-node hit carries its layer, status,
+	// severity and `observedAt` in `event`; that field is null for other kinds.
 	//
 	// Same `q` syntax as `/api/v1/events`. Events and mesh nodes are ranked by
 	// relevance (a match in the headline, location or an identifier counts

@@ -337,12 +337,16 @@ func (s *Server) handleSearch(ctx context.Context, args map[string]interface{}) 
 			// A camera or a feed is a link, not a record: url is the thing.
 			delete(hit, "apiPath")
 		}
-		// Only events carry these; drop the empty ones a non-event hit has.
-		if kind != "EVENT" && kind != "MESH_NODE" {
+		// An event's facts arrive nested (null for other kinds): lift them
+		// beside the title, where a model reads them with the hit.
+		if ev, ok := hit["event"].(map[string]interface{}); ok {
 			for _, k := range []string{"layer", "category", "status", "severity", "observedAt"} {
-				delete(hit, k)
+				if v, ok := ev[k]; ok && v != nil {
+					hit[k] = v
+				}
 			}
 		}
+		delete(hit, "event")
 		for _, k := range []string{"url", "detail", "category"} {
 			if v, _ := hit[k].(string); v == "" {
 				delete(hit, k)
@@ -396,8 +400,10 @@ func (s *Server) handleGenericSearch(ctx context.Context, args map[string]interf
 		case "PLACE":
 			id = genericPlace + id
 		default:
-			if st, _ := hit["status"].(string); st != "" && st != "ACTIVE" {
-				title += " [" + st + "]"
+			if ev, ok := hit["event"].(map[string]interface{}); ok {
+				if st, _ := ev["status"].(string); st != "" && st != "ACTIVE" {
+					title += " [" + st + "]"
+				}
 			}
 			id = genericEvent + id
 		}

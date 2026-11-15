@@ -1058,7 +1058,7 @@
     "/api/v1/search": {
       "get": {
         "summary": "Find things by name or text, across kinds.",
-        "description": "One search box for the whole Grid: the best few matches of each kind for\n`q`, in a fixed kind order (places, roads, events, mesh nodes, cameras,\nscanner feeds). Use it to turn a name into an id (\"priest fire\", a node's\nname or the start of its public key, \"bear valley camera\", \"hwy 4\") and\nthen call the endpoint in each hit's `apiPath`. It does not page: for\nevery matching event, in date order, with a total, use `q` on\n`/api/v1/events`.\n\nSame `q` syntax as `/api/v1/events`. Events and mesh nodes are ranked by\nrelevance (a match in the headline, location or an identifier counts\nmost), raised for active and for recent ones; every status is searched\nand each hit says its own. The other kinds are short lists matched on\ntheir names and locations. `totals` says how many of each kind matched,\nso a caller knows when the few shown are not all. A kind listed in\n`unavailable` could not be searched (the camera list's source is down):\nno hits of that kind means unknown, not none. No hit at all means nothing\nstored matched, not that nothing happened.",
+        "description": "One search box for the whole Grid: the best few matches of each kind for\n`q`, in a fixed kind order (places, roads, events, mesh nodes, cameras,\nscanner feeds). Use it to turn a name into an id (\"priest fire\", a node's\nname or the start of its public key, \"bear valley camera\", \"hwy 4\") and\nthen call the endpoint in each hit's `apiPath`. It does not page: for\nevery matching event, in date order, with a total, use `q` on\n`/api/v1/events`. An event or mesh-node hit carries its layer, status,\nseverity and `observedAt` in `event`; that field is null for other kinds.\n\nSame `q` syntax as `/api/v1/events`. Events and mesh nodes are ranked by\nrelevance (a match in the headline, location or an identifier counts\nmost), raised for active and for recent ones; every status is searched\nand each hit says its own. The other kinds are short lists matched on\ntheir names and locations. `totals` says how many of each kind matched,\nso a caller knows when the few shown are not all. A kind listed in\n`unavailable` could not be searched (the camera list's source is down):\nno hits of that kind means unknown, not none. No hit at all means nothing\nstored matched, not that nothing happened.",
         "operationId": "GridService_Search",
         "responses": {
           "200": {
@@ -3282,25 +3282,38 @@
           "type": "string",
           "description": "A page about it elsewhere: an event's canonical source page, a feed's\nBroadcastify page, a camera's snapshot. May be empty."
         },
+        "event": {
+          "$ref": "#/definitions/v1SearchHitEvent",
+          "description": "EVENT and MESH_NODE only: the event's layer, category, status, severity\nand `observedAt`. Null for every other kind."
+        }
+      },
+      "description": "SearchHit is one thing the finder found."
+    },
+    "v1SearchHitEvent": {
+      "type": "object",
+      "properties": {
         "layer": {
           "$ref": "#/definitions/v1Layer",
-          "description": "EVENT and MESH_NODE only: the event's layer, category, status, severity\nand `observedAt`. Unspecified, empty and null for other kinds."
+          "example": "ROAD_INCIDENT"
         },
         "category": {
-          "type": "string"
+          "type": "string",
+          "example": "incident"
         },
         "status": {
-          "$ref": "#/definitions/v1EventStatus"
+          "$ref": "#/definitions/v1EventStatus",
+          "example": "RESOLVED"
         },
         "severity": {
-          "$ref": "#/definitions/v1Severity"
+          "$ref": "#/definitions/v1Severity",
+          "example": "MINOR"
         },
         "observedAt": {
           "type": "string",
           "format": "date-time"
         }
       },
-      "description": "SearchHit is one thing the finder found."
+      "description": "SearchHitEvent is what a finder hit says about an event without fetching it."
     },
     "v1SearchInfo": {
       "type": "object",
