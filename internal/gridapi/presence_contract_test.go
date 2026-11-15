@@ -144,6 +144,10 @@ func TestResponsesHonorFieldPresence(t *testing.T) {
 	check("ListHistory q collapsed", collapsed, err)
 	require.NotEmpty(t, collapsed.GetCollapsed())
 
+	finder, err := g.Search(rpcBG(), &gridv1.SearchRequest{Q: "arnold"})
+	check("Search", finder, err)
+	require.NotEmpty(t, finder.GetHits())
+
 	// Every annotation a GridService response can carry was seen holding a value.
 	svc := gridv1.File_grid_proto.Services().ByName("GridService")
 	var roots []protoreflect.MessageDescriptor

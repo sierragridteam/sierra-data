@@ -193,3 +193,58 @@ func TestMarkAndRestoreRoutes(t *testing.T) {
 	assert.Equal(t, "no roads here", plain)
 	assert.Empty(t, none)
 }
+
+func TestMatchSmallLists(t *testing.T) {
+	q := func(s string, typing bool) Query {
+		p, err := ParseQuery(s, typing)
+		require.NoError(t, err, s)
+		return p
+	}
+	type row struct{ name, where, rest string }
+	rows := []row{
+		{"Bear Valley", "SR-4 at Bear Valley", "Alpine County eastbound"},
+		{"Arnold", "Hwy 4 : Arnold Byways", "Calaveras County"},
+		{"Big Trees", "SR-4 at Big Trees Rd", "near Arnold"},
+		{"Sonora Pass", "SR-108 summit", "Tuolumne County"},
+		{"Ebbetts Pass Corridor", "", "ebbetts-pass AREA"},
+	}
+	find := func(query Query) []string {
+		type hit struct {
+			name  string
+			score int
+		}
+		var hits []hit
+		for _, r := range rows {
+			if s, ok := query.Match(r.name, r.where, r.rest); ok {
+				hits = append(hits, hit{r.name, s})
+			}
+		}
+		// Stable, best first.
+		for i := 1; i < len(hits); i++ {
+			for j := i; j > 0 && hits[j].score > hits[j-1].score; j-- {
+				hits[j], hits[j-1] = hits[j-1], hits[j]
+			}
+		}
+		out := make([]string, len(hits))
+		for i, h := range hits {
+			out[i] = h.name
+		}
+		return out
+	}
+	// The name outranks a mention elsewhere.
+	assert.Equal(t, []string{"Arnold", "Big Trees"}, find(q("arnold", false)))
+	// A road in any spelling, against any spelling.
+	assert.Equal(t, []string{"Bear Valley", "Arnold", "Big Trees"}, find(q("hwy 4", false)))
+	assert.Equal(t, []string{"Sonora Pass"}, find(q("state route 108", false)))
+	// Whole words, or a prefix while typing.
+	assert.Empty(t, find(q("ebb", false)))
+	assert.Equal(t, []string{"Ebbetts Pass Corridor"}, find(q("ebb", true)))
+	// Every word, any field; phrases adjacent; exclusions; alternatives.
+	assert.Equal(t, []string{"Bear Valley"}, find(q("valley alpine", false)))
+	assert.Equal(t, []string{"Big Trees"}, find(q(`"big trees"`, false)))
+	assert.Empty(t, find(q(`"trees big"`, false)))
+	assert.Equal(t, []string{"Sonora Pass"}, find(q("pass -ebbetts", false)))
+	assert.Equal(t, []string{"Arnold", "Sonora Pass", "Ebbetts Pass Corridor", "Big Trees"}, find(q("pass OR arnold", false)))
+	// A slug with a hyphen is matched as its words.
+	assert.Equal(t, []string{"Ebbetts Pass Corridor"}, find(q("ebbetts-pass", false)))
+}

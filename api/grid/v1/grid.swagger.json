@@ -1055,6 +1055,82 @@
         ]
       }
     },
+    "/api/v1/search": {
+      "get": {
+        "summary": "Find things by name or text, across kinds.",
+        "description": "One search box for the whole Grid: the best few matches of each kind for\n`q`, in a fixed kind order (places, roads, events, mesh nodes, cameras,\nscanner feeds). Use it to turn a name into an id (\"priest fire\", a node's\nname or the start of its public key, \"bear valley camera\", \"hwy 4\") and\nthen call the endpoint in each hit's `apiPath`. It does not page: for\nevery matching event, in date order, with a total, use `q` on\n`/api/v1/events`.\n\nSame `q` syntax as `/api/v1/events`. Events and mesh nodes are ranked by\nrelevance (a match in the headline, location or an identifier counts\nmost), raised for active and for recent ones; every status is searched\nand each hit says its own. The other kinds are short lists matched on\ntheir names and locations. `totals` says how many of each kind matched,\nso a caller knows when the few shown are not all. A kind listed in\n`unavailable` could not be searched (the camera list's source is down):\nno hits of that kind means unknown, not none. No hit at all means nothing\nstored matched, not that nothing happened.",
+        "operationId": "GridService_Search",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SearchResults"
+            }
+          },
+          "400": {
+            "description": "INVALID_ARGUMENT: `q` missing, too long (200 bytes, 16 terms) or with nothing to search for; an unknown `kind`; a negative `limit`.",
+            "schema": {}
+          },
+          "503": {
+            "description": "UNAVAILABLE: the search index is still being built (the first minutes after a release that changes it). Retry.",
+            "schema": {}
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "q",
+            "description": "What to find. Same syntax and limits as `q` on `/api/v1/events`. Required.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "x-example": "bear valley"
+          },
+          {
+            "name": "qTyping",
+            "description": "Treat the last word of `q` as still being typed (see `/api/v1/events`).",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "kind",
+            "description": "Only these kinds. Repeat the parameter or comma-separate.\nCase-insensitive. Default: every kind.",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PLACE",
+                "ROAD",
+                "EVENT",
+                "MESH_NODE",
+                "CAMERA",
+                "SCANNER"
+              ]
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "limit",
+            "description": "Most hits per kind. 0 or omitted means 5; values over 20 are clamped to\n20; a negative value is a 400.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "Events"
+        ]
+      }
+    },
     "/api/v1/sources": {
       "get": {
         "summary": "List sources and their health.",
@@ -3171,6 +3247,61 @@
       },
       "description": "ScannerList is the scanner feeds."
     },
+    "v1SearchHit": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/v1SearchKind",
+          "example": "EVENT"
+        },
+        "id": {
+          "type": "string",
+          "example": "chp:261114MR0161",
+          "description": "The thing's id within its kind: an event id, a place slug, a road id, a\ncamera id, a scanner feed id."
+        },
+        "title": {
+          "type": "string",
+          "example": "Road flooded and impassable",
+          "description": "Its name: an event's headline, a place's or camera's name, a road's name\nand section, a feed's channel."
+        },
+        "detail": {
+          "type": "string",
+          "example": "Lime Kiln Rd at SR 108, near Sonora",
+          "description": "One line of context: an event's location, a place's kind, a camera's\nroute and nearby place, a feed's agency. May be empty."
+        },
+        "match": {
+          "$ref": "#/definitions/v1SearchMatch",
+          "description": "Where the text matched. Null for kinds matched by name alone."
+        },
+        "apiPath": {
+          "type": "string",
+          "example": "/api/v1/events/chp:261114MR0161",
+          "description": "The API path that returns this thing (or, for a camera or feed, the list\nit is in)."
+        },
+        "url": {
+          "type": "string",
+          "description": "A page about it elsewhere: an event's canonical source page, a feed's\nBroadcastify page, a camera's snapshot. May be empty."
+        },
+        "layer": {
+          "$ref": "#/definitions/v1Layer",
+          "description": "EVENT and MESH_NODE only: the event's layer, category, status, severity\nand `observedAt`. Unspecified, empty and null for other kinds."
+        },
+        "category": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/v1EventStatus"
+        },
+        "severity": {
+          "$ref": "#/definitions/v1Severity"
+        },
+        "observedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "description": "SearchHit is one thing the finder found."
+    },
     "v1SearchInfo": {
       "type": "object",
       "properties": {
@@ -3190,6 +3321,35 @@
         }
       },
       "description": "SearchInfo says how a text query was understood and what it searched."
+    },
+    "v1SearchKind": {
+      "type": "string",
+      "enum": [
+        "SEARCH_KIND_UNSPECIFIED",
+        "PLACE",
+        "ROAD",
+        "EVENT",
+        "MESH_NODE",
+        "CAMERA",
+        "SCANNER"
+      ],
+      "default": "SEARCH_KIND_UNSPECIFIED",
+      "description": "SearchKind is what a finder hit is.\n\n - PLACE: A place in the directory: area, county, town, corridor.\n - ROAD: A monitored road segment.\n - EVENT: An event of any layer except MESH.\n - MESH_NODE: A MeshCore mesh node (a MESH-layer event).\n - CAMERA: A Caltrans traffic camera.\n - SCANNER: A scanner feed."
+    },
+    "v1SearchKindTotal": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/v1SearchKind",
+          "example": "EVENT"
+        },
+        "matches": {
+          "type": "integer",
+          "format": "int32",
+          "example": 557
+        }
+      },
+      "description": "SearchKindTotal is how many things of one kind matched."
     },
     "v1SearchMatch": {
       "type": "object",
@@ -3223,6 +3383,45 @@
         }
       },
       "description": "SearchMatchPart is one run of an excerpt."
+    },
+    "v1SearchResults": {
+      "type": "object",
+      "properties": {
+        "hits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1SearchHit"
+          },
+          "description": "The best matches of each kind, kinds in the order PLACE, ROAD, EVENT,\nMESH_NODE, CAMERA, SCANNER, best first within a kind."
+        },
+        "totals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1SearchKindTotal"
+          },
+          "description": "How many of each requested kind matched in all, including kinds with\nnone, in the same kind order."
+        },
+        "unavailable": {
+          "type": "array",
+          "example": [
+            "CAMERA"
+          ],
+          "items": {
+            "$ref": "#/definitions/v1SearchKind"
+          },
+          "description": "Requested kinds that could not be searched. No hits of such a kind means\nunknown, not none."
+        },
+        "search": {
+          "$ref": "#/definitions/v1SearchInfo",
+          "description": "How the query was read and what the event search covers."
+        }
+      },
+      "description": "SearchResults is the finder's answer.",
+      "required": [
+        "search"
+      ]
     },
     "v1Severity": {
       "type": "string",

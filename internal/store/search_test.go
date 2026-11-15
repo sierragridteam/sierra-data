@@ -581,3 +581,69 @@ func TestIndexTextSplitsHyphensNextToDigits(t *testing.T) {
 		assert.Equal(t, want, indexText(in), in)
 	}
 }
+
+// The finder ranks: where the words matched first, then live and recent.
+func TestSearchTopEventsRanks(t *testing.T) {
+	s := searchStore(t)
+	ctx := context.Background()
+	now := time.Now()
+	at := func(ev *gridv1.Event, age time.Duration, status gridv1.EventStatus) *gridv1.Event {
+		ev.ObservedAt = timestamppb.New(now.Add(-age))
+		ev.Status = status
+		return ev
+	}
+	fire := roadEvent("calfire:priest", "Priest Fire — 10 ac, 100% contained", "Old Priest Grade and Highway 120", "", "", 0)
+	fire.Layer, fire.Category = gridv1.Layer_WILDFIRE, "wildfire"
+	node := testEvent("meshcore:aa", gridv1.Severity_INFO, gridv1.EventStatus_ACTIVE, "Priest Grade Repeater")
+	node.Layer = gridv1.Layer_MESH
+	node.Detail = &gridv1.Event_Mesh{Mesh: &gridv1.MeshDetail{PublicKey: "aa", Name: "Priest Grade Repeater"}}
+	upsert(t, s,
+		// The named fire, months old and over.
+		at(fire, 120*24*time.Hour, gridv1.EventStatus_RESOLVED),
+		// Yesterday's incident that mentions both words only in passing.
+		at(roadEvent("chp:passing", "Traffic hazard reported", "SR 120", "",
+			"Units from CAL FIRE staged near Old Priest Grade.", 0), 24*time.Hour, gridv1.EventStatus_RESOLVED),
+		// Two crashes on the same road, one live now and one from the summer.
+		at(roadEvent("chp:new", "Crash on SR 120", "SR 120 at Old Priest", "", "", 0), time.Hour, gridv1.EventStatus_ACTIVE),
+		at(roadEvent("chp:old", "Crash on SR 120", "SR 120 at Old Priest", "", "", 0), 100*24*time.Hour, gridv1.EventStatus_RESOLVED),
+		node,
+	)
+	top := func(q string, layers, exclude []gridv1.Layer, limit int) ([]string, int) {
+		t.Helper()
+		hits, total, err := s.SearchTopEvents(ctx, *mustQuery(t, q+" "), layers, exclude, limit)
+		require.NoError(t, err)
+		ids := make([]string, len(hits))
+		for i, h := range hits {
+			ids[i] = h.Event.GetId()
+			assert.Empty(t, h.Event.GetGeometry().GetGeojson(), "ranked hits carry no shapes")
+		}
+		return ids, total
+	}
+	mesh := []gridv1.Layer{gridv1.Layer_MESH}
+
+	// A name in the headline beats a recent mention in the description.
+	ids, total := top("priest fire", nil, mesh, 5)
+	assert.Equal(t, []string{"calfire:priest", "chp:passing"}, ids)
+	assert.Equal(t, 2, total)
+
+	// Equal text: the live, recent one first.
+	ids, _ = top("crash", nil, mesh, 5)
+	assert.Equal(t, []string{"chp:new", "chp:old"}, ids)
+
+	// The limit cuts the list, not the total; layers split the kinds.
+	ids, total = top("priest", nil, mesh, 2)
+	assert.Len(t, ids, 2)
+	assert.Equal(t, 4, total)
+	ids, total = top("priest", mesh, nil, 5)
+	assert.Equal(t, []string{"meshcore:aa"}, ids)
+	assert.Equal(t, 1, total)
+
+	// Nothing: zero, no error. A snippet rides along when there is one.
+	ids, total = top("volcano", nil, nil, 5)
+	assert.Empty(t, ids)
+	assert.Zero(t, total)
+	hits, _, err := s.SearchTopEvents(ctx, *mustQuery(t, "staged "), nil, nil, 1)
+	require.NoError(t, err)
+	require.Len(t, hits, 1)
+	assert.Equal(t, "text", hits[0].Snippet.Field)
+}

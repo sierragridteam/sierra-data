@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	gridv1 "github.com/sierragridteam/sierra-data/api/grid/v1"
+	"github.com/sierragridteam/sierra-data/internal/clients/cwwp2"
 )
 
 // indexSearch runs the writer's search backfill to the end, which is what
@@ -329,4 +330,170 @@ func TestSearchThroughTheGateway(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, getJSON(t, baseURL+"/api/v1/events?q=the", nil))
 	assert.Equal(t, http.StatusBadRequest, getJSON(t, baseURL+"/api/v1/events?q=-fire", nil))
 	assert.Equal(t, http.StatusBadRequest, getJSON(t, baseURL+"/api/v1/history?collapse=event", nil))
+}
+
+func hitIDs(res *gridv1.SearchResults, kind gridv1.SearchKind) []string {
+	var out []string
+	for _, h := range res.GetHits() {
+		if h.GetKind() == kind {
+			out = append(out, h.GetId())
+		}
+	}
+	return out
+}
+
+func totalOf(res *gridv1.SearchResults, kind gridv1.SearchKind) int {
+	for _, t := range res.GetTotals() {
+		if t.GetKind() == kind {
+			return int(t.GetMatches())
+		}
+	}
+	return -1
+}
+
+func TestFinderSearchesEveryKind(t *testing.T) {
+	g, s := searchServer(t)
+	ctx := context.Background()
+	node := &gridv1.Event{
+		Id: "meshcore:ab12", Layer: gridv1.Layer_MESH, Category: "repeater",
+		Severity: gridv1.Severity_INFO, Status: gridv1.EventStatus_ACTIVE, Headline: "SIERRA Arnold Summit",
+		ObservedAt: timestamppb.New(base), Provenance: &gridv1.Provenance{SourceId: "usgs"},
+		Detail: &gridv1.Event_Mesh{Mesh: &gridv1.MeshDetail{PublicKey: "ab12", Name: "SIERRA Arnold Summit", NodeType: "repeater"}},
+	}
+	_, err := s.Store.UpsertEvent(ctx, node)
+	require.NoError(t, err)
+
+	res, err := g.Search(rpcBG(), &gridv1.SearchRequest{Q: "arnold"})
+	require.NoError(t, err)
+
+	// The town, the road segment that ends there, an event and a mesh node
+	// named for it, each with the path that returns it. The town itself comes
+	// before the corridor that only mentions it.
+	places := hitIDs(res, gridv1.SearchKind_PLACE)
+	require.NotEmpty(t, places)
+	assert.Equal(t, "arnold", places[0])
+	assert.Equal(t, []string{"hwy-4"}, hitIDs(res, gridv1.SearchKind_ROAD))
+	assert.Equal(t, []string{"usgs:q1"}, hitIDs(res, gridv1.SearchKind_EVENT))
+	assert.Equal(t, []string{"meshcore:ab12"}, hitIDs(res, gridv1.SearchKind_MESH_NODE))
+	assert.Equal(t, 1, totalOf(res, gridv1.SearchKind_EVENT))
+	assert.Equal(t, 1, totalOf(res, gridv1.SearchKind_MESH_NODE))
+	var kinds []gridv1.SearchKind
+	for _, h := range res.GetHits() {
+		if len(kinds) == 0 || kinds[len(kinds)-1] != h.GetKind() {
+			kinds = append(kinds, h.GetKind())
+		}
+		assert.NotEmpty(t, h.GetTitle())
+		assert.NotEmpty(t, h.GetApiPath())
+	}
+	assert.Equal(t, []gridv1.SearchKind{gridv1.SearchKind_PLACE, gridv1.SearchKind_ROAD, gridv1.SearchKind_EVENT, gridv1.SearchKind_MESH_NODE}, kinds,
+		"kinds come in the documented order")
+	for _, h := range res.GetHits() {
+		switch h.GetKind() {
+		case gridv1.SearchKind_PLACE:
+			if h.GetId() == "arnold" {
+				assert.Equal(t, "/api/v1/places/arnold/summary", h.GetApiPath())
+				assert.Equal(t, "Town", h.GetDetail())
+			}
+			assert.Equal(t, gridv1.Layer_LAYER_UNSPECIFIED, h.GetLayer())
+			assert.Nil(t, h.GetObservedAt())
+		case gridv1.SearchKind_EVENT:
+			assert.Equal(t, "/api/v1/events/usgs:q1", h.GetApiPath())
+			assert.Equal(t, gridv1.Layer_EARTHQUAKE, h.GetLayer())
+			assert.Equal(t, gridv1.EventStatus_ACTIVE, h.GetStatus())
+			assert.NotNil(t, h.GetObservedAt())
+			_, hits := matchText(h.GetMatch())
+			assert.Equal(t, []string{"Arnold"}, hits)
+		}
+	}
+	assert.Equal(t, "arnold", res.GetSearch().GetQuery())
+	assert.Equal(t, SearchNote, res.GetSearch().GetNote())
+
+	// Every status is searched: the resolved incident is found, and says so.
+	res, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "roadway"})
+	require.NoError(t, err)
+	require.Equal(t, []string{"chp:i1"}, hitIDs(res, gridv1.SearchKind_EVENT))
+	assert.Equal(t, gridv1.EventStatus_RESOLVED, res.GetHits()[0].GetStatus())
+
+	// kind narrows; limit caps a kind but not its total.
+	res, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "arnold", Kind: []string{"place,mesh_node"}})
+	require.NoError(t, err)
+	assert.Empty(t, hitIDs(res, gridv1.SearchKind_EVENT))
+	assert.Empty(t, hitIDs(res, gridv1.SearchKind_ROAD))
+	assert.Equal(t, -1, totalOf(res, gridv1.SearchKind_EVENT), "a kind not asked for has no total")
+	assert.Equal(t, []string{"meshcore:ab12"}, hitIDs(res, gridv1.SearchKind_MESH_NODE))
+	res, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "arnold", Kind: []string{"PLACE"}, Limit: 1})
+	require.NoError(t, err)
+	assert.Len(t, res.GetHits(), 1)
+	assert.Greater(t, totalOf(res, gridv1.SearchKind_PLACE), 1, "the limit caps the hits, not the total")
+
+	// Typing: a prefix finds the place and the node.
+	res, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "arn", QTyping: true})
+	require.NoError(t, err)
+	assert.Contains(t, hitIDs(res, gridv1.SearchKind_PLACE), "arnold")
+	assert.Equal(t, []string{"meshcore:ab12"}, hitIDs(res, gridv1.SearchKind_MESH_NODE))
+	res, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "arn"})
+	require.NoError(t, err)
+	assert.Empty(t, res.GetHits())
+	assert.Equal(t, 0, totalOf(res, gridv1.SearchKind_PLACE), "zero is stated for every kind searched")
+}
+
+func TestFinderDirectories(t *testing.T) {
+	g, s := searchServer(t)
+
+	// Roads and scanner feeds come from configuration.
+	road := s.Cfg.Roads.MonitoredRoads[0]
+	res, err := g.Search(rpcBG(), &gridv1.SearchRequest{Q: road.ID, Kind: []string{"ROAD"}})
+	require.NoError(t, err)
+	require.Equal(t, []string{road.ID}, hitIDs(res, gridv1.SearchKind_ROAD))
+	assert.Equal(t, "/api/v1/roads/"+road.ID+"/history", res.GetHits()[0].GetApiPath())
+
+	feeds := s.allScannerFeeds()
+	if len(feeds) > 0 {
+		res, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: `"` + feeds[0].ChannelLabel + `"`, Kind: []string{"SCANNER"}})
+		require.NoError(t, err)
+		require.Contains(t, hitIDs(res, gridv1.SearchKind_SCANNER), feeds[0].FeedID)
+		assert.Contains(t, res.GetHits()[0].GetUrl(), "broadcastify.com")
+	}
+
+	// Cameras: the list ListCameras serves, matched on name, route and place.
+	s.Cameras = &fakeCameras{cams: []cwwp2.Camera{cam("c1", 38.2552, -120.3512), cam("c2", 38.26, -120.35)}, status: "OK"}
+	res, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "hwy 108", Kind: []string{"CAMERA"}})
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"c1", "c2"}, hitIDs(res, gridv1.SearchKind_CAMERA), "the fixture cameras are on SR-108")
+	assert.Equal(t, 2, totalOf(res, gridv1.SearchKind_CAMERA))
+	assert.Empty(t, res.GetUnavailable())
+
+	// A camera list that never loaded was not searched: unknown, not none.
+	s.Cameras = &fakeCameras{status: "UNAVAILABLE"}
+	res, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "hwy 108"})
+	require.NoError(t, err)
+	assert.Equal(t, []gridv1.SearchKind{gridv1.SearchKind_CAMERA}, res.GetUnavailable())
+	assert.Equal(t, -1, totalOf(res, gridv1.SearchKind_CAMERA), "no total for a kind that could not be searched")
+	s.Cameras = nil
+	res, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "hwy 108", Kind: []string{"camera"}})
+	require.NoError(t, err)
+	assert.Equal(t, []gridv1.SearchKind{gridv1.SearchKind_CAMERA}, res.GetUnavailable())
+}
+
+func TestFinderErrors(t *testing.T) {
+	s := newTestService(t)
+	g := NewGridServer(s)
+	_, err := g.Search(rpcBG(), &gridv1.SearchRequest{Q: "arnold"})
+	assert.Equal(t, codes.Unavailable, status.Code(err), "an index not known complete is refused")
+	// Kinds that need no index still answer.
+	res, err := g.Search(rpcBG(), &gridv1.SearchRequest{Q: "arnold", Kind: []string{"PLACE"}})
+	require.NoError(t, err)
+	assert.Contains(t, hitIDs(res, gridv1.SearchKind_PLACE), "arnold")
+
+	indexSearch(t, s)
+	for _, req := range []*gridv1.SearchRequest{
+		{}, {Q: "  "}, {Q: "the"}, {Q: "-fire"}, {Q: "arnold", Kind: []string{"planet"}}, {Q: "arnold", Limit: -1},
+	} {
+		_, err := g.Search(rpcBG(), req)
+		assert.Equal(t, codes.InvalidArgument, status.Code(err), "%v", req)
+	}
+	// "the" is not a word English keeps, but a place could be named for it:
+	// the refusal comes from the event index only when events are searched.
+	_, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "the", Kind: []string{"PLACE"}})
+	require.NoError(t, err)
 }

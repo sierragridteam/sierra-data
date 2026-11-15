@@ -103,6 +103,8 @@ Conventions:
 - /api/v1/events defaults to status=ACTIVE,SCHEDULED. Pass status
   explicitly for other states, and always pass place: unscoped, the
   feed is mostly INFO mesh-radio nodes.
+- Find a thing by name with /api/v1/search?q= (events, mesh nodes,
+  places, roads, cameras, scanner feeds; the best few of each).
 - Search text with q on /api/v1/events (q=hwy 4 crash) and on
   /api/v1/history (what a report said at each revision). Words are all
   required; a road matches in any spelling. No match means no stored

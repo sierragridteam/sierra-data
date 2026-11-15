@@ -1680,6 +1680,41 @@ service GridService {
     };
   }
 
+  // Find things by name or text, across kinds.
+  //
+  // One search box for the whole Grid: the best few matches of each kind for
+  // `q`, in a fixed kind order (places, roads, events, mesh nodes, cameras,
+  // scanner feeds). Use it to turn a name into an id ("priest fire", a node's
+  // name or the start of its public key, "bear valley camera", "hwy 4") and
+  // then call the endpoint in each hit's `apiPath`. It does not page: for
+  // every matching event, in date order, with a total, use `q` on
+  // `/api/v1/events`.
+  //
+  // Same `q` syntax as `/api/v1/events`. Events and mesh nodes are ranked by
+  // relevance (a match in the headline, location or an identifier counts
+  // most), raised for active and for recent ones; every status is searched
+  // and each hit says its own. The other kinds are short lists matched on
+  // their names and locations. `totals` says how many of each kind matched,
+  // so a caller knows when the few shown are not all. A kind listed in
+  // `unavailable` could not be searched (the camera list's source is down):
+  // no hits of that kind means unknown, not none. No hit at all means nothing
+  // stored matched, not that nothing happened.
+  rpc Search(SearchRequest) returns (SearchResults) {
+    option (google.api.http) = {get: "/api/v1/search"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      tags: "Events"
+      responses: {
+        key: "400"
+        value: {description: "INVALID_ARGUMENT: `q` missing, too long (200 bytes, 16 terms) or with nothing to search for; an unknown `kind`; a negative `limit`."}
+      }
+      responses: {
+        key: "503"
+        value: {description: "UNAVAILABLE: the search index is still being built (the first minutes after a release that changes it). Retry."}
+      }
+    };
+  }
+
+
   // List places.
   //
   // The place directory, with geometry: coverage areas, counties, towns and
@@ -2528,6 +2563,95 @@ message ListHistoryRequest {
   string collapse = 11 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     enum: ["event"]
   }];
+}
+
+// SearchRequest is one finder query.
+message SearchRequest {
+  // What to find. Same syntax and limits as `q` on `/api/v1/events`. Required.
+  string q = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    example: "\"bear valley\""
+    max_length: 200
+  }];
+  // Treat the last word of `q` as still being typed (see `/api/v1/events`).
+  bool q_typing = 2;
+  // Only these kinds. Repeat the parameter or comma-separate.
+  // Case-insensitive. Default: every kind.
+  repeated string kind = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    enum: ["PLACE", "ROAD", "EVENT", "MESH_NODE", "CAMERA", "SCANNER"]
+  }];
+  // Most hits per kind. 0 or omitted means 5; values over 20 are clamped to
+  // 20; a negative value is a 400.
+  int32 limit = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    minimum: 0
+    maximum: 20
+  }];
+}
+
+// SearchKind is what a finder hit is.
+enum SearchKind {
+  SEARCH_KIND_UNSPECIFIED = 0;
+  // A place in the directory: area, county, town, corridor.
+  PLACE = 1;
+  // A monitored road segment.
+  ROAD = 2;
+  // An event of any layer except MESH.
+  EVENT = 3;
+  // A MeshCore mesh node (a MESH-layer event).
+  MESH_NODE = 4;
+  // A Caltrans traffic camera.
+  CAMERA = 5;
+  // A scanner feed.
+  SCANNER = 6;
+}
+
+// SearchResults is the finder's answer.
+message SearchResults {
+  // The best matches of each kind, kinds in the order PLACE, ROAD, EVENT,
+  // MESH_NODE, CAMERA, SCANNER, best first within a kind.
+  repeated SearchHit hits = 1;
+  // How many of each requested kind matched in all, including kinds with
+  // none, in the same kind order.
+  repeated SearchKindTotal totals = 2;
+  // Requested kinds that could not be searched. No hits of such a kind means
+  // unknown, not none.
+  repeated SearchKind unavailable = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "[\"CAMERA\"]"}];
+  // How the query was read and what the event search covers.
+  SearchInfo search = 4 [(google.api.field_behavior) = REQUIRED];
+}
+
+// SearchKindTotal is how many things of one kind matched.
+message SearchKindTotal {
+  SearchKind kind = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"EVENT\""}];
+  int32 matches = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "557"}];
+}
+
+// SearchHit is one thing the finder found.
+message SearchHit {
+  SearchKind kind = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"EVENT\""}];
+  // The thing's id within its kind: an event id, a place slug, a road id, a
+  // camera id, a scanner feed id.
+  string id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"chp:261114MR0161\""}];
+  // Its name: an event's headline, a place's or camera's name, a road's name
+  // and section, a feed's channel.
+  string title = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"Road flooded and impassable\""}];
+  // One line of context: an event's location, a place's kind, a camera's
+  // route and nearby place, a feed's agency. May be empty.
+  string detail = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"Lime Kiln Rd at SR 108, near Sonora\""}];
+  // Where the text matched. Null for kinds matched by name alone.
+  SearchMatch match = 5;
+  // The API path that returns this thing (or, for a camera or feed, the list
+  // it is in).
+  string api_path = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"/api/v1/events/chp:261114MR0161\""}];
+  // A page about it elsewhere: an event's canonical source page, a feed's
+  // Broadcastify page, a camera's snapshot. May be empty.
+  string url = 7;
+  // EVENT and MESH_NODE only: the event's layer, category, status, severity
+  // and `observedAt`. Unspecified, empty and null for other kinds.
+  Layer layer = 8;
+  string category = 9;
+  EventStatus status = 10;
+  Severity severity = 11;
+  google.protobuf.Timestamp observed_at = 12;
 }
 
 // ListPlacesRequest filters the place directory.

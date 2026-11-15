@@ -120,3 +120,8 @@ to an agent:
 - **An empty result is not an all-clear.** Every search result carries
   `search.since` and a note saying what was and was not searched, in the same
   spirit as the standing disclaimer.
+- **A name lookup is its own tool.** `grid_search` returns the best few hits
+  of each kind (events, mesh nodes, places, roads, cameras, scanner feeds),
+  ranked, each with the tool to call next. `grid_events` with `q` is for every
+  match in date order and for counts; the two are kept apart so neither does
+  the other's job badly.

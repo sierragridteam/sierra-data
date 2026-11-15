@@ -410,6 +410,11 @@ home of a value.
 - **Tokenising identifiers.** PostgreSQL reads a hyphen before a digit as a
   minus sign, so `indexText` turns a hyphen next to a digit into a space on
   both the document and the query (`CCU-043`, `West-1w`, `SR-26`).
+- **Two orders.** `SearchEvents` is a list: newest first, keyset paged, with
+  a total. `SearchTopEvents` is the finder: ranked by `ts_rank_cd` with the
+  weights in `rankWeights`, raised for active and recent events, a fixed
+  small limit and no paging. Do not page a ranked query; rank is not a stable
+  key.
 - **Validators.** A backfill changes results without a revision, so it bumps
   the `search` version, which `SearchVersion` folds into the ETag of a request
   with `q` or `counts`.

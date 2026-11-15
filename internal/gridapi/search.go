@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	gridv1 "github.com/sierragridteam/sierra-data/api/grid/v1"
+	"github.com/sierragridteam/sierra-data/internal/clients/cwwp2"
 	"github.com/sierragridteam/sierra-data/internal/search"
 	"github.com/sierragridteam/sierra-data/internal/store"
 )
@@ -168,4 +170,228 @@ func (g *GridServer) historyWithSearch(ctx context.Context, hq store.HistoryQuer
 	out.Collapsed, out.NextPageToken = rows[:n], res.Next(n)
 	out.TotalMatches = wrapperspb.Int32(int32(res.Total))
 	return out, nil
+}
+
+// --- the finder (GET /api/v1/search) ---
+
+const (
+	finderDefaultLimit = 5
+	finderMaxLimit     = 20
+)
+
+// finderKinds is the fixed order hits and totals are returned in: where a
+// thing is, then what is happening there, then what to look at or listen to.
+var finderKinds = []gridv1.SearchKind{
+	gridv1.SearchKind_PLACE, gridv1.SearchKind_ROAD, gridv1.SearchKind_EVENT,
+	gridv1.SearchKind_MESH_NODE, gridv1.SearchKind_CAMERA, gridv1.SearchKind_SCANNER,
+}
+
+func parseSearchKinds(vals []string) (map[gridv1.SearchKind]bool, error) {
+	want := map[gridv1.SearchKind]bool{}
+	for _, raw := range vals {
+		for _, v := range strings.Split(raw, ",") {
+			v = strings.TrimSpace(v)
+			if v == "" {
+				continue
+			}
+			n, ok := gridv1.SearchKind_value[strings.ToUpper(v)]
+			if !ok || n == int32(gridv1.SearchKind_SEARCH_KIND_UNSPECIFIED) {
+				return nil, fmt.Errorf("unknown kind: %q", v)
+			}
+			want[gridv1.SearchKind(n)] = true
+		}
+	}
+	if len(want) == 0 {
+		for _, k := range finderKinds {
+			want[k] = true
+		}
+	}
+	return want, nil
+}
+
+// scored is a directory hit with its match score, for ranking a small list.
+type scored struct {
+	hit   *gridv1.SearchHit
+	score int
+}
+
+// topScored sorts best first (ties keep list order, which is the directory's
+// own) and returns the first limit hits and the count of all.
+func topScored(all []scored, limit int) ([]*gridv1.SearchHit, int) {
+	sort.SliceStable(all, func(i, j int) bool { return all[i].score > all[j].score })
+	out := make([]*gridv1.SearchHit, 0, min(limit, len(all)))
+	for i := 0; i < len(all) && i < limit; i++ {
+		out = append(out, all[i].hit)
+	}
+	return out, len(all)
+}
+
+// Search finds things by name or text across kinds.
+func (g *GridServer) Search(ctx context.Context, req *gridv1.SearchRequest) (*gridv1.SearchResults, error) {
+	q, err := parseSearch(req.GetQ(), req.GetQTyping())
+	if err != nil {
+		return nil, err
+	}
+	if q == nil {
+		return nil, invalidErr(errors.New("q is required"))
+	}
+	want, err := parseSearchKinds(req.GetKind())
+	if err != nil {
+		return nil, invalidErr(err)
+	}
+	limit := int(req.GetLimit())
+	switch {
+	case limit < 0:
+		return nil, invalidErr(errors.New("limit must not be negative"))
+	case limit == 0:
+		limit = finderDefaultLimit
+	case limit > finderMaxLimit:
+		limit = finderMaxLimit
+	}
+
+	out := &gridv1.SearchResults{Search: g.searchInfo(ctx, q)}
+	hits := map[gridv1.SearchKind][]*gridv1.SearchHit{}
+	totals := map[gridv1.SearchKind]int{}
+
+	if want[gridv1.SearchKind_PLACE] {
+		places, err := g.svc.Store.ListPlaces(ctx, gridv1.PlaceKind_PLACE_KIND_UNSPECIFIED, "")
+		if err != nil {
+			return nil, internalErr(ctx, err)
+		}
+		var all []scored
+		for _, p := range places {
+			kind := humanKind(p.GetKind().String())
+			if s, ok := q.Match(p.GetName(), p.GetSlug(), kind); ok {
+				all = append(all, scored{&gridv1.SearchHit{
+					Kind: gridv1.SearchKind_PLACE, Id: p.GetSlug(), Title: p.GetName(), Detail: kind,
+					ApiPath: "/api/v1/places/" + p.GetSlug() + "/summary",
+				}, s})
+			}
+		}
+		hits[gridv1.SearchKind_PLACE], totals[gridv1.SearchKind_PLACE] = topScored(all, limit)
+	}
+
+	if want[gridv1.SearchKind_ROAD] && g.svc.Cfg != nil {
+		var all []scored
+		for _, r := range g.svc.Cfg.Roads.MonitoredRoads {
+			if s, ok := q.Match(r.Name, r.Section, r.ID, strings.Join(r.LocationKeywords, " ")); ok {
+				all = append(all, scored{&gridv1.SearchHit{
+					Kind: gridv1.SearchKind_ROAD, Id: r.ID, Title: r.Name, Detail: r.Section,
+					ApiPath: "/api/v1/roads/" + r.ID + "/history",
+				}, s})
+			}
+		}
+		hits[gridv1.SearchKind_ROAD], totals[gridv1.SearchKind_ROAD] = topScored(all, limit)
+	}
+
+	for _, k := range []gridv1.SearchKind{gridv1.SearchKind_EVENT, gridv1.SearchKind_MESH_NODE} {
+		if !want[k] {
+			continue
+		}
+		mesh := []gridv1.Layer{gridv1.Layer_MESH}
+		var layers, exclude []gridv1.Layer
+		if k == gridv1.SearchKind_MESH_NODE {
+			layers = mesh
+		} else {
+			exclude = mesh
+		}
+		ranked, total, err := g.svc.Store.SearchTopEvents(ctx, *q, layers, exclude, limit)
+		if err != nil {
+			return nil, searchErr(ctx, err)
+		}
+		totals[k] = total
+		for _, r := range ranked {
+			ev := r.Event
+			hit := &gridv1.SearchHit{
+				Kind: k, Id: ev.GetId(), Title: ev.GetHeadline(), Detail: ev.GetAreaLabel(),
+				ApiPath: "/api/v1/events/" + ev.GetId(), Url: ev.GetCanonicalUrl(),
+				Layer: ev.GetLayer(), Category: ev.GetCategory(), Status: ev.GetStatus(),
+				Severity: ev.GetSeverity(), ObservedAt: ev.GetObservedAt(),
+			}
+			if len(r.Snippet.Parts) > 0 {
+				hit.Match = searchMatch(r.Snippet)
+			}
+			hits[k] = append(hits[k], hit)
+		}
+	}
+
+	if want[gridv1.SearchKind_CAMERA] {
+		// The same cameras ListCameras serves. A directory that is not
+		// configured or has never loaded was not searched: say so, rather
+		// than let "no cameras" read as "none match".
+		status := "UNAVAILABLE"
+		var cams []rankedCamera
+		if g.svc.Cameras != nil {
+			var list []cwwp2.Camera
+			list, status, _, _ = g.svc.Cameras.Cameras()
+			if status != "UNAVAILABLE" {
+				if cams, err = g.svc.camerasNear(ctx, list, nil); err != nil {
+					return nil, internalErr(ctx, err)
+				}
+			}
+		}
+		if status == "UNAVAILABLE" {
+			out.Unavailable = append(out.Unavailable, gridv1.SearchKind_CAMERA)
+		} else {
+			var all []scored
+			for _, rc := range cams {
+				c := rc.cam
+				where := joinNonEmpty(", ", c.Location.Route, c.Location.NearbyPlace)
+				if s, ok := q.Match(c.Name, where, c.Location.County, c.Description); ok {
+					all = append(all, scored{&gridv1.SearchHit{
+						Kind: gridv1.SearchKind_CAMERA, Id: c.ID, Title: c.Name, Detail: where,
+						ApiPath: "/api/v1/cameras", Url: c.ImageURL,
+					}, s})
+				}
+			}
+			hits[gridv1.SearchKind_CAMERA], totals[gridv1.SearchKind_CAMERA] = topScored(all, limit)
+		}
+	}
+
+	if want[gridv1.SearchKind_SCANNER] && g.svc.Cfg != nil {
+		var all []scored
+		for _, f := range g.svc.allScannerFeeds() {
+			if s, ok := q.Match(f.ChannelLabel, f.Agency, "scanner"); ok {
+				all = append(all, scored{&gridv1.SearchHit{
+					Kind: gridv1.SearchKind_SCANNER, Id: f.FeedID, Title: f.ChannelLabel, Detail: f.Agency,
+					ApiPath: "/api/v1/scanners", Url: "https://www.broadcastify.com/listen/feed/" + f.FeedID,
+				}, s})
+			}
+		}
+		hits[gridv1.SearchKind_SCANNER], totals[gridv1.SearchKind_SCANNER] = topScored(all, limit)
+	}
+
+	unavailable := map[gridv1.SearchKind]bool{}
+	for _, k := range out.Unavailable {
+		unavailable[k] = true
+	}
+	for _, k := range finderKinds {
+		if !want[k] {
+			continue
+		}
+		out.Hits = append(out.Hits, hits[k]...)
+		if !unavailable[k] {
+			out.Totals = append(out.Totals, &gridv1.SearchKindTotal{Kind: k, Matches: int32(totals[k])})
+		}
+	}
+	return out, nil
+}
+
+// humanKind renders an enum name for a reader: "EVAC_ZONE" -> "Evac zone".
+func humanKind(name string) string {
+	s := strings.ToLower(strings.ReplaceAll(name, "_", " "))
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+func joinNonEmpty(sep string, vals ...string) string {
+	var out []string
+	for _, v := range vals {
+		if v = strings.TrimSpace(v); v != "" {
+			out = append(out, v)
+		}
+	}
+	return strings.Join(out, sep)
 }

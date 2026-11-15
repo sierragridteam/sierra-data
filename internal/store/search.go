@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	gridv1 "github.com/sierragridteam/sierra-data/api/grid/v1"
@@ -946,4 +947,114 @@ func (s *Store) SearchHistoryByEvent(ctx context.Context, q HistoryQuery) (Histo
 		return HistoryMatchPage{}, err
 	}
 	return out, nil
+}
+
+// --- ranked search (the finder) ---
+
+// RankedEvent is one hit of SearchTopEvents.
+type RankedEvent struct {
+	Event   *gridv1.Event // the geometry-free copy
+	Snippet Snippet
+}
+
+// rankWeights are ts_rank_cd's weights for D, C, B, A: a match in the
+// headline, location or an identifier counts ten times one in the source's
+// name and five times one in the verbatim description.
+const rankWeights = `'{0.1, 0.2, 0.4, 1.0}'`
+
+// SearchTopEvents returns the best few events for a query, best first, and
+// how many match in all. It is for finding a thing, not for listing: the
+// order is relevance (where the words matched and how close together), raised
+// for events that are active or scheduled and for recent ones, and it does
+// not page. layers and exclude filter by layer (exclude wins); statuses nil
+// means every status.
+//
+// The recency factor runs from 3 for something observed now towards 1 for
+// something old (2 at one week, 1.5 at three): enough to put this week's
+// crash on Highway 4 above August's, which a long incident log would
+// otherwise outrank by repeating the road, and not enough to bury an exact
+// name match under a recent passing mention (a headline match weighs five
+// times a description match). Tried against the stored events on 2026-11-15;
+// length normalisation was tried too and ranked worse.
+func (s *Store) SearchTopEvents(ctx context.Context, q search.Query, layers, exclude []gridv1.Layer, limit int) ([]RankedEvent, int, error) {
+	if limit <= 0 {
+		return nil, 0, fmt.Errorf("store: SearchTopEvents needs a positive limit")
+	}
+	var out []RankedEvent
+	var total int
+	err := s.searchTx(ctx, func(tx *sql.Tx) error {
+		if err := s.checkSearchable(ctx, tx, q, false); err != nil {
+			return err
+		}
+		filter := func(args *sqlArgs) string {
+			f := ` FROM events e JOIN event_search s ON s.event_id = e.id AND s.tsv @@ ` + tsqueryExpr(q, args) + ` WHERE true`
+			if len(layers) > 0 {
+				f += ` AND e.layer = ANY(` + args.add(enumInts(layers)) + `)`
+			}
+			if len(exclude) > 0 {
+				f += ` AND e.layer <> ALL(` + args.add(enumInts(exclude)) + `)`
+			}
+			return f
+		}
+		var cargs sqlArgs
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*)`+filter(&cargs), cargs...).Scan(&total); err != nil {
+			return fmt.Errorf("store: count ranked matches: %w", err)
+		}
+		if total == 0 {
+			return nil
+		}
+		var args sqlArgs
+		tsq := tsqueryExpr(q, &args)
+		now := args.add(time.Now().Unix())
+		live := args.add(enumInts([]gridv1.EventStatus{gridv1.EventStatus_ACTIVE, gridv1.EventStatus_SCHEDULED}))
+		stmt := `SELECT COALESCE(l.proto, e.proto) FROM (
+			SELECT e.id, e.observed_at,
+			       ts_rank_cd(` + rankWeights + `, s.tsv, ` + tsq + `)
+			       * CASE WHEN e.status = ANY(` + live + `) THEN 1.5 ELSE 1 END
+			       * (1 + 2 / (1 + GREATEST(` + now + ` - e.observed_at, 0) / 604800.0)) AS score` +
+			filter(&args) + `
+			ORDER BY score DESC, e.observed_at DESC, e.id ASC LIMIT ` + args.add(limit) + `) k
+			JOIN events e ON e.id = k.id LEFT JOIN event_lite l ON l.event_id = k.id
+			ORDER BY k.score DESC, k.observed_at DESC, k.id ASC`
+		rows, err := tx.QueryContext(ctx, stmt, args...)
+		if err != nil {
+			return fmt.Errorf("store: ranked search: %w", err)
+		}
+		var docs []search.Doc
+		for rows.Next() {
+			var blob []byte
+			if err := rows.Scan(&blob); err != nil {
+				rows.Close()
+				return fmt.Errorf("store: ranked search: %w", err)
+			}
+			ev := &gridv1.Event{}
+			if err := proto.Unmarshal(blob, ev); err != nil {
+				rows.Close()
+				return fmt.Errorf("store: unmarshal ranked event: %w", err)
+			}
+			stripShape(ev)
+			out = append(out, RankedEvent{Event: ev})
+			docs = append(docs, search.Build(ev))
+		}
+		if err := rows.Close(); err != nil {
+			return fmt.Errorf("store: ranked search: %w", err)
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("store: ranked search: %w", err)
+		}
+		if len(docs) > 0 {
+			snips, err := snippets(ctx, tx, q, docs)
+			if err != nil {
+				return err
+			}
+			for i := range out {
+				out[i].Snippet = snips[i]
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return out, total, nil
 }

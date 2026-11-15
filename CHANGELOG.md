@@ -73,6 +73,34 @@ rather than "no matches" from a partial one. Requests without them are
 unaffected. The same happens briefly after a release that changes the search
 rules.
 
+### The finder: `GET /api/v1/search`
+
+One search box across kinds. `GET /api/v1/search?q=` returns the best few
+matches of each kind, in a fixed kind order: `PLACE`, `ROAD`, `EVENT`,
+`MESH_NODE`, `CAMERA`, `SCANNER`. Use it to turn a name into an id ("priest
+fire", a node's name or the start of its public key, "bear valley", "hwy 4")
+and then call the endpoint in the hit's `apiPath`.
+
+- `hits[]`: `kind`, `id`, `title`, `detail`, `match` (an excerpt, as on the
+  events search), `apiPath`, `url`, and for events and mesh nodes `layer`,
+  `category`, `status`, `severity`, `observedAt`.
+- `totals[]`: how many of each kind matched in all, zero included, so a caller
+  knows when the few shown are not all.
+- `unavailable[]`: kinds that could not be searched (the camera list when its
+  source has never loaded). No hits of such a kind means unknown, not none.
+- `search`: as on the events search.
+
+Parameters: `q` (required, the same syntax), `qTyping`, `kind` (repeat or
+comma-separate; default all) and `limit` per kind (default 5, at most 20).
+Events and mesh nodes are ranked by relevance: a match in the headline,
+location or an identifier counts most, and active and recent events are
+raised. Every status is searched and each hit says its own. It does not page:
+for every matching event in date order with a total, use `q` on
+`/api/v1/events`. 503 while the event index is being built, as there.
+
+MCP gains `grid_search(q, kind?, limit?)`, whose hits name the tool to call
+next.
+
 ### MCP: `grid_events` and `grid_history` search text
 
 `grid_events` takes `q` and `count`, and returns `total`, `counts`, a `match`

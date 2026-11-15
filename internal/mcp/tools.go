@@ -120,6 +120,20 @@ func (s *Server) registerTools() []tool {
 			Handler:     s.handleEvents,
 		},
 		{
+			Name: "grid_search",
+			Description: "Find a thing by name when you do not have its id: a fire, a road incident, a place, a monitored " +
+				"road, a MeshCore mesh node (by name or the start of its public key), a traffic camera, a scanner feed. " +
+				"Returns the best few matches of each kind with what to call next (next), and totals per kind so you know " +
+				"when the few shown are not all. Same q syntax as grid_events (words all required, \"quoted phrase\", " +
+				"-exclude, OR; a road in any spelling). Events and nodes are ranked by relevance, active and recent first, " +
+				"and every status is searched; each hit says its status. Use this to resolve a name, then grid_event / " +
+				"grid_situation for the facts. For every matching event in date order with a count, use grid_events with q " +
+				"instead. A kind listed in unavailable could not be searched (unknown, not none), and no hit at all means " +
+				"nothing stored matched, not that nothing happened.",
+			InputSchema: json.RawMessage(`{"type":"object","properties":{"q":{"type":"string","description":"what to find, e.g. \"priest fire\", \"SIERRA Arnold\", \"bear valley camera\", \"hwy 4\""},"kind":{"type":"string","description":"PLACE|ROAD|EVENT|MESH_NODE|CAMERA|SCANNER, comma-separated; default all"},"limit":{"type":"integer","description":"hits per kind, default 5, max 20"}},"required":["q"]}`),
+			Handler:     s.handleSearch,
+		},
+		{
 			Name:        "grid_event",
 			Description: "Full detail on one event by id (from grid_events): headline, AI summary, verbatim description, severity/status, typed detail (acres/containment, evac level, magnitude…), provenance and the canonical source link.",
 			InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string","description":"event id, e.g. calfire:2026-priest-fire"}},"required":["id"]}`),
@@ -253,6 +267,69 @@ func (s *Server) handleEvents(ctx context.Context, args map[string]interface{}) 
 	if total, ok := body["totalMatches"]; ok && total != nil {
 		out["total"] = total
 		out["counts"] = body["counts"]
+	}
+	if info, ok := body["search"]; ok && info != nil {
+		out["search"] = info
+	}
+	return out, nil
+}
+
+func (s *Server) handleSearch(ctx context.Context, args map[string]interface{}) (map[string]interface{}, error) {
+	text := strings.TrimSpace(argStr(args, "q"))
+	if text == "" {
+		return nil, fmt.Errorf("q is required (what to find)")
+	}
+	q := url.Values{"q": {text}}
+	if k := argStr(args, "kind"); k != "" {
+		q.Set("kind", k)
+	}
+	if n := argInt(args, "limit"); n > 0 {
+		q.Set("limit", strconv.Itoa(n))
+	}
+	body, err := s.callAPIJSON(ctx, "/api/v1/search?"+q.Encode())
+	if err != nil {
+		return nil, err
+	}
+	hits := asArray(body["hits"])
+	for _, h := range hits {
+		hit, ok := h.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if m := matchText(hit["match"]); m != "" {
+			hit["match"] = m
+		} else {
+			delete(hit, "match")
+		}
+		kind, _ := hit["kind"].(string)
+		id, _ := hit["id"].(string)
+		title, _ := hit["title"].(string)
+		switch kind {
+		case "EVENT", "MESH_NODE":
+			hit["next"] = "grid_event id=" + id
+		case "PLACE":
+			hit["next"] = "grid_situation location=" + id
+		case "ROAD":
+			hit["next"] = "grid_events q=\"" + title + "\" layer=road_incident"
+		default:
+			// A camera or a feed is a link, not a record: url is the thing.
+			delete(hit, "apiPath")
+		}
+		// Only events carry these; drop the empty ones a non-event hit has.
+		if kind != "EVENT" && kind != "MESH_NODE" {
+			for _, k := range []string{"layer", "category", "status", "severity", "observedAt"} {
+				delete(hit, k)
+			}
+		}
+		for _, k := range []string{"url", "detail", "category"} {
+			if v, _ := hit[k].(string); v == "" {
+				delete(hit, k)
+			}
+		}
+	}
+	out := map[string]interface{}{"hits": hits, "count": len(hits), "totals": body["totals"]}
+	if un := asArray(body["unavailable"]); len(un) > 0 {
+		out["unavailable"] = un
 	}
 	if info, ok := body["search"]; ok && info != nil {
 		out["search"] = info

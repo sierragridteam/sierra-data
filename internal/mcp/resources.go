@@ -16,6 +16,7 @@ Public, read-only, keyless hazard/road/weather data for the central Sierra
 ## Tools
 - grid_situation(location) — area mode + rollup for a place/address/lat,lng. Start here.
 - grid_events(location?, layer?, severity_min?, status?, since?, q?, count?, limit?) — list or text-search events (hazards + mesh-node presence, layer=mesh).
+- grid_search(q, kind?, limit?) — find a thing by name across kinds (events, mesh nodes, places, roads, cameras, scanner feeds) and get the id or link.
 - grid_event(id) — full detail on one event.
 - grid_conditions(location?) — roads + weather conditions.
 - grid_resolve(address | lat,lng) — location → containing places.
@@ -41,8 +42,10 @@ in any spelling ("hwy 4", "SR-4", "state route 4").
   page and counts breaks it down by layer and category, so do not page to
   tally. count=true gives the same totals without q. grid_situation gives
   per-domain active counts for one place.
-- "Tell me about the <name> fire" / "is node <name> up?" — q with the name
-  finds the event id; then grid_event(id).
+- "Tell me about the <name> fire" / "is node <name> up?" / "which camera shows
+  <place>?" — grid_search with the name: the best few of each kind, ranked,
+  each with what to call next. Then grid_event(id) for the facts. Use
+  grid_events with q when you need every match or a count, not a name lookup.
 - "When was <an order/warning/restriction> first issued, and when was it
   lifted?" — grid_history with q. It searches what each stored revision said,
   so it finds text the event no longer carries, and answers one row per event:

@@ -9,7 +9,7 @@ import (
 // recordingGrid answers /api/v1/events and /api/v1/history with canned search
 // bodies and keeps the query string each was called with.
 type recordingGrid struct {
-	events, history url.Values
+	events, history, search url.Values
 }
 
 func (g *recordingGrid) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -39,9 +39,90 @@ func (g *recordingGrid) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		default:
 			_, _ = w.Write([]byte(`{"revisions":[{"revision":1,"event":{"id":"e1","headline":"Big Fire","description":"long"},"match":null}],"nextPageToken":"","totalMatches":null,"collapsed":[],"search":null}`))
 		}
+	case "/api/v1/search":
+		g.search = r.URL.Query()
+		_, _ = w.Write([]byte(`{"hits":[
+			{"kind":"PLACE","id":"arnold","title":"Arnold","detail":"Town","match":null,"apiPath":"/api/v1/places/arnold/summary","url":"","layer":"LAYER_UNSPECIFIED","category":"","status":"EVENT_STATUS_UNSPECIFIED","severity":"SEVERITY_UNSPECIFIED","observedAt":null},
+			{"kind":"ROAD","id":"hwy4-arnold-bearvalley","title":"Hwy 4","detail":"Arnold to Bear Valley","match":null,"apiPath":"/api/v1/roads/hwy4-arnold-bearvalley/history","url":"","layer":"LAYER_UNSPECIFIED","category":"","status":"EVENT_STATUS_UNSPECIFIED","severity":"SEVERITY_UNSPECIFIED","observedAt":null},
+			{"kind":"EVENT","id":"calfire:x","title":"Arnold Fire","detail":"","match":{"field":"title","parts":[{"text":"Arnold","hit":true},{"text":" Fire","hit":false}]},"apiPath":"/api/v1/events/calfire:x","url":"https://fire.ca.gov/x","layer":"WILDFIRE","category":"wildfire","status":"RESOLVED","severity":"SEVERE","observedAt":"2026-08-01T00:00:00Z"},
+			{"kind":"CAMERA","id":"c1","title":"Hwy 4 at Arnold","detail":"SR-4, Arnold","match":null,"apiPath":"/api/v1/cameras","url":"https://cwwp2.dot.ca.gov/c1.jpg","layer":"LAYER_UNSPECIFIED","category":"","status":"EVENT_STATUS_UNSPECIFIED","severity":"SEVERITY_UNSPECIFIED","observedAt":null}],
+			"totals":[{"kind":"PLACE","matches":1},{"kind":"ROAD","matches":1},{"kind":"EVENT","matches":12},{"kind":"MESH_NODE","matches":0},{"kind":"SCANNER","matches":0}],
+			"unavailable":[],"search":{"query":"arnold","since":"2026-07-07T00:19:16Z","note":"n"}}`))
 	default:
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte(`{"code":5,"message":"not found"}`))
+	}
+}
+
+func TestGridSearch(t *testing.T) {
+	g := &recordingGrid{}
+	s := NewHandler(g)
+	out := structured(t, s, "grid_search", `{"q":"arnold","kind":"place,event","limit":3}`)
+	if g.search.Get("q") != "arnold" || g.search.Get("kind") != "place,event" || g.search.Get("limit") != "3" {
+		t.Errorf("search params = %v", g.search)
+	}
+	hits := out["hits"].([]interface{})
+	if len(hits) != 4 || out["count"] != float64(4) {
+		t.Fatalf("hits = %v", hits)
+	}
+	next := map[string]string{}
+	for _, h := range hits {
+		hit := h.(map[string]interface{})
+		kind := hit["kind"].(string)
+		if n, ok := hit["next"].(string); ok {
+			next[kind] = n
+		}
+		switch kind {
+		case "EVENT":
+			// An event keeps its facts and gets a one-line excerpt.
+			if hit["status"] != "RESOLVED" || hit["layer"] != "WILDFIRE" || hit["match"] != "**Arnold** Fire" {
+				t.Errorf("event hit = %v", hit)
+			}
+			if _, ok := hit["detail"]; ok {
+				t.Error("an empty detail should be dropped")
+			}
+		case "PLACE", "ROAD", "CAMERA":
+			// Fields that only mean something for an event are not sent as
+			// "unspecified" for a model to misread.
+			for _, k := range []string{"layer", "status", "severity", "observedAt", "match"} {
+				if _, ok := hit[k]; ok {
+					t.Errorf("%s hit carries %s", kind, k)
+				}
+			}
+		}
+		if kind == "CAMERA" {
+			if hit["url"] != "https://cwwp2.dot.ca.gov/c1.jpg" {
+				t.Errorf("camera url = %v", hit["url"])
+			}
+			if _, ok := hit["apiPath"]; ok {
+				t.Error("a camera's link is its url")
+			}
+		}
+	}
+	want := map[string]string{
+		"PLACE": "grid_situation location=arnold",
+		"ROAD":  `grid_events q="Hwy 4" layer=road_incident`,
+		"EVENT": "grid_event id=calfire:x",
+	}
+	for k, v := range want {
+		if next[k] != v {
+			t.Errorf("next[%s] = %q, want %q", k, next[k], v)
+		}
+	}
+	if len(out["totals"].([]interface{})) != 5 {
+		t.Errorf("totals = %v", out["totals"])
+	}
+	if _, ok := out["unavailable"]; ok {
+		t.Error("an empty unavailable list should be dropped")
+	}
+	if out["search"].(map[string]interface{})["note"] == nil {
+		t.Error("search note missing")
+	}
+
+	// q is required.
+	res := call(t, s, "tools/call", `{"name":"grid_search","arguments":{}}`)
+	if res["isError"] != true {
+		t.Error("grid_search without q should be a tool error")
 	}
 }
 
