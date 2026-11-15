@@ -1071,6 +1071,10 @@
             "description": "INVALID_ARGUMENT: `q` missing, too long (200 bytes, 16 terms) or with nothing to search for; an unknown `kind`; a negative `limit`.",
             "schema": {}
           },
+          "404": {
+            "description": "NOT_FOUND: unknown place.",
+            "schema": {}
+          },
           "503": {
             "description": "UNAVAILABLE: the search index is still being built (the first minutes after a release that changes it). Retry.",
             "schema": {}
@@ -1124,6 +1128,14 @@
             "required": false,
             "type": "integer",
             "format": "int32"
+          },
+          {
+            "name": "place",
+            "description": "Only events and mesh nodes attached to this place, and cameras near it\n(slug or id, as on `/api/v1/events` and `/api/v1/cameras`). Places, roads\nand scanner feeds are directories and are not narrowed. Default: anywhere.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "x-example": "ebbetts-pass"
           }
         ],
         "tags": [

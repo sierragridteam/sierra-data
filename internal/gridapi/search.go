@@ -252,6 +252,17 @@ func (g *GridServer) Search(ctx context.Context, req *gridv1.SearchRequest) (*gr
 		limit = finderMaxLimit
 	}
 
+	var place *gridv1.Place
+	if p := req.GetPlace(); p != "" {
+		place, err = g.svc.Store.GetPlace(ctx, p)
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, notFoundErr("unknown place: %q", p)
+		}
+		if err != nil {
+			return nil, internalErr(ctx, err)
+		}
+	}
+
 	out := &gridv1.SearchResults{Search: g.searchInfo(ctx, q)}
 	hits := map[gridv1.SearchKind][]*gridv1.SearchHit{}
 	totals := map[gridv1.SearchKind]int{}
@@ -302,7 +313,7 @@ func (g *GridServer) Search(ctx context.Context, req *gridv1.SearchRequest) (*gr
 		// best hits can be the same headline and place five times over. Ask
 		// for more than the limit and keep the best of each look-alike; the
 		// total still counts every event.
-		ranked, total, err := g.svc.Store.SearchTopEvents(ctx, *q, layers, exclude, min(limit*finderOverfetch, finderMaxLimit*finderOverfetch))
+		ranked, total, err := g.svc.Store.SearchTopEvents(ctx, *q, place.GetId(), layers, exclude, min(limit*finderOverfetch, finderMaxLimit*finderOverfetch))
 		if err != nil {
 			return nil, searchErr(ctx, err)
 		}
@@ -343,7 +354,7 @@ func (g *GridServer) Search(ctx context.Context, req *gridv1.SearchRequest) (*gr
 			var list []cwwp2.Camera
 			list, status, _, _ = g.svc.Cameras.Cameras()
 			if status != "UNAVAILABLE" {
-				if cams, err = g.svc.camerasNear(ctx, list, nil); err != nil {
+				if cams, err = g.svc.camerasNear(ctx, list, place); err != nil {
 					return nil, internalErr(ctx, err)
 				}
 			}

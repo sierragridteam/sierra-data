@@ -1709,6 +1709,10 @@ service GridService {
         value: {description: "INVALID_ARGUMENT: `q` missing, too long (200 bytes, 16 terms) or with nothing to search for; an unknown `kind`; a negative `limit`."}
       }
       responses: {
+        key: "404"
+        value: {description: "NOT_FOUND: unknown place."}
+      }
+      responses: {
         key: "503"
         value: {description: "UNAVAILABLE: the search index is still being built (the first minutes after a release that changes it). Retry."}
       }
@@ -2586,6 +2590,10 @@ message SearchRequest {
     minimum: 0
     maximum: 20
   }];
+  // Only events and mesh nodes attached to this place, and cameras near it
+  // (slug or id, as on `/api/v1/events` and `/api/v1/cameras`). Places, roads
+  // and scanner feeds are directories and are not narrowed. Default: anywhere.
+  string place = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"ebbetts-pass\""}];
 }
 
 // SearchKind is what a finder hit is.

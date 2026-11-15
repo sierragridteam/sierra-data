@@ -966,8 +966,8 @@ const rankWeights = `'{0.1, 0.2, 0.4, 1.0}'`
 // how many match in all. It is for finding a thing, not for listing: the
 // order is relevance (where the words matched and how close together), raised
 // for events that are active or scheduled and for recent ones, and it does
-// not page. layers and exclude filter by layer (exclude wins); statuses nil
-// means every status.
+// not page. placeID keeps only events attached to that place ("" for any);
+// layers and exclude filter by layer (exclude wins). Every status is searched.
 //
 // The recency factor runs from 3 for something observed now towards 1 for
 // something old (2 at one week, 1.5 at three): enough to put this week's
@@ -976,7 +976,7 @@ const rankWeights = `'{0.1, 0.2, 0.4, 1.0}'`
 // name match under a recent passing mention (a headline match weighs five
 // times a description match). Tried against the stored events on 2026-11-15;
 // length normalisation was tried too and ranked worse.
-func (s *Store) SearchTopEvents(ctx context.Context, q search.Query, layers, exclude []gridv1.Layer, limit int) ([]RankedEvent, int, error) {
+func (s *Store) SearchTopEvents(ctx context.Context, q search.Query, placeID string, layers, exclude []gridv1.Layer, limit int) ([]RankedEvent, int, error) {
 	if limit <= 0 {
 		return nil, 0, fmt.Errorf("store: SearchTopEvents needs a positive limit")
 	}
@@ -987,7 +987,11 @@ func (s *Store) SearchTopEvents(ctx context.Context, q search.Query, layers, exc
 			return err
 		}
 		filter := func(args *sqlArgs) string {
-			f := ` FROM events e JOIN event_search s ON s.event_id = e.id AND s.tsv @@ ` + tsqueryExpr(q, args) + ` WHERE true`
+			f := ` FROM events e JOIN event_search s ON s.event_id = e.id AND s.tsv @@ ` + tsqueryExpr(q, args)
+			if placeID != "" {
+				f += ` JOIN event_places ep ON ep.event_id = e.id AND ep.place_id = ` + args.add(placeID)
+			}
+			f += ` WHERE true`
 			if len(layers) > 0 {
 				f += ` AND e.layer = ANY(` + args.add(enumInts(layers)) + `)`
 			}

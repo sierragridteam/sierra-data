@@ -426,6 +426,19 @@ func TestFinderSearchesEveryKind(t *testing.T) {
 	assert.Len(t, res.GetHits(), 1)
 	assert.Greater(t, totalOf(res, gridv1.SearchKind_PLACE), 1, "the limit caps the hits, not the total")
 
+	// place narrows events to those attached to it; the directories are not
+	// narrowed. An unknown place is a 404, not an empty answer.
+	res, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "arnold", Place: "high-country"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"usgs:q1"}, hitIDs(res, gridv1.SearchKind_EVENT), "the fixture quake is attached to high-country")
+	assert.NotEmpty(t, hitIDs(res, gridv1.SearchKind_PLACE))
+	res, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "arnold", Place: "calaveras-county"})
+	require.NoError(t, err)
+	assert.Empty(t, hitIDs(res, gridv1.SearchKind_EVENT))
+	assert.Equal(t, 0, totalOf(res, gridv1.SearchKind_EVENT))
+	_, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "arnold", Place: "atlantis"})
+	assert.Equal(t, codes.NotFound, status.Code(err))
+
 	// Typing: a prefix finds the place and the node.
 	res, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "arn", QTyping: true})
 	require.NoError(t, err)

@@ -610,7 +610,7 @@ func TestSearchTopEventsRanks(t *testing.T) {
 	)
 	top := func(q string, layers, exclude []gridv1.Layer, limit int) ([]string, int) {
 		t.Helper()
-		hits, total, err := s.SearchTopEvents(ctx, *mustQuery(t, q+" "), layers, exclude, limit)
+		hits, total, err := s.SearchTopEvents(ctx, *mustQuery(t, q+" "), "", layers, exclude, limit)
 		require.NoError(t, err)
 		ids := make([]string, len(hits))
 		for i, h := range hits {
@@ -642,7 +642,7 @@ func TestSearchTopEventsRanks(t *testing.T) {
 	ids, total = top("volcano", nil, nil, 5)
 	assert.Empty(t, ids)
 	assert.Zero(t, total)
-	hits, _, err := s.SearchTopEvents(ctx, *mustQuery(t, "staged "), nil, nil, 1)
+	hits, _, err := s.SearchTopEvents(ctx, *mustQuery(t, "staged "), "", nil, nil, 1)
 	require.NoError(t, err)
 	require.Len(t, hits, 1)
 	assert.Equal(t, "text", hits[0].Snippet.Field)

@@ -92,7 +92,9 @@ and then call the endpoint in the hit's `apiPath`.
 - `search`: as on the events search.
 
 Parameters: `q` (required, the same syntax), `qTyping`, `kind` (repeat or
-comma-separate; default all) and `limit` per kind (default 5, at most 20).
+comma-separate; default all), `limit` per kind (default 5, at most 20) and
+`place`, which keeps only events and mesh nodes attached to a place and
+cameras near it (the place, road and scanner directories are not narrowed).
 Events and mesh nodes are ranked by relevance: a match in the headline,
 location or an identifier counts most, and active and recent events are
 raised. Events with the same headline and location (a lane closure's work

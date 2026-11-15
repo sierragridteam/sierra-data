@@ -6692,7 +6692,11 @@ type SearchRequest struct {
 	Kind []string `protobuf:"bytes,3,rep,name=kind,proto3" json:"kind,omitempty"`
 	// Most hits per kind. 0 or omitted means 5; values over 20 are clamped to
 	// 20; a negative value is a 400.
-	Limit         int32 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	Limit int32 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Only events and mesh nodes attached to this place, and cameras near it
+	// (slug or id, as on `/api/v1/events` and `/api/v1/cameras`). Places, roads
+	// and scanner feeds are directories and are not narrowed. Default: anywhere.
+	Place         string `protobuf:"bytes,5,opt,name=place,proto3" json:"place,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6753,6 +6757,13 @@ func (x *SearchRequest) GetLimit() int32 {
 		return x.Limit
 	}
 	return 0
+}
+
+func (x *SearchRequest) GetPlace() string {
+	if x != nil {
+		return x.Place
+	}
+	return ""
 }
 
 // SearchResults is the finder's answer.
@@ -9463,12 +9474,13 @@ const file_grid_proto_rawDesc = "" +
 	"\x01q\x18\t \x01(\tB\x1a\x92A\x17J\x12\"evacuation order\"x\xc8\x01R\x01q\x12\x19\n" +
 	"\bq_typing\x18\n" +
 	" \x01(\bR\aqTyping\x12'\n" +
-	"\bcollapse\x18\v \x01(\tB\v\x92A\b\xf2\x02\x05eventR\bcollapse\"\xc2\x01\n" +
+	"\bcollapse\x18\v \x01(\tB\v\x92A\b\xf2\x02\x05eventR\bcollapse\"\xed\x01\n" +
 	"\rSearchRequest\x12#\n" +
 	"\x01q\x18\x01 \x01(\tB\x15\x92A\x12J\r\"bear valley\"x\xc8\x01R\x01q\x12\x19\n" +
 	"\bq_typing\x18\x02 \x01(\bR\aqTyping\x12M\n" +
 	"\x04kind\x18\x03 \x03(\tB9\x92A6\xf2\x02\x05PLACE\xf2\x02\x04ROAD\xf2\x02\x05EVENT\xf2\x02\tMESH_NODE\xf2\x02\x06CAMERA\xf2\x02\aSCANNERR\x04kind\x12\"\n" +
-	"\x05limit\x18\x04 \x01(\x05B\f\x92A\tY\x00\x00\x00\x00\x00\x004@R\x05limit\"\xe4\x01\n" +
+	"\x05limit\x18\x04 \x01(\x05B\f\x92A\tY\x00\x00\x00\x00\x00\x004@R\x05limit\x12)\n" +
+	"\x05place\x18\x05 \x01(\tB\x13\x92A\x10J\x0e\"ebbetts-pass\"R\x05place\"\xe4\x01\n" +
 	"\rSearchResults\x12&\n" +
 	"\x04hits\x18\x01 \x03(\v2\x12.grid.v1.SearchHitR\x04hits\x120\n" +
 	"\x06totals\x18\x02 \x03(\v2\x18.grid.v1.SearchKindTotalR\x06totals\x12F\n" +
@@ -9756,7 +9768,7 @@ const file_grid_proto_rawDesc = "" +
 	"\tMESH_NODE\x10\x04\x12\n" +
 	"\n" +
 	"\x06CAMERA\x10\x05\x12\v\n" +
-	"\aSCANNER\x10\x062\xb4'\n" +
+	"\aSCANNER\x10\x062\xd8'\n" +
 	"\vGridService\x12\xa2\x05\n" +
 	"\n" +
 	"ListEvents\x12\x1a.grid.v1.ListEventsRequest\x1a\x12.grid.v1.EventList\"\xe3\x04\x92A\xc9\x04\n" +
@@ -9802,11 +9814,13 @@ const file_grid_proto_rawDesc = "" +
 	"\x03404\x12\x1b\n" +
 	"\x19NOT_FOUND: unknown place.J\x80\x01\n" +
 	"\x03503\x12y\n" +
-	"wUNAVAILABLE: `q` was asked for while the search index is still being built. Retry; requests without `q` are unaffected.\x82\xd3\xe4\x93\x02\x11\x12\x0f/api/v1/history\x12\xe7\x02\n" +
-	"\x06Search\x12\x16.grid.v1.SearchRequest\x1a\x16.grid.v1.SearchResults\"\xac\x02\x92A\x92\x02\n" +
+	"wUNAVAILABLE: `q` was asked for while the search index is still being built. Retry; requests without `q` are unaffected.\x82\xd3\xe4\x93\x02\x11\x12\x0f/api/v1/history\x12\x8b\x03\n" +
+	"\x06Search\x12\x16.grid.v1.SearchRequest\x1a\x16.grid.v1.SearchResults\"\xd0\x02\x92A\xb6\x02\n" +
 	"\x06EventsJ\x8e\x01\n" +
 	"\x03400\x12\x86\x01\n" +
-	"\x83\x01INVALID_ARGUMENT: `q` missing, too long (200 bytes, 16 terms) or with nothing to search for; an unknown `kind`; a negative `limit`.Jw\n" +
+	"\x83\x01INVALID_ARGUMENT: `q` missing, too long (200 bytes, 16 terms) or with nothing to search for; an unknown `kind`; a negative `limit`.J\"\n" +
+	"\x03404\x12\x1b\n" +
+	"\x19NOT_FOUND: unknown place.Jw\n" +
 	"\x03503\x12p\n" +
 	"nUNAVAILABLE: the search index is still being built (the first minutes after a release that changes it). Retry.\x82\xd3\xe4\x93\x02\x10\x12\x0e/api/v1/search\x12\xdd\x01\n" +
 	"\n" +

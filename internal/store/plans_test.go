@@ -159,7 +159,7 @@ func hotCalls(ids hotIDs) []planTarget {
 			if _, err = s.SearchEvents(ctx, EventQuery{Search: &q, Statuses: all}); err != nil {
 				return err
 			}
-			_, _, err = s.SearchTopEvents(ctx, q, nil, []gridv1.Layer{gridv1.Layer_MESH}, 5)
+			_, _, err = s.SearchTopEvents(ctx, q, "", nil, []gridv1.Layer{gridv1.Layer_MESH}, 5)
 			return err
 		}, []string{"idx_event_search_tsv"}},
 		{"history text search", func(ctx context.Context, s *Store) error {
