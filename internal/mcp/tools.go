@@ -134,6 +134,28 @@ func (s *Server) registerTools() []tool {
 			Handler:     s.handleSearch,
 		},
 		{
+			// The two names below are fixed by clients, not by us: ChatGPT's deep
+			// research and company knowledge only use a server's tools named
+			// exactly "search" and "fetch", with these argument and result
+			// shapes (developers.openai.com/docs/mcp, checked 2026-11-15). They
+			// are thin forms of grid_search and grid_event; a client that can
+			// call any tool should prefer the grid_* tools.
+			Name: "search",
+			Description: "Search The Grid (central Sierra hazard, road, weather-alert, power and mesh events, and places) " +
+				"by text and return matching records as {id, title, url}. Pass each id to fetch for the full record. " +
+				"Words are all required; a road matches in any spelling (\"hwy 4\"). No result means nothing stored " +
+				"matched, not that nothing happened. Reference only; verify with official sources.",
+			InputSchema: json.RawMessage(`{"type":"object","properties":{"query":{"type":"string","description":"what to search for"}},"required":["query"]}`),
+			Handler:     s.handleGenericSearch,
+		},
+		{
+			Name: "fetch",
+			Description: "Fetch one record found by search, by its id: the full text of an event (headline, status, " +
+				"severity, location, summary, the source's own description) or a place's current situation.",
+			InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string","description":"an id returned by search"}},"required":["id"]}`),
+			Handler:     s.handleGenericFetch,
+		},
+		{
 			Name:        "grid_event",
 			Description: "Full detail on one event by id (from grid_events): headline, AI summary, verbatim description, severity/status, typed detail (acres/containment, evac level, magnitude…), provenance and the canonical source link.",
 			InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string","description":"event id, e.g. calfire:2026-priest-fire"}},"required":["id"]}`),
@@ -335,6 +357,122 @@ func (s *Server) handleSearch(ctx context.Context, args map[string]interface{}) 
 		out["search"] = info
 	}
 	return out, nil
+}
+
+// publicBaseURL is where the API is served, for the links the generic
+// search/fetch tools must return (a client only cites a result with a url).
+const publicBaseURL = "https://data.sierragridteam.org"
+
+// Ids of the generic tools carry their kind, so fetch knows what to read.
+const (
+	genericEvent = "event:"
+	genericPlace = "place:"
+)
+
+func (s *Server) handleGenericSearch(ctx context.Context, args map[string]interface{}) (map[string]interface{}, error) {
+	text := strings.TrimSpace(argStr(args, "query"))
+	if text == "" {
+		return nil, fmt.Errorf("query is required")
+	}
+	q := url.Values{"q": {text}, "kind": {"EVENT,MESH_NODE,PLACE"}, "limit": {"10"}}
+	body, err := s.callAPIJSON(ctx, "/api/v1/search?"+q.Encode())
+	if err != nil {
+		return nil, err
+	}
+	results := []interface{}{}
+	for _, h := range asArray(body["hits"]) {
+		hit, ok := h.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		kind, _ := hit["kind"].(string)
+		id, _ := hit["id"].(string)
+		title, _ := hit["title"].(string)
+		if detail, _ := hit["detail"].(string); detail != "" {
+			title += " (" + detail + ")"
+		}
+		link, _ := hit["url"].(string)
+		switch kind {
+		case "PLACE":
+			id = genericPlace + id
+		default:
+			if st, _ := hit["status"].(string); st != "" && st != "ACTIVE" {
+				title += " [" + st + "]"
+			}
+			id = genericEvent + id
+		}
+		if link == "" {
+			if p, _ := hit["apiPath"].(string); p != "" {
+				link = publicBaseURL + p
+			}
+		}
+		results = append(results, map[string]interface{}{"id": id, "title": title, "url": link})
+	}
+	return map[string]interface{}{"results": results}, nil
+}
+
+func (s *Server) handleGenericFetch(ctx context.Context, args map[string]interface{}) (map[string]interface{}, error) {
+	id := strings.TrimSpace(argStr(args, "id"))
+	switch {
+	case strings.HasPrefix(id, genericPlace):
+		slug := strings.TrimPrefix(id, genericPlace)
+		path := "/api/v1/places/" + url.PathEscape(slug) + "/summary"
+		body, err := s.callAPIJSON(ctx, path)
+		if err != nil {
+			return nil, fmt.Errorf("place %q: %w", slug, err)
+		}
+		return map[string]interface{}{
+			"id": id, "title": "Current situation: " + slug, "text": prettyJSON(body), "url": publicBaseURL + path,
+			"metadata": map[string]interface{}{"kind": "place"},
+		}, nil
+	case id == "":
+		return nil, fmt.Errorf("id is required (an id returned by search)")
+	}
+	// An event; the prefix is optional so a bare event id works too.
+	eventID := strings.TrimPrefix(id, genericEvent)
+	path := "/api/v1/events/" + url.PathEscape(eventID)
+	body, code, err := s.callAPI(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	if code == 404 {
+		return nil, fmt.Errorf("no record with id %q", id)
+	}
+	if code != 200 {
+		return nil, fmt.Errorf("lookup failed (HTTP %d)", code)
+	}
+	str := func(k string) string { v, _ := body[k].(string); return v }
+	var text strings.Builder
+	for _, line := range []struct{ label, value string }{
+		{"", str("headline")},
+		{"Status", str("status")}, {"Severity", str("severity")}, {"Layer", str("layer")},
+		{"Location", str("areaLabel")}, {"Observed", str("observedAt")},
+		{"Summary", str("summary")}, {"Source's description", str("description")},
+	} {
+		if line.value == "" {
+			continue
+		}
+		if line.label != "" {
+			text.WriteString(line.label + ": ")
+		}
+		text.WriteString(line.value + "\n")
+	}
+	link := str("canonicalUrl")
+	if link == "" {
+		link = publicBaseURL + path
+	}
+	meta := map[string]interface{}{"kind": "event"}
+	for _, k := range []string{"layer", "category", "status", "severity", "observedAt"} {
+		if v := str(k); v != "" {
+			meta[k] = v
+		}
+	}
+	if prov, ok := body["provenance"].(map[string]interface{}); ok {
+		if a, _ := prov["attribution"].(string); a != "" {
+			meta["attribution"] = a
+		}
+	}
+	return map[string]interface{}{"id": id, "title": str("headline"), "text": text.String(), "url": link, "metadata": meta}, nil
 }
 
 func (s *Server) handleEvent(ctx context.Context, args map[string]interface{}) (map[string]interface{}, error) {

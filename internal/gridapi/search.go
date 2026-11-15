@@ -177,6 +177,9 @@ func (g *GridServer) historyWithSearch(ctx context.Context, hq store.HistoryQuer
 const (
 	finderDefaultLimit = 5
 	finderMaxLimit     = 20
+	// finderOverfetch is how many ranked events are read per hit wanted, so
+	// that look-alikes can be dropped and the list still fill.
+	finderOverfetch = 4
 )
 
 // finderKinds is the fixed order hits and totals are returned in: where a
@@ -295,13 +298,26 @@ func (g *GridServer) Search(ctx context.Context, req *gridv1.SearchRequest) (*gr
 		} else {
 			exclude = mesh
 		}
-		ranked, total, err := g.svc.Store.SearchTopEvents(ctx, *q, layers, exclude, limit)
+		// Lane closures arrive as one event per work window, so a road's
+		// best hits can be the same headline and place five times over. Ask
+		// for more than the limit and keep the best of each look-alike; the
+		// total still counts every event.
+		ranked, total, err := g.svc.Store.SearchTopEvents(ctx, *q, layers, exclude, min(limit*finderOverfetch, finderMaxLimit*finderOverfetch))
 		if err != nil {
 			return nil, searchErr(ctx, err)
 		}
 		totals[k] = total
+		seen := map[string]bool{}
 		for _, r := range ranked {
 			ev := r.Event
+			if len(hits[k]) == limit {
+				break
+			}
+			if same := ev.GetHeadline() + "\x1f" + ev.GetAreaLabel(); seen[same] {
+				continue
+			} else {
+				seen[same] = true
+			}
 			hit := &gridv1.SearchHit{
 				Kind: k, Id: ev.GetId(), Title: ev.GetHeadline(), Detail: ev.GetAreaLabel(),
 				ApiPath: "/api/v1/events/" + ev.GetId(), Url: ev.GetCanonicalUrl(),

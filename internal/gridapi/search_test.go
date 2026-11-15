@@ -497,3 +497,30 @@ func TestFinderErrors(t *testing.T) {
 	_, err = g.Search(rpcBG(), &gridv1.SearchRequest{Q: "the", Kind: []string{"PLACE"}})
 	require.NoError(t, err)
 }
+
+// One event per work window means a road's best hits can be the same closure
+// five times. The finder shows each look-alike once; the total counts them all.
+func TestFinderDropsLookAlikes(t *testing.T) {
+	g, s := searchServer(t)
+	ctx := context.Background()
+	for i, id := range []string{"caltrans:w1", "caltrans:w2", "caltrans:w3", "caltrans:other"} {
+		head, area := "Hwy 26 one-way traffic control (Guardrail Work)", "Hwy 26 from Route 49 to Main Street"
+		if id == "caltrans:other" {
+			area = "Hwy 26 from Ridge Road to Glencoe"
+		}
+		_, err := s.Store.UpsertEvent(ctx, &gridv1.Event{
+			Id: id, Layer: gridv1.Layer_ROAD_INCIDENT, Category: "closure",
+			Severity: gridv1.Severity_MINOR, Status: gridv1.EventStatus_SCHEDULED, Headline: head, AreaLabel: area,
+			ObservedAt: timestamppb.New(base.Add(time.Duration(i) * time.Minute)),
+			Provenance: &gridv1.Provenance{SourceId: "chp"},
+		})
+		require.NoError(t, err)
+	}
+	res, err := g.Search(rpcBG(), &gridv1.SearchRequest{Q: "hwy 26 guardrail", Kind: []string{"EVENT"}})
+	require.NoError(t, err)
+	assert.Len(t, res.GetHits(), 2, "the three identical windows show once, the other stretch once")
+	assert.Equal(t, 4, totalOf(res, gridv1.SearchKind_EVENT))
+	// A title snippet keeps the headline and the location apart.
+	all, _ := matchText(res.GetHits()[0].GetMatch())
+	assert.Contains(t, all, "(Guardrail Work) · Hwy 26 from")
+}

@@ -145,7 +145,7 @@ func TestBuildWeightsAndRoutes(t *testing.T) {
 	assert.Equal(t, "incident", d.Category)
 	// What a snippet is cut from: the words as written, no identifiers,
 	// typed facts or road tokens.
-	assert.Equal(t, "Road flooded and impassable\nLime Kiln Rd at SR 108, near Sonora", d.Title)
+	assert.Equal(t, "Road flooded and impassable · Lime Kiln Rd at SR 108, near Sonora", d.Title)
 	assert.Equal(t, "Road flooded at the intersection of Lime Kiln Road and SR 108.\n"+
 		"CHP Incident 261114MR0161 1125-Traffic Hazard Lime Kiln Rd / Sr108 [1] ROAD FLOODED\nROAD FLOODED", d.Prose)
 	assert.NotContains(t, d.Text(), "SECRET")

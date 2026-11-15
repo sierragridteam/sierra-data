@@ -94,12 +94,17 @@ Parameters: `q` (required, the same syntax), `qTyping`, `kind` (repeat or
 comma-separate; default all) and `limit` per kind (default 5, at most 20).
 Events and mesh nodes are ranked by relevance: a match in the headline,
 location or an identifier counts most, and active and recent events are
-raised. Every status is searched and each hit says its own. It does not page:
+raised. Events with the same headline and location (a lane closure's work
+windows are one event each) are shown once; `totals` still counts every
+event. Every status is searched and each hit says its own. It does not page:
 for every matching event in date order with a total, use `q` on
 `/api/v1/events`. 503 while the event index is being built, as there.
 
 MCP gains `grid_search(q, kind?, limit?)`, whose hits name the tool to call
-next.
+next. It also gains `search(query)` and `fetch(id)`: clients such as ChatGPT's
+deep research only use tools with exactly those names and shapes
+(`{results: [{id, title, url}]}` and `{id, title, text, url, metadata}`). They
+are thin forms of `grid_search` and `grid_event`.
 
 ### MCP: `grid_events` and `grid_history` search text
 

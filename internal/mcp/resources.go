@@ -23,6 +23,7 @@ Public, read-only, keyless hazard/road/weather data for the central Sierra
 - grid_places(kind?, q?) — the place directory (discover valid slugs).
 - grid_sources() — upstream feed health.
 - grid_history(location?, layer?, from?, to?, q?, every_revision?, limit?) — revision timeline; with q, when an event's text first and last said something.
+- search(query) / fetch(id) — the generic pair some clients require by name; thin forms of grid_search and grid_event. Prefer the grid_* tools when you can call them.
 
 ## Severity scale (rank 0–4)
 INFO < MINOR < MODERATE < SEVERE < EXTREME. Editorial response-urgency, not

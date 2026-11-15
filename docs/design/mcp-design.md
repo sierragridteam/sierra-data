@@ -125,3 +125,9 @@ to an agent:
   ranked, each with the tool to call next. `grid_events` with `q` is for every
   match in date order and for counts; the two are kept apart so neither does
   the other's job badly.
+- **`search` and `fetch` exist for clients that require those names.**
+  ChatGPT's deep research and company knowledge only call a server's tools
+  named exactly `search` and `fetch`, with fixed shapes (checked 2026-11-15 at
+  developers.openai.com/docs/mcp). They wrap the finder and the event detail,
+  return a `url` on every result (a client only cites a result that has one)
+  and keep the disclaimer. Everything else should use the `grid_*` tools.

@@ -3,6 +3,7 @@ package mcp
 import (
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -249,5 +250,74 @@ func TestGridHistorySearchCollapsesByDefault(t *testing.T) {
 	}
 	if _, ok := out["total"]; ok {
 		t.Error("total present without q")
+	}
+}
+
+// The generic pair some clients require by name (ChatGPT deep research):
+// search(query) -> {results:[{id,title,url}]}, fetch(id) -> {id,title,text,url,metadata}.
+func TestGenericSearchAndFetch(t *testing.T) {
+	g := &recordingGrid{}
+	s := NewHandler(g)
+	out := structured(t, s, "search", `{"query":"arnold"}`)
+	if g.search.Get("q") != "arnold" || g.search.Get("kind") != "EVENT,MESH_NODE,PLACE" {
+		t.Errorf("search params = %v", g.search)
+	}
+	results := out["results"].([]interface{})
+	if len(results) != 4 {
+		t.Fatalf("results = %v", results)
+	}
+	byID := map[string]map[string]interface{}{}
+	for _, r := range results {
+		m := r.(map[string]interface{})
+		for _, k := range []string{"id", "title", "url"} {
+			if v, _ := m[k].(string); v == "" {
+				t.Errorf("result %v has no %s (a client only cites a result with a url)", m, k)
+			}
+		}
+		byID[m["id"].(string)] = m
+	}
+	place := byID["place:arnold"]
+	if place == nil || place["title"] != "Arnold (Town)" || place["url"] != "https://data.sierragridteam.org/api/v1/places/arnold/summary" {
+		t.Errorf("place result = %v", place)
+	}
+	ev := byID["event:calfire:x"]
+	if ev == nil || ev["title"] != "Arnold Fire [RESOLVED]" || ev["url"] != "https://fire.ca.gov/x" {
+		t.Errorf("event result = %v", ev)
+	}
+
+	// fetch an event, with and without the kind prefix; and a place.
+	f := NewHandler(fakeGrid{})
+	for _, id := range []string{"event:e1", "e1"} {
+		doc := structured(t, f, "fetch", `{"id":"`+id+`"}`)
+		if doc["id"] != id || doc["title"] != "Big Fire — 5000 ac" || doc["url"] != "https://fire.ca.gov/x" {
+			t.Errorf("fetch %s = %v", id, doc)
+		}
+		text := doc["text"].(string)
+		for _, want := range []string{"Big Fire — 5000 ac", "Severity: EXTREME", "Source's description: verbatim long text"} {
+			if !strings.Contains(text, want) {
+				t.Errorf("fetch %s text lacks %q: %s", id, want, text)
+			}
+		}
+		if strings.Contains(text, "HUGE_BASE64_BLOB") {
+			t.Error("geometry leaked into the text")
+		}
+		if doc["metadata"].(map[string]interface{})["severity"] != "EXTREME" {
+			t.Errorf("metadata = %v", doc["metadata"])
+		}
+	}
+	doc := structured(t, f, "fetch", `{"id":"place:ebbetts-pass"}`)
+	if !strings.Contains(doc["text"].(string), "UNAVAILABLE") {
+		t.Errorf("a place fetch must carry the fail-loud evacuation status: %v", doc["text"])
+	}
+	if doc["url"] != "https://data.sierragridteam.org/api/v1/places/ebbetts-pass/summary" {
+		t.Errorf("place url = %v", doc["url"])
+	}
+
+	// Unknown and missing ids are tool errors, not empty documents.
+	for _, args := range []string{`{"id":"event:nope"}`, `{}`} {
+		res := call(t, f, "tools/call", `{"name":"fetch","arguments":`+args+`}`)
+		if res["isError"] != true {
+			t.Errorf("fetch %s should be a tool error", args)
+		}
 	}
 }

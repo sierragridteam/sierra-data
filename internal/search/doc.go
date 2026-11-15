@@ -41,6 +41,10 @@ type Doc struct {
 	Title, Prose string
 }
 
+// TitleSeparator joins the headline and the location in Doc.Title, so a
+// snippet of both reads as two things and not as one run-on line.
+const TitleSeparator = " · "
+
 // Indexed returns the four weights as the store indexes them: each with one
 // canonical token per road it mentions appended. Roads are written many ways
 // ("SR 108", "Sr108", "State Route 108"), and ParseQuery rewrites a road the
@@ -125,7 +129,7 @@ func Build(ev *gridv1.Event) Doc {
 	prose.add(ev.GetWeatherAlert().GetInstruction())
 	return Doc{
 		A: a.String(), B: b.String(), C: c.String(), D: d.String(), Category: ev.GetCategory(),
-		Title: joinNonEmpty("\n", strings.TrimSpace(ev.GetHeadline()), strings.TrimSpace(ev.GetAreaLabel())),
+		Title: joinNonEmpty(TitleSeparator, strings.TrimSpace(ev.GetHeadline()), strings.TrimSpace(ev.GetAreaLabel())),
 		Prose: prose.String(),
 	}
 }
