@@ -96,3 +96,27 @@ and a "hazard briefing for {place}" **prompt** template.
    loop).
 2. **Phase 2** — `grid_conditions`, `grid_places`, `grid_sources`.
 3. **Phase 3** — `grid_history`, docs-as-resource, a briefing prompt.
+
+## Text search (added 2026-11-15)
+
+`grid_events` and `grid_history` take `q`, backed by `q` on `/api/v1/events`
+and `/api/v1/history` (see `CHANGELOG.md` for the syntax and
+`internal/store/AGENTS.md` for the index). The design points that are specific
+to an agent:
+
+- **A tally is one call.** A search result carries `total` (every page) and
+  `counts` by layer and category, so the model does not page and count. Before
+  this the tool description told it to list broadly and filter the rows itself,
+  against about nine thousand road incidents.
+- **Ended events are included by default with `q`.** A search is usually for a
+  thing, over or not; each row says its status. The HTTP API keeps its
+  ACTIVE and SCHEDULED default.
+- **History collapses by event.** With `q`, `grid_history` answers the first
+  and last matching revision per event and how many matched, which is the
+  question ("when was it issued, when was it lifted"), instead of every
+  near-identical revision.
+- **Whole words.** The tools never set `qTyping`: prefix matching is for a
+  search box, and it would count "Deerfield" as "deer".
+- **An empty result is not an all-clear.** Every search result carries
+  `search.since` and a note saying what was and was not searched, in the same
+  spirit as the standing disclaimer.

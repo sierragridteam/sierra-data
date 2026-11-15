@@ -103,6 +103,10 @@ Conventions:
 - /api/v1/events defaults to status=ACTIVE,SCHEDULED. Pass status
   explicitly for other states, and always pass place: unscoped, the
   feed is mostly INFO mesh-radio nodes.
+- Search text with q on /api/v1/events (q=hwy 4 crash) and on
+  /api/v1/history (what a report said at each revision). Words are all
+  required; a road matches in any spelling. No match means no stored
+  report said it, not that nothing happened.
 - Severity runs INFO, MINOR, MODERATE, SEVERE, EXTREME.
 - Timestamps are RFC 3339 in UTC.
 - Pass geometryFormat=OBJECT to get geometry as a GeoJSON object instead

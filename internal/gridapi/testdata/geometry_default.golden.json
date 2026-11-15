@@ -206,7 +206,11 @@
       "enhancement": null
     }
   ],
-  "nextPageToken": ""
+  "nextPageToken": "",
+  "totalMatches": null,
+  "counts": [],
+  "matches": {},
+  "search": null
 }
 {
   "id": "usgs:q1",
@@ -299,7 +303,8 @@
         "ingestedAt": null,
         "revision": 2,
         "enhancement": null
-      }
+      },
+      "match": null
     },
     {
       "revision": 1,
@@ -347,10 +352,14 @@
         "ingestedAt": null,
         "revision": 1,
         "enhancement": null
-      }
+      },
+      "match": null
     }
   ],
-  "nextPageToken": ""
+  "nextPageToken": "",
+  "totalMatches": null,
+  "collapsed": [],
+  "search": null
 }
 {
   "revisions": [
@@ -400,7 +409,8 @@
         "ingestedAt": null,
         "revision": 2,
         "enhancement": null
-      }
+      },
+      "match": null
     },
     {
       "revision": 1,
@@ -448,7 +458,8 @@
         "ingestedAt": null,
         "revision": 1,
         "enhancement": null
-      }
+      },
+      "match": null
     },
     {
       "revision": 1,
@@ -495,7 +506,8 @@
         "ingestedAt": null,
         "revision": 1,
         "enhancement": null
-      }
+      },
+      "match": null
     },
     {
       "revision": 1,
@@ -539,7 +551,8 @@
         "ingestedAt": null,
         "revision": 1,
         "enhancement": null
-      }
+      },
+      "match": null
     },
     {
       "revision": 1,
@@ -573,7 +586,8 @@
         "ingestedAt": null,
         "revision": 1,
         "enhancement": null
-      }
+      },
+      "match": null
     },
     {
       "revision": 1,
@@ -630,10 +644,14 @@
           "request": "",
           "response": ""
         }
-      }
+      },
+      "match": null
     }
   ],
-  "nextPageToken": ""
+  "nextPageToken": "",
+  "totalMatches": null,
+  "collapsed": [],
+  "search": null
 }
 {
   "id": "town:arnold",

@@ -92,18 +92,22 @@ func (s *Server) registerTools() []tool {
 				"layer/severity/status/time. " +
 				"Compact rows; call grid_event for full detail (incl. the verbatim report) on one. " +
 				"Geometry is omitted (a location centroid is included). " +
-				"There is no per-road or per-incident-type filter: to answer \"what happened on <a road>?\", " +
-				"a sub-type question (collisions vs. hazards vs. closures), or a count/tally, scope broadly " +
-				"— pass a county/area name or a corridor slug (e.g. location \"Calaveras County\", layer " +
-				"\"road_incident\") — and filter or count the returned rows yourself; each row's headline and " +
-				"areaLabel carry the road name and incident type. " +
+				"Pass q to search the events' text instead of reading every row: words are all required, " +
+				"\"quoted words\" are a phrase, -word excludes, OR separates alternatives; stems match (flooded finds " +
+				"flooding) and a numbered road matches in any spelling (\"hwy 4\", \"SR-4\"). So \"what happened on " +
+				"Highway 4 this week\" is q \"hwy 4\" with since, and a sub-type question is q \"hwy 4 collision\". " +
+				"With q the rows are newest first, each carries a short match excerpt, and — unless you pass status — " +
+				"ended events are included (each row says its status). With q or count=true the result has total " +
+				"(every matching event, not just this page) and counts by layer and category, so a tally needs one " +
+				"call and no paging. An empty result means no stored report's text matched, NOT that nothing " +
+				"happened: see the result's search.since and note. " +
 				"Caltrans planned lane closures are road_incident rows with category \"closure\", one per " +
 				"work window: a window not yet set up is status SCHEDULED (effective = its planned start), " +
 				"so pass status ACTIVE for only what is on the road now, or SCHEDULED for upcoming roadwork. " +
 				"MeshCore mesh-node presence is layer \"mesh\" (legacy alias \"network\"): one INFO row per " +
 				"node, the node's name in headline/areaLabel and its pubkey + radio telemetry in detail. To " +
-				"find or check a specific node (e.g. one named \"SIERRA…\"), list layer=mesh — unscoped is " +
-				"fine, the mesh spans places — and match the name in the rows. Freshness is the later of " +
+				"find or check a specific node, pass its name or the start of its public key as q with " +
+				"layer=mesh (unscoped is fine, the mesh spans places). Freshness is the later of " +
 				"mesh.telemetry.lastRelayedAt (a packet the node relayed last reached the Grid) and " +
 				"mesh.telemetry.lastHeardAt (its own advert did), both the Grid's clock; NOT observedAt, " +
 				"which moves only when the node's identity, position or reachability changes and can be " +
@@ -112,7 +116,7 @@ func (s *Server) registerTools() []tool {
 				"node here is not proof it's down. Raise limit (max 200) and follow " +
 				"nextPageToken to get the full set. (grid_situation already gives per-domain active counts " +
 				"for a single place.)",
-			InputSchema: json.RawMessage(`{"type":"object","properties":{"location":{"type":"string","description":"place slug/id, address, or lat,lng to scope to"},"layer":{"type":"string","description":"wildfire|evacuation|weather_alert|earthquake|road_incident|power|mesh (power = PG&E outages AND Public Safety Power Shutoffs, separated by each row's category: unplanned|planned|psps. Most outages are tiny — the statewide median affects ONE customer — so pair layer=power with severity_min unless you want every service call. mesh = MeshCore node presence; \"network\" is a legacy alias)"},"severity_min":{"type":"string","description":"INFO|MINOR|MODERATE|SEVERE|EXTREME"},"status":{"type":"string","description":"default ACTIVE,SCHEDULED; pass RESOLVED/EXPIRED to see closed"},"since":{"type":"string","description":"RFC3339; only events observed at/after"},"limit":{"type":"integer"},"page_token":{"type":"string"}}}`),
+			InputSchema: json.RawMessage(`{"type":"object","properties":{"location":{"type":"string","description":"place slug/id, address, or lat,lng to scope to"},"layer":{"type":"string","description":"wildfire|evacuation|weather_alert|earthquake|road_incident|power|mesh (power = PG&E outages AND Public Safety Power Shutoffs, separated by each row's category: unplanned|planned|psps. Most outages are tiny — the statewide median affects ONE customer — so pair layer=power with severity_min unless you want every service call. mesh = MeshCore node presence; \"network\" is a legacy alias)"},"severity_min":{"type":"string","description":"INFO|MINOR|MODERATE|SEVERE|EXTREME"},"status":{"type":"string","description":"ACTIVE|SCHEDULED|RESOLVED|EXPIRED, comma-separated, or \"any\". Default ACTIVE,SCHEDULED; with q the default is any"},"since":{"type":"string","description":"RFC3339; only events observed at/after"},"q":{"type":"string","description":"text search over headline, location, summary, description, incident log, typed facts, node names and keys; e.g. \"hwy 4 collision\", \"lime kiln flooded\", \"wires down OR power lines\""},"count":{"type":"boolean","description":"also return total and counts by layer/category without q"},"limit":{"type":"integer"},"page_token":{"type":"string"}}}`),
 			Handler:     s.handleEvents,
 		},
 		{
@@ -146,9 +150,19 @@ func (s *Server) registerTools() []tool {
 			Handler:     s.handleSources,
 		},
 		{
-			Name:        "grid_history",
-			Description: "After-action / timeline: the chronological revisions of events over a time range (how a fire grew, when a warning escalated, when it was resolved). Optionally scope by location and layer.",
-			InputSchema: json.RawMessage(`{"type":"object","properties":{"location":{"type":"string"},"layer":{"type":"string"},"from":{"type":"string","description":"RFC3339 start"},"to":{"type":"string","description":"RFC3339 end"}}}`),
+			Name: "grid_history",
+			Description: "After-action / timeline: the revisions of events over a time range, newest first (how a fire grew, " +
+				"when a warning escalated, when it was resolved). Optionally scope by location and layer. " +
+				"Pass q (same syntax as grid_events) to search what reports said AT EACH REVISION, which finds text an " +
+				"event no longer carries: \"when was the evacuation order for that zone first issued, and when was it " +
+				"lifted\", \"when did R2 chain controls first appear on 88\". With q the answer is one row per event " +
+				"(matches): its first matching revision in full with a match excerpt, the last matching revision's " +
+				"number and time, how many revisions matched, and total. If last_revision is below the first row's " +
+				"event's current revision, the text stopped matching after it. Pass every_revision=true for each " +
+				"matching revision instead. Limits: only stored revisions are searched (see search.since; a source " +
+				"that was down left a gap), a revision is stored when content changes rather than on every poll, and " +
+				"location/layer are the event's current ones. No match is not proof it never said so.",
+			InputSchema: json.RawMessage(`{"type":"object","properties":{"location":{"type":"string"},"layer":{"type":"string"},"from":{"type":"string","description":"RFC3339 start"},"to":{"type":"string","description":"RFC3339 end"},"q":{"type":"string","description":"text search over each revision's text"},"every_revision":{"type":"boolean","description":"with q: one row per matching revision instead of one per event"},"limit":{"type":"integer"},"page_token":{"type":"string"}}}`),
 			Handler:     s.handleHistory,
 		},
 	}
@@ -191,22 +205,57 @@ func (s *Server) handleEvents(ctx context.Context, args map[string]interface{}) 
 		}
 		q.Set("place", slug)
 	}
-	for _, k := range []string{"layer", "severity_min", "status", "since", "page_token"} {
+	for _, k := range []string{"layer", "severity_min", "since", "page_token"} {
 		if v := argStr(args, k); v != "" {
 			q.Set(k, v)
 		}
 	}
+	text := strings.TrimSpace(argStr(args, "q"))
+	status := argStr(args, "status")
+	// Someone searching for a thing wants it whether or not it is over, and
+	// an agent will not think to ask: with q the default is every status.
+	if strings.EqualFold(status, "any") || (status == "" && text != "") {
+		status = allStatuses
+	}
+	if status != "" {
+		q.Set("status", status)
+	}
+	if text != "" {
+		q.Set("q", text)
+	}
+	if argBool(args, "count") {
+		q.Set("counts", "true")
+	}
 	if n := argInt(args, "limit"); n > 0 {
 		q.Set("page_size", strconv.Itoa(n))
 	}
+	// Lists never draw shapes: ask for none.
+	q.Set("geometry_format", "NONE")
 	body, err := s.callAPIJSON(ctx, "/api/v1/events?"+q.Encode())
 	if err != nil {
 		return nil, err
 	}
+	matches, _ := body["matches"].(map[string]interface{})
 	events := leanEvents(asArray(body["events"]))
+	for _, e := range events {
+		if ev, ok := e.(map[string]interface{}); ok {
+			if id, _ := ev["id"].(string); id != "" {
+				if m := matchText(matches[id]); m != "" {
+					ev["match"] = m
+				}
+			}
+		}
+	}
 	out := map[string]interface{}{"events": events, "count": len(events)}
 	if t, ok := body["nextPageToken"]; ok && t != "" {
 		out["nextPageToken"] = t
+	}
+	if total, ok := body["totalMatches"]; ok && total != nil {
+		out["total"] = total
+		out["counts"] = body["counts"]
+	}
+	if info, ok := body["search"]; ok && info != nil {
+		out["search"] = info
 	}
 	return out, nil
 }
@@ -302,28 +351,95 @@ func (s *Server) handleHistory(ctx context.Context, args map[string]interface{})
 		}
 		q.Set("place", slug)
 	}
-	for _, k := range []string{"layer", "from", "to"} {
+	for _, k := range []string{"layer", "from", "to", "page_token"} {
 		if v := argStr(args, k); v != "" {
 			q.Set(k, v)
 		}
+	}
+	if n := argInt(args, "limit"); n > 0 {
+		q.Set("page_size", strconv.Itoa(n))
+	}
+	text := strings.TrimSpace(argStr(args, "q"))
+	collapsed := text != "" && !argBool(args, "every_revision")
+	if text != "" {
+		q.Set("q", text)
+	}
+	if collapsed {
+		// One row per event: reading forty revisions to find the first that
+		// says something is the cost this tool exists to remove.
+		q.Set("collapse", "event")
 	}
 	body, err := s.callAPIJSON(ctx, "/api/v1/history?"+q.Encode())
 	if err != nil {
 		return nil, err
 	}
-	revs := asArray(body["revisions"])
-	for _, r := range revs {
-		if m, ok := r.(map[string]interface{}); ok {
-			if ev, ok := m["event"].(map[string]interface{}); ok {
-				leanEvent(ev, false)
-			}
+	leanRevision := func(r interface{}) {
+		m, ok := r.(map[string]interface{})
+		if !ok {
+			return
+		}
+		if ev, ok := m["event"].(map[string]interface{}); ok {
+			leanEvent(ev, false)
+		}
+		if text := matchText(m["match"]); text != "" {
+			m["match"] = text
+		} else {
+			delete(m, "match")
 		}
 	}
-	out := map[string]interface{}{"revisions": revs, "count": len(revs)}
+	out := map[string]interface{}{}
+	if collapsed {
+		rows := asArray(body["collapsed"])
+		for _, r := range rows {
+			if m, ok := r.(map[string]interface{}); ok {
+				leanRevision(m["first"])
+			}
+		}
+		out["matches"], out["count"] = rows, len(rows)
+	} else {
+		revs := asArray(body["revisions"])
+		for _, r := range revs {
+			leanRevision(r)
+		}
+		out["revisions"], out["count"] = revs, len(revs)
+	}
 	if t, ok := body["nextPageToken"]; ok && t != "" {
 		out["nextPageToken"] = t
 	}
+	if total, ok := body["totalMatches"]; ok && total != nil {
+		out["total"] = total
+	}
+	if info, ok := body["search"]; ok && info != nil {
+		out["search"] = info
+	}
 	return out, nil
+}
+
+// allStatuses is every event status, for a search that should not hide what
+// has ended.
+const allStatuses = "ACTIVE,SCHEDULED,RESOLVED,EXPIRED"
+
+// matchText flattens an API SearchMatch into one line for a model: the
+// excerpt with each matched run wrapped in **. Empty when there is none.
+func matchText(v interface{}) string {
+	m, ok := v.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	var sb strings.Builder
+	for _, p := range asArray(m["parts"]) {
+		part, ok := p.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		text, _ := part["text"].(string)
+		if hit, _ := part["hit"].(bool); hit {
+			sb.WriteString("**" + text + "**")
+		} else {
+			sb.WriteString(text)
+		}
+	}
+	return sb.String()
 }
 
 /* ---------------------------------------------------------- resolve helper */
@@ -471,4 +587,18 @@ func parseLatLng(s string) (lat, lng string, ok bool) {
 		return "", "", false
 	}
 	return strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]), true
+}
+
+// argBool reads a boolean argument; a model may send true, "true" or 1.
+func argBool(args map[string]interface{}, key string) bool {
+	switch v := args[key].(type) {
+	case bool:
+		return v
+	case string:
+		b, _ := strconv.ParseBool(strings.TrimSpace(v))
+		return b
+	case float64:
+		return v != 0
+	}
+	return false
 }

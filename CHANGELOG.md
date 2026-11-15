@@ -21,6 +21,68 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-15
+
+### Text search on events and history (`q`)
+
+`GET /api/v1/events` and `GET /api/v1/history` take a `q` parameter. Additive:
+a request without `q` behaves as before, and the new response fields are
+`null` or empty on it.
+
+**What is searched.** An event's headline, location, summary, the source's
+description and incident log, typed facts (incident type, cause, zone id,
+closure type), mesh node names and public keys, and the source's name.
+
+**Syntax.** Words are all required, in any order. `"quoted words"` are a
+phrase. `-word` excludes. `OR` between terms starts an alternative. Words
+match by stem (`flooded` finds "flooding"). A numbered road matches in any
+spelling: `hwy 4`, `SR-4`, `state route 4` and `Sr4` are one road. At most 200
+bytes and 16 terms; a query of only excluded or common words ("the") is a 400.
+`qTyping=true` treats the last word as unfinished (`floo` finds "flooded"),
+for search-as-you-type; leave it off for a finished question or a count.
+
+**Events.** With `q` the order is newest `observedAt` first (not severity), and
+the response adds:
+
+- `totalMatches`: matching events across every page.
+- `counts`: that total by `layer` and `category`.
+- `matches`: keyed by event id, an excerpt showing where the text matched, as
+  runs of plain text with the matched words flagged (`parts[].hit`).
+- `search`: `query` (how it was read: `route4 crash`), `since` (when
+  collection began) and `note`.
+
+The other filters apply, including the status default (ACTIVE, SCHEDULED): add
+`status` to search ended events. `counts=true` returns `totalMatches` and
+`counts` without a text query.
+
+**History.** `q` matches each revision's text as it stood then, so it finds
+what a report once said and no longer says. Each revision gains `match`; the
+response gains `totalMatches` and `search`. `collapse=event` answers one row
+per event in `collapsed`: the first matching revision in full, the last one's
+number and time, and how many matched. Use it for "when did this first say X,
+and when did it stop".
+
+**What a result means.** No match means no stored report's text matched, not
+that nothing happened: only events collected since `search.since` are stored,
+a source that was down left a gap, a revision is stored when content changes
+(not on every poll), and weather readings and road conditions are not events.
+
+**503 while the index is built.** The first minutes after this release
+deploys, `q` and `counts` answer 503 `UNAVAILABLE` until the index is complete,
+rather than "no matches" from a partial one. Requests without them are
+unaffected. The same happens briefly after a release that changes the search
+rules.
+
+### MCP: `grid_events` and `grid_history` search text
+
+`grid_events` takes `q` and `count`, and returns `total`, `counts`, a `match`
+excerpt per row and `search`. With `q` it includes ended events unless
+`status` is passed (`status: "any"` works without `q`). `grid_history` takes
+`q`, `limit` and `page_token`; with `q` it answers one row per event
+(`matches`) unless `every_revision` is true. The tool descriptions and the
+`grid://reference` resource no longer tell a model to list broadly and filter
+or count the rows itself.
+
 ## 2026-11-14 (later)
 
 ### Mesh nodes have related events: the nodes their monitor reads

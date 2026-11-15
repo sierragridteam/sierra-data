@@ -1334,11 +1334,65 @@ enum BurnPermission {
 // EventList is one page of events.
 message EventList {
   // Events on this page, ordered by severity (highest first), then
-  // `observedAt` (newest first), then id.
+  // `observedAt` (newest first), then id. With `q`: `observedAt` newest
+  // first, then id.
   repeated Event events = 1;
   // Token for the next page; pass it as `pageToken` with the same filters.
   // Empty string on the last page.
   string next_page_token = 2;
+  // How many events match the filters (and `q`) across every page. Null
+  // unless the request had `q` or `counts=true`.
+  google.protobuf.Int32Value total_matches = 3;
+  // `totalMatches` broken down by layer and category, ordered by layer then
+  // category. Empty unless the request had `q` or `counts=true`.
+  repeated EventCount counts = 4;
+  // With `q`: where the text matched, keyed by event id, for the events on
+  // this page. An event that matched only on an identifier or its source's
+  // name has an entry with no `parts`. Empty without `q`.
+  map<string, SearchMatch> matches = 5;
+  // With `q`: how the query was read and what the search covers. Null
+  // without `q`.
+  SearchInfo search = 6;
+}
+
+// EventCount is how many matching events share a layer and category.
+message EventCount {
+  Layer layer = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"ROAD_INCIDENT\""}];
+  // The events' `category`, e.g. `incident` or `closure`; may be empty.
+  string category = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"incident\""}];
+  int32 events = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "42"}];
+}
+
+// SearchMatch is a short excerpt showing where a text query matched.
+message SearchMatch {
+  // Which text the excerpt is cut from: `text` (summary, description,
+  // incident log, instructions) or `title` (headline and location). Empty
+  // when the match is elsewhere and there is no excerpt.
+  string field = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"text\""}];
+  // The excerpt as consecutive runs of text. Concatenate every `text` in
+  // order to read it; runs with `hit: true` are the matched words. Plain
+  // text, never markup.
+  repeated SearchMatchPart parts = 2;
+}
+
+// SearchMatchPart is one run of an excerpt.
+message SearchMatchPart {
+  string text = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"flooded\""}];
+  // True when this run is a matched word.
+  bool hit = 2;
+}
+
+// SearchInfo says how a text query was understood and what it searched.
+message SearchInfo {
+  // The query as read, in its own syntax: lowercased, with a numbered road
+  // shown as its canonical token (`route4` for "hwy 4", "SR-4", ...).
+  string query = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"route4 crash\""}];
+  // When the Grid began storing events. Nothing earlier can match. Null on
+  // an empty store.
+  google.protobuf.Timestamp since = 2;
+  // What a result, or no result, does and does not mean. Meant to be shown
+  // or passed on with the results.
+  string note = 3;
 }
 
 // EventRevision is one stored snapshot of an event.
@@ -1352,6 +1406,9 @@ message EventRevision {
   // The full event as it was at this revision. Mesh activity clocks
   // (`lastHeardAt`, `lastRelayedAt`) are not filled on history snapshots.
   Event event = 4 [(google.api.field_behavior) = REQUIRED];
+  // On `/api/v1/history` with `q`: where this revision's text matched. Null
+  // otherwise.
+  SearchMatch match = 5;
 }
 
 // EventRevisionList is one page of revisions.
@@ -1363,6 +1420,33 @@ message EventRevisionList {
   // Token for the next page; pass it as `pageToken` with the same filters.
   // Empty string on the last page.
   string next_page_token = 2;
+  // On `/api/v1/history` with `q`: how many revisions match across every
+  // page, or with `collapse=event` how many events. Null without `q`.
+  google.protobuf.Int32Value total_matches = 3;
+  // With `q` and `collapse=event`: one row per event with a matching
+  // revision, ordered by the latest match (newest first), then event id.
+  // `revisions` is empty in that case.
+  repeated EventHistoryMatch collapsed = 4;
+  // With `q`: how the query was read and what the search covers. Null
+  // without `q`.
+  SearchInfo search = 5;
+}
+
+// EventHistoryMatch is one event's revisions that match a text query,
+// collapsed: when its text first matched, when it last did, how many did.
+message EventHistoryMatch {
+  string event_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"evac:US-CA-XCA-CCU-043\""}];
+  // The earliest matching revision (inside the `from`/`to` window, if any),
+  // in full, with its `match` snippet.
+  EventRevision first = 2 [(google.api.field_behavior) = REQUIRED];
+  // The latest matching revision's number. Equals `first.revision` when only
+  // one matches. If it is below the event's current revision, the event's
+  // text stopped matching after it.
+  uint32 last_revision = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "5"}];
+  // The latest matching revision's `observedAt`.
+  google.protobuf.Timestamp last_observed_at = 4 [(google.api.field_behavior) = REQUIRED];
+  // How many of the event's revisions match.
+  int32 matching_revisions = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "3"}];
 }
 
 // PlaceList is the place directory.
@@ -1401,6 +1485,22 @@ service GridService {
   // observed. A page holds at most `pageSize` events and stops early at about
   // 3 MiB encoded, so follow `nextPageToken` until it is empty. Supports
   // ETag / If-None-Match.
+  //
+  // **Text search.** `q` keeps only events whose text matches: headline,
+  // location, summary, the source's description and incident log, typed facts
+  // (incident type, cause, zone id), node names and public keys, and the
+  // source's name. Every word is required; `"quoted words"` must appear
+  // together; `-word` excludes; `OR` between terms starts an alternative.
+  // Words are matched by stem ("flooded" finds "flooding") and a numbered
+  // road in any spelling finds every spelling (`hwy 4`, `SR-4`, `state route
+  // 4`). With `q` the order is newest `observedAt` first, not severity, and
+  // the response adds `totalMatches`, `counts`, a `matches` snippet per event
+  // and `search` (how the query was read and what it covers). The other
+  // filters still apply, including the status default: add `status` to search
+  // ended events. No matches means no stored event's text matched, not that
+  // nothing happened: collection began at `search.since`, and weather
+  // readings and road conditions are not events. `counts=true` returns the
+  // total and its breakdown without a text query.
   rpc ListEvents(ListEventsRequest) returns (EventList) {
     option (google.api.http) = {get: "/api/v1/events"};
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -1411,11 +1511,15 @@ service GridService {
       }
       responses: {
         key: "400"
-        value: {description: "INVALID_ARGUMENT: an unknown layer, status, severity or geometryFormat, a timestamp that is not RFC 3339, a negative page size, or a bad page token."}
+        value: {description: "INVALID_ARGUMENT: an unknown layer, status, severity or geometryFormat, a timestamp that is not RFC 3339, a negative page size, a bad page token, or a `q` that is longer than 200 bytes or has nothing to search for (only punctuation, exclusions or words like \"the\")."}
       }
       responses: {
         key: "404"
         value: {description: "NOT_FOUND: unknown place."}
+      }
+      responses: {
+        key: "503"
+        value: {description: "UNAVAILABLE: `q` or `counts` was asked for while the search index is still being built (the first minutes after a release that changes it). Retry; requests without them are unaffected."}
       }
     };
   }
@@ -1541,6 +1645,18 @@ service GridService {
   // "what happened here last week". A page holds at most `pageSize` revisions
   // and stops early at about 3 MiB encoded, so follow `nextPageToken` until it
   // is empty. Supports ETag / If-None-Match.
+  //
+  // **Text search.** `q` (same syntax as on `/api/v1/events`) keeps only
+  // revisions whose text matched as it stood at that revision, so it finds
+  // what a report once said and no longer says. Each revision gains a
+  // `match` snippet and the response `totalMatches` and `search`. With
+  // `collapse=event` the answer is one row per event in `collapsed` instead
+  // of `revisions`: the first matching revision in full, the last one's
+  // number and time, and how many matched. That is the form for "when did
+  // this first say X, and when did it stop". Limits: only stored revisions
+  // are searched (collection began at `search.since`; a source that was down
+  // left a gap), a revision is stored when content changes, not on every
+  // poll, and place and layer are the event's current ones.
   rpc ListHistory(ListHistoryRequest) returns (EventRevisionList) {
     option (google.api.http) = {get: "/api/v1/history"};
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -1551,11 +1667,15 @@ service GridService {
       }
       responses: {
         key: "400"
-        value: {description: "INVALID_ARGUMENT: an unknown layer or geometryFormat, a timestamp that is not RFC 3339, a negative page size, or a bad page token."}
+        value: {description: "INVALID_ARGUMENT: an unknown layer or geometryFormat, a timestamp that is not RFC 3339, a negative page size, a bad page token, a `q` that is too long or has nothing to search for, an unknown `collapse`, or `collapse` without `q`."}
       }
       responses: {
         key: "404"
         value: {description: "NOT_FOUND: unknown place."}
+      }
+      responses: {
+        key: "503"
+        value: {description: "UNAVAILABLE: `q` was asked for while the search index is still being built. Retry; requests without `q` are unaffected."}
       }
     };
   }
@@ -2182,6 +2302,23 @@ message ListEventsRequest {
     enum: ["BASE64", "OBJECT", "NONE"]
     default: "BASE64"
   }];
+  // Text search: only events whose text matches. Words are all required;
+  // `"quoted words"` are a phrase; `-word` excludes; `OR` separates
+  // alternatives. Stems match and a numbered road matches in any spelling.
+  // At most 200 bytes and 16 terms. Changes the order to newest first. See
+  // the operation description.
+  string q = 10 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    example: "\"hwy 4 crash\""
+    max_length: 200
+  }];
+  // With `q`, treat its last word as still being typed: it also matches words
+  // that begin with it (`floo` finds "flooded"), unless `q` ends in a space.
+  // For search-as-you-type boxes. Leave it off for a finished question or a
+  // count, where `deer` must not match "Deerfield". Default false.
+  bool q_typing = 11;
+  // Return `totalMatches` and `counts` (matching events by layer and
+  // category) even without `q`. Always on with `q`. Default false.
+  bool counts = 12;
 }
 
 // GetEventRequest names one event.
@@ -2376,6 +2513,20 @@ message ListHistoryRequest {
   string geometry_format = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     enum: ["BASE64", "OBJECT"]
     default: "BASE64"
+  }];
+  // Text search: only revisions whose text matched at that revision. Same
+  // syntax and limits as `q` on `/api/v1/events`.
+  string q = 9 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    example: "\"evacuation order\""
+    max_length: 200
+  }];
+  // With `q`, treat its last word as still being typed (see `/api/v1/events`).
+  bool q_typing = 10;
+  // `event`: with `q`, answer one row per event in `collapsed` (first and
+  // last matching revision, how many matched) instead of every matching
+  // revision. Case-insensitive. Requires `q`. Default: not collapsed.
+  string collapse = 11 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    enum: ["event"]
   }];
 }
 

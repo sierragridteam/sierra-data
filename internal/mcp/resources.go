@@ -15,37 +15,50 @@ Public, read-only, keyless hazard/road/weather data for the central Sierra
 
 ## Tools
 - grid_situation(location) — area mode + rollup for a place/address/lat,lng. Start here.
-- grid_events(location?, layer?, severity_min?, status?, since?, limit?) — list active events (hazards + mesh-node presence, layer=mesh).
+- grid_events(location?, layer?, severity_min?, status?, since?, q?, count?, limit?) — list or text-search events (hazards + mesh-node presence, layer=mesh).
 - grid_event(id) — full detail on one event.
 - grid_conditions(location?) — roads + weather conditions.
 - grid_resolve(address | lat,lng) — location → containing places.
 - grid_places(kind?, q?) — the place directory (discover valid slugs).
 - grid_sources() — upstream feed health.
-- grid_history(location?, layer?, from?, to?) — revision timeline.
+- grid_history(location?, layer?, from?, to?, q?, every_revision?, limit?) — revision timeline; with q, when an event's text first and last said something.
 
 ## Severity scale (rank 0–4)
 INFO < MINOR < MODERATE < SEVERE < EXTREME. Editorial response-urgency, not
 magnitude — an Evacuation Order (EXTREME) outranks an M5 earthquake (SEVERE).
 
 ## Query patterns (how to answer common questions)
-There is no per-road or per-incident-type filter. Answer those by scoping the
-list broadly and processing the rows yourself:
-- "What happened on <a specific road>?" — call grid_events with
-  layer=road_incident scoped to the containing county/area/corridor (e.g.
-  location "Calaveras County"), then filter the rows on the road name (it's in
-  each row's headline / areaLabel). For the verbatim CHP report on a match,
-  call grid_event(id).
-- "How many <X> / how many collisions?" — grid_situation gives per-domain active
-  counts for one place. For a count by sub-type or across an area, list with
-  grid_events and tally locally; raise limit (max 200) and follow
-  nextPageToken for the full set.
+Text search (q) answers most "about a thing" questions in one call. Words are
+all required; "quoted words" are a phrase; -word excludes; OR separates
+alternatives. Stems match (flooded finds flooding) and a numbered road matches
+in any spelling ("hwy 4", "SR-4", "state route 4").
+- "What happened on <a specific road>?" — grid_events with q "hwy 4" (add
+  since for a window, layer=road_incident for incidents only). With q, ended
+  events are included unless you pass status; each row says its status and
+  carries a short match excerpt. For the verbatim CHP report, grid_event(id).
+- "How many <X> / how many collisions on 108 this month?" — grid_events with
+  q "sr 108 collision" and since: the result's total is the count across every
+  page and counts breaks it down by layer and category, so do not page to
+  tally. count=true gives the same totals without q. grid_situation gives
+  per-domain active counts for one place.
+- "Tell me about the <name> fire" / "is node <name> up?" — q with the name
+  finds the event id; then grid_event(id).
+- "When was <an order/warning/restriction> first issued, and when was it
+  lifted?" — grid_history with q. It searches what each stored revision said,
+  so it finds text the event no longer carries, and answers one row per event:
+  the first matching revision, the last, and how many.
+- No match means no stored report's text matched, NOT that nothing happened.
+  Every search result carries search.since (when collection began) and a note;
+  pass that caveat on. Try another wording before concluding (wires down OR
+  power lines), and check grid_sources for gaps.
 - Scope with the broadest place that covers the question (county/area), not a
   street: an address resolves to its containing places, so it scopes to the
   county/area, not to that one street.
-- "Is <node> up / when did <node> last advertise?" (MeshCore mesh nodes) — list
-  grid_events with layer=mesh (legacy alias "network"); unscoped is fine, the
-  mesh spans places. Each row is one node: name in headline/areaLabel, pubkey +
-  radio telemetry in detail. Match the node by name (e.g. "SIERRA…"). Freshness
+- "Is <node> up / when did <node> last advertise?" (MeshCore mesh nodes) —
+  grid_events with layer=mesh (legacy alias "network") and q set to the node's
+  name or the start of its public key; unscoped is fine, the mesh spans
+  places. Each row is one node: name in headline/areaLabel, pubkey + radio
+  telemetry in detail. Freshness
   is mesh.telemetry.lastRelayedAt (when a packet the node RELAYED last reached the
   Grid; for a repeater this is near-constant) and mesh.telemetry.lastHeardAt
   (when its own advert last did); take the later. Both are the Grid's clock and

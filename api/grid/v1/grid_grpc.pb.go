@@ -62,6 +62,22 @@ type GridServiceClient interface {
 	// observed. A page holds at most `pageSize` events and stops early at about
 	// 3 MiB encoded, so follow `nextPageToken` until it is empty. Supports
 	// ETag / If-None-Match.
+	//
+	// **Text search.** `q` keeps only events whose text matches: headline,
+	// location, summary, the source's description and incident log, typed facts
+	// (incident type, cause, zone id), node names and public keys, and the
+	// source's name. Every word is required; `"quoted words"` must appear
+	// together; `-word` excludes; `OR` between terms starts an alternative.
+	// Words are matched by stem ("flooded" finds "flooding") and a numbered
+	// road in any spelling finds every spelling (`hwy 4`, `SR-4`, `state route
+	// 4`). With `q` the order is newest `observedAt` first, not severity, and
+	// the response adds `totalMatches`, `counts`, a `matches` snippet per event
+	// and `search` (how the query was read and what it covers). The other
+	// filters still apply, including the status default: add `status` to search
+	// ended events. No matches means no stored event's text matched, not that
+	// nothing happened: collection began at `search.since`, and weather
+	// readings and road conditions are not events. `counts=true` returns the
+	// total and its breakdown without a text query.
 	ListEvents(ctx context.Context, in *ListEventsRequest, opts ...grpc.CallOption) (*EventList, error)
 	// Get one event.
 	//
@@ -128,6 +144,18 @@ type GridServiceClient interface {
 	// "what happened here last week". A page holds at most `pageSize` revisions
 	// and stops early at about 3 MiB encoded, so follow `nextPageToken` until it
 	// is empty. Supports ETag / If-None-Match.
+	//
+	// **Text search.** `q` (same syntax as on `/api/v1/events`) keeps only
+	// revisions whose text matched as it stood at that revision, so it finds
+	// what a report once said and no longer says. Each revision gains a
+	// `match` snippet and the response `totalMatches` and `search`. With
+	// `collapse=event` the answer is one row per event in `collapsed` instead
+	// of `revisions`: the first matching revision in full, the last one's
+	// number and time, and how many matched. That is the form for "when did
+	// this first say X, and when did it stop". Limits: only stored revisions
+	// are searched (collection began at `search.since`; a source that was down
+	// left a gap), a revision is stored when content changes, not on every
+	// poll, and place and layer are the event's current ones.
 	ListHistory(ctx context.Context, in *ListHistoryRequest, opts ...grpc.CallOption) (*EventRevisionList, error)
 	// List places.
 	//
@@ -430,6 +458,22 @@ type GridServiceServer interface {
 	// observed. A page holds at most `pageSize` events and stops early at about
 	// 3 MiB encoded, so follow `nextPageToken` until it is empty. Supports
 	// ETag / If-None-Match.
+	//
+	// **Text search.** `q` keeps only events whose text matches: headline,
+	// location, summary, the source's description and incident log, typed facts
+	// (incident type, cause, zone id), node names and public keys, and the
+	// source's name. Every word is required; `"quoted words"` must appear
+	// together; `-word` excludes; `OR` between terms starts an alternative.
+	// Words are matched by stem ("flooded" finds "flooding") and a numbered
+	// road in any spelling finds every spelling (`hwy 4`, `SR-4`, `state route
+	// 4`). With `q` the order is newest `observedAt` first, not severity, and
+	// the response adds `totalMatches`, `counts`, a `matches` snippet per event
+	// and `search` (how the query was read and what it covers). The other
+	// filters still apply, including the status default: add `status` to search
+	// ended events. No matches means no stored event's text matched, not that
+	// nothing happened: collection began at `search.since`, and weather
+	// readings and road conditions are not events. `counts=true` returns the
+	// total and its breakdown without a text query.
 	ListEvents(context.Context, *ListEventsRequest) (*EventList, error)
 	// Get one event.
 	//
@@ -496,6 +540,18 @@ type GridServiceServer interface {
 	// "what happened here last week". A page holds at most `pageSize` revisions
 	// and stops early at about 3 MiB encoded, so follow `nextPageToken` until it
 	// is empty. Supports ETag / If-None-Match.
+	//
+	// **Text search.** `q` (same syntax as on `/api/v1/events`) keeps only
+	// revisions whose text matched as it stood at that revision, so it finds
+	// what a report once said and no longer says. Each revision gains a
+	// `match` snippet and the response `totalMatches` and `search`. With
+	// `collapse=event` the answer is one row per event in `collapsed` instead
+	// of `revisions`: the first matching revision in full, the last one's
+	// number and time, and how many matched. That is the form for "when did
+	// this first say X, and when did it stop". Limits: only stored revisions
+	// are searched (collection began at `search.since`; a source that was down
+	// left a gap), a revision is stored when content changes, not on every
+	// poll, and place and layer are the event's current ones.
 	ListHistory(context.Context, *ListHistoryRequest) (*EventRevisionList, error)
 	// List places.
 	//

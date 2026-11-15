@@ -133,7 +133,7 @@
     "/api/v1/events": {
       "get": {
         "summary": "Query events across layers.",
-        "description": "The main event feed, from the grid event store. Defaults: status ACTIVE and\nSCHEDULED, every layer, every place, every severity, up to 50 per page.\n\nAn unscoped query is dominated by MESH nodes (hundreds of INFO community\nradio nodes, many outside every place) and SCHEDULED Caltrans roadwork. For\na hazard feed pass `place` and `status=ACTIVE`, and either\n`severityMin=MINOR` or an explicit `layer` list. Use\n`layer=ROAD_INCIDENT\u0026place={corridor}` for a highway's incidents and\n`layer=WEATHER_ALERT` for NWS alerts. Sorted by severity, then most recently\nobserved. A page holds at most `pageSize` events and stops early at about\n3 MiB encoded, so follow `nextPageToken` until it is empty. Supports\nETag / If-None-Match.",
+        "description": "The main event feed, from the grid event store. Defaults: status ACTIVE and\nSCHEDULED, every layer, every place, every severity, up to 50 per page.\n\nAn unscoped query is dominated by MESH nodes (hundreds of INFO community\nradio nodes, many outside every place) and SCHEDULED Caltrans roadwork. For\na hazard feed pass `place` and `status=ACTIVE`, and either\n`severityMin=MINOR` or an explicit `layer` list. Use\n`layer=ROAD_INCIDENT\u0026place={corridor}` for a highway's incidents and\n`layer=WEATHER_ALERT` for NWS alerts. Sorted by severity, then most recently\nobserved. A page holds at most `pageSize` events and stops early at about\n3 MiB encoded, so follow `nextPageToken` until it is empty. Supports\nETag / If-None-Match.\n\n**Text search.** `q` keeps only events whose text matches: headline,\nlocation, summary, the source's description and incident log, typed facts\n(incident type, cause, zone id), node names and public keys, and the\nsource's name. Every word is required; `\"quoted words\"` must appear\ntogether; `-word` excludes; `OR` between terms starts an alternative.\nWords are matched by stem (\"flooded\" finds \"flooding\") and a numbered\nroad in any spelling finds every spelling (`hwy 4`, `SR-4`, `state route\n4`). With `q` the order is newest `observedAt` first, not severity, and\nthe response adds `totalMatches`, `counts`, a `matches` snippet per event\nand `search` (how the query was read and what it covers). The other\nfilters still apply, including the status default: add `status` to search\nended events. No matches means no stored event's text matched, not that\nnothing happened: collection began at `search.since`, and weather\nreadings and road conditions are not events. `counts=true` returns the\ntotal and its breakdown without a text query.",
         "operationId": "GridService_ListEvents",
         "responses": {
           "200": {
@@ -147,11 +147,15 @@
             "schema": {}
           },
           "400": {
-            "description": "INVALID_ARGUMENT: an unknown layer, status, severity or geometryFormat, a timestamp that is not RFC 3339, a negative page size, or a bad page token.",
+            "description": "INVALID_ARGUMENT: an unknown layer, status, severity or geometryFormat, a timestamp that is not RFC 3339, a negative page size, a bad page token, or a `q` that is longer than 200 bytes or has nothing to search for (only punctuation, exclusions or words like \"the\").",
             "schema": {}
           },
           "404": {
             "description": "NOT_FOUND: unknown place.",
+            "schema": {}
+          },
+          "503": {
+            "description": "UNAVAILABLE: `q` or `counts` was asked for while the search index is still being built (the first minutes after a release that changes it). Retry; requests without them are unaffected.",
             "schema": {}
           },
           "default": {
@@ -264,6 +268,28 @@
               "NONE"
             ],
             "default": "BASE64"
+          },
+          {
+            "name": "q",
+            "description": "Text search: only events whose text matches. Words are all required;\n`\"quoted words\"` are a phrase; `-word` excludes; `OR` separates\nalternatives. Stems match and a numbered road matches in any spelling.\nAt most 200 bytes and 16 terms. Changes the order to newest first. See\nthe operation description.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "x-example": "hwy 4 crash"
+          },
+          {
+            "name": "qTyping",
+            "description": "With `q`, treat its last word as still being typed: it also matches words\nthat begin with it (`floo` finds \"flooded\"), unless `q` ends in a space.\nFor search-as-you-type boxes. Leave it off for a finished question or a\ncount, where `deer` must not match \"Deerfield\". Default false.",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "counts",
+            "description": "Return `totalMatches` and `counts` (matching events by layer and\ncategory) even without `q`. Always on with `q`. Default false.",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -495,7 +521,7 @@
     "/api/v1/history": {
       "get": {
         "summary": "Query revisions across events (the archive).",
-        "description": "Revisions of all events, optionally filtered by place and layer, over a\nhalf-open `[from, to)` window on each revision's `observedAt`. With no\nwindow it covers all history. Ordered newest first. Place and layer\nfilters use each event's CURRENT place attachments and layer. Use it for\n\"what happened here last week\". A page holds at most `pageSize` revisions\nand stops early at about 3 MiB encoded, so follow `nextPageToken` until it\nis empty. Supports ETag / If-None-Match.",
+        "description": "Revisions of all events, optionally filtered by place and layer, over a\nhalf-open `[from, to)` window on each revision's `observedAt`. With no\nwindow it covers all history. Ordered newest first. Place and layer\nfilters use each event's CURRENT place attachments and layer. Use it for\n\"what happened here last week\". A page holds at most `pageSize` revisions\nand stops early at about 3 MiB encoded, so follow `nextPageToken` until it\nis empty. Supports ETag / If-None-Match.\n\n**Text search.** `q` (same syntax as on `/api/v1/events`) keeps only\nrevisions whose text matched as it stood at that revision, so it finds\nwhat a report once said and no longer says. Each revision gains a\n`match` snippet and the response `totalMatches` and `search`. With\n`collapse=event` the answer is one row per event in `collapsed` instead\nof `revisions`: the first matching revision in full, the last one's\nnumber and time, and how many matched. That is the form for \"when did\nthis first say X, and when did it stop\". Limits: only stored revisions\nare searched (collection began at `search.since`; a source that was down\nleft a gap), a revision is stored when content changes, not on every\npoll, and place and layer are the event's current ones.",
         "operationId": "GridService_ListHistory",
         "responses": {
           "200": {
@@ -509,11 +535,15 @@
             "schema": {}
           },
           "400": {
-            "description": "INVALID_ARGUMENT: an unknown layer or geometryFormat, a timestamp that is not RFC 3339, a negative page size, or a bad page token.",
+            "description": "INVALID_ARGUMENT: an unknown layer or geometryFormat, a timestamp that is not RFC 3339, a negative page size, a bad page token, a `q` that is too long or has nothing to search for, an unknown `collapse`, or `collapse` without `q`.",
             "schema": {}
           },
           "404": {
             "description": "NOT_FOUND: unknown place.",
+            "schema": {}
+          },
+          "503": {
+            "description": "UNAVAILABLE: `q` was asked for while the search index is still being built. Retry; requests without `q` are unaffected.",
             "schema": {}
           },
           "default": {
@@ -602,6 +632,31 @@
               "OBJECT"
             ],
             "default": "BASE64"
+          },
+          {
+            "name": "q",
+            "description": "Text search: only revisions whose text matched at that revision. Same\nsyntax and limits as `q` on `/api/v1/events`.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "x-example": "evacuation order"
+          },
+          {
+            "name": "qTyping",
+            "description": "With `q`, treat its last word as still being typed (see `/api/v1/events`).",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "collapse",
+            "description": "`event`: with `q`, answer one row per event in `collapsed` (first and\nlast matching revision, how many matched) instead of every matching\nrevision. Case-insensitive. Requires `q`. Default: not collapsed.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "event"
+            ]
           }
         ],
         "tags": [
@@ -1706,6 +1761,61 @@
         "ingestedAt"
       ]
     },
+    "v1EventCount": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "$ref": "#/definitions/v1Layer",
+          "example": "ROAD_INCIDENT"
+        },
+        "category": {
+          "type": "string",
+          "example": "incident",
+          "description": "The events' `category`, e.g. `incident` or `closure`; may be empty."
+        },
+        "events": {
+          "type": "integer",
+          "format": "int32",
+          "example": 42
+        }
+      },
+      "description": "EventCount is how many matching events share a layer and category."
+    },
+    "v1EventHistoryMatch": {
+      "type": "object",
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "example": "evac:US-CA-XCA-CCU-043"
+        },
+        "first": {
+          "$ref": "#/definitions/v1EventRevision",
+          "description": "The earliest matching revision (inside the `from`/`to` window, if any),\nin full, with its `match` snippet."
+        },
+        "lastRevision": {
+          "type": "integer",
+          "format": "int64",
+          "example": 5,
+          "description": "The latest matching revision's number. Equals `first.revision` when only\none matches. If it is below the event's current revision, the event's\ntext stopped matching after it."
+        },
+        "lastObservedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The latest matching revision's `observedAt`."
+        },
+        "matchingRevisions": {
+          "type": "integer",
+          "format": "int32",
+          "example": 3,
+          "description": "How many of the event's revisions match."
+        }
+      },
+      "description": "EventHistoryMatch is one event's revisions that match a text query,\ncollapsed: when its text first matched, when it last did, how many did.",
+      "required": [
+        "first",
+        "lastObservedAt"
+      ]
+    },
     "v1EventList": {
       "type": "object",
       "properties": {
@@ -1715,11 +1825,35 @@
             "type": "object",
             "$ref": "#/definitions/v1Event"
           },
-          "description": "Events on this page, ordered by severity (highest first), then\n`observedAt` (newest first), then id."
+          "description": "Events on this page, ordered by severity (highest first), then\n`observedAt` (newest first), then id. With `q`: `observedAt` newest\nfirst, then id."
         },
         "nextPageToken": {
           "type": "string",
           "description": "Token for the next page; pass it as `pageToken` with the same filters.\nEmpty string on the last page."
+        },
+        "totalMatches": {
+          "type": "integer",
+          "format": "int32",
+          "description": "How many events match the filters (and `q`) across every page. Null\nunless the request had `q` or `counts=true`."
+        },
+        "counts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1EventCount"
+          },
+          "description": "`totalMatches` broken down by layer and category, ordered by layer then\ncategory. Empty unless the request had `q` or `counts=true`."
+        },
+        "matches": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1SearchMatch"
+          },
+          "description": "With `q`: where the text matched, keyed by event id, for the events on\nthis page. An event that matched only on an identifier or its source's\nname has an entry with no `parts`. Empty without `q`."
+        },
+        "search": {
+          "$ref": "#/definitions/v1SearchInfo",
+          "description": "With `q`: how the query was read and what the search covers. Null\nwithout `q`."
         }
       },
       "description": "EventList is one page of events."
@@ -1746,6 +1880,10 @@
         "event": {
           "$ref": "#/definitions/v1Event",
           "description": "The full event as it was at this revision. Mesh activity clocks\n(`lastHeardAt`, `lastRelayedAt`) are not filled on history snapshots."
+        },
+        "match": {
+          "$ref": "#/definitions/v1SearchMatch",
+          "description": "On `/api/v1/history` with `q`: where this revision's text matched. Null\notherwise."
         }
       },
       "description": "EventRevision is one stored snapshot of an event.",
@@ -1769,6 +1907,23 @@
         "nextPageToken": {
           "type": "string",
           "description": "Token for the next page; pass it as `pageToken` with the same filters.\nEmpty string on the last page."
+        },
+        "totalMatches": {
+          "type": "integer",
+          "format": "int32",
+          "description": "On `/api/v1/history` with `q`: how many revisions match across every\npage, or with `collapse=event` how many events. Null without `q`."
+        },
+        "collapsed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1EventHistoryMatch"
+          },
+          "description": "With `q` and `collapse=event`: one row per event with a matching\nrevision, ordered by the latest match (newest first), then event id.\n`revisions` is empty in that case."
+        },
+        "search": {
+          "$ref": "#/definitions/v1SearchInfo",
+          "description": "With `q`: how the query was read and what the search covers. Null\nwithout `q`."
         }
       },
       "description": "EventRevisionList is one page of revisions."
@@ -3015,6 +3170,59 @@
         }
       },
       "description": "ScannerList is the scanner feeds."
+    },
+    "v1SearchInfo": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "example": "route4 crash",
+          "description": "The query as read, in its own syntax: lowercased, with a numbered road\nshown as its canonical token (`route4` for \"hwy 4\", \"SR-4\", ...)."
+        },
+        "since": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the Grid began storing events. Nothing earlier can match. Null on\nan empty store."
+        },
+        "note": {
+          "type": "string",
+          "description": "What a result, or no result, does and does not mean. Meant to be shown\nor passed on with the results."
+        }
+      },
+      "description": "SearchInfo says how a text query was understood and what it searched."
+    },
+    "v1SearchMatch": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "example": "text",
+          "description": "Which text the excerpt is cut from: `text` (summary, description,\nincident log, instructions) or `title` (headline and location). Empty\nwhen the match is elsewhere and there is no excerpt."
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1SearchMatchPart"
+          },
+          "description": "The excerpt as consecutive runs of text. Concatenate every `text` in\norder to read it; runs with `hit: true` are the matched words. Plain\ntext, never markup."
+        }
+      },
+      "description": "SearchMatch is a short excerpt showing where a text query matched."
+    },
+    "v1SearchMatchPart": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "example": "flooded"
+        },
+        "hit": {
+          "type": "boolean",
+          "description": "True when this run is a matched word."
+        }
+      },
+      "description": "SearchMatchPart is one run of an excerpt."
     },
     "v1Severity": {
       "type": "string",
