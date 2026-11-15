@@ -277,9 +277,12 @@ func (s *Store) BackfillEventSearch(ctx context.Context, after string, batch int
 	var res SearchBackfill
 	err := s.inTx(ctx, func(tx *sql.Tx) error {
 		res = SearchBackfill{}
+		// The shape-free copy where there is one: search text needs no
+		// geometry, and a perimeter is most of an event's bytes.
 		rows, err := tx.QueryContext(ctx, `
-			SELECT e.id, e.revision, e.observed_at, e.proto
+			SELECT e.id, e.revision, e.observed_at, COALESCE(l.proto, e.proto)
 			FROM events e LEFT JOIN event_search s ON s.event_id = e.id
+			LEFT JOIN event_lite l ON l.event_id = e.id
 			WHERE e.id > $1 AND (s.event_id IS NULL OR s.revision <> e.revision OR s.doc_version <> $2)
 			ORDER BY e.id LIMIT $3`, after, search.DocVersion, batch)
 		if err != nil {
@@ -331,6 +334,10 @@ func (s *Store) BackfillEventSearch(ctx context.Context, after string, batch int
 	return res, nil
 }
 
+// revisionBackfillBytes is the most revision blob bytes one backfill step
+// reads (after its first row).
+const revisionBackfillBytes = 8 << 20
+
 // BackfillRevisionSearch is BackfillEventSearch for event_revision_search:
 // revisions after (afterID, afterRev) in primary-key order that have no row
 // or one built by other rules.
@@ -338,24 +345,36 @@ func (s *Store) BackfillRevisionSearch(ctx context.Context, afterID string, afte
 	var res SearchBackfill
 	err := s.inTx(ctx, func(tx *sql.Tx) error {
 		res = SearchBackfill{}
+		// Revisions are full snapshots, shapes included, and a fire's
+		// perimeter revisions run to megabytes each. The batch is cut where
+		// its blobs pass revisionBackfillBytes (the first row always comes),
+		// so one step never holds the writer lock, or this process's memory,
+		// for a hundred perimeters. octet_length reads a stored size, not the
+		// blob. candidates is how many rows the LIMIT found, cut or not.
 		rows, err := tx.QueryContext(ctx, `
-			SELECT r.event_id, r.revision, r.observed_at, r.proto
-			FROM event_revisions r
-			LEFT JOIN event_revision_search s ON s.event_id = r.event_id AND s.revision = r.revision
-			WHERE (r.event_id, r.revision) > ($1, $2) AND (s.event_id IS NULL OR s.doc_version <> $3)
-			ORDER BY r.event_id, r.revision LIMIT $4`, afterID, afterRev, search.DocVersion, batch)
+			SELECT event_id, revision, observed_at, proto, candidates FROM (
+			  SELECT c.*, COUNT(*) OVER () AS candidates,
+			         SUM(octet_length(c.proto)) OVER (ORDER BY c.event_id, c.revision) - octet_length(c.proto) AS before
+			  FROM (
+			    SELECT r.event_id, r.revision, r.observed_at, r.proto
+			    FROM event_revisions r
+			    LEFT JOIN event_revision_search s ON s.event_id = r.event_id AND s.revision = r.revision
+			    WHERE (r.event_id, r.revision) > ($1, $2) AND (s.event_id IS NULL OR s.doc_version <> $3)
+			    ORDER BY r.event_id, r.revision LIMIT $4
+			  ) c
+			) t WHERE before < $5 ORDER BY event_id, revision`, afterID, afterRev, search.DocVersion, batch, revisionBackfillBytes)
 		if err != nil {
 			return fmt.Errorf("store: revision search backfill scan: %w", err)
 		}
 		var ids []string
 		var revs, obs []int64
 		var a, b, c, d []string
-		n := 0
+		n, candidates := 0, 0
 		for rows.Next() {
 			var id string
 			var rev, o int64
 			var blob []byte
-			if err := rows.Scan(&id, &rev, &o, &blob); err != nil {
+			if err := rows.Scan(&id, &rev, &o, &blob, &candidates); err != nil {
 				rows.Close()
 				return fmt.Errorf("store: revision search backfill scan: %w", err)
 			}
@@ -393,7 +412,9 @@ func (s *Store) BackfillRevisionSearch(ctx context.Context, afterID string, afte
 				return err
 			}
 		}
-		if n < batch {
+		// The walk is over when the LIMIT found fewer rows than it allows AND
+		// the byte cut kept them all.
+		if candidates < batch && n == candidates {
 			res.Done = true
 			return setVersion(ctx, tx, versionSearchHistoryReady, search.DocVersion)
 		}

@@ -647,3 +647,51 @@ func TestSearchTopEventsRanks(t *testing.T) {
 	require.Len(t, hits, 1)
 	assert.Equal(t, "text", hits[0].Snippet.Field)
 }
+
+// A step of the revision backfill stops where its blobs pass the byte bound,
+// so a run of large perimeter snapshots is walked a few at a time and still
+// walked completely.
+func TestRevisionBackfillIsBoundedByBytes(t *testing.T) {
+	s := newTestStore(t)
+	seedSource(t, s, "usgs")
+	ctx := context.Background()
+	big := func(i int) *gridv1.Event {
+		ev := roadEvent("calfire:big", fmt.Sprintf("Perimeter update %d", i), "", "", "", time.Duration(i)*time.Hour)
+		ev.Layer = gridv1.Layer_WILDFIRE
+		// About 3 MiB of shape per revision.
+		ev.Geometry = &gridv1.Geometry{Geojson: []byte(`{"type":"Polygon","coordinates":[[` + strings.Repeat("[-120.5,38.1],", 220000) + `[-120.5,38.1]]]}`)}
+		return ev
+	}
+	for i := 1; i <= 7; i++ {
+		upsert(t, s, big(i))
+	}
+	upsert(t, s, roadEvent("chp:small", "Small one", "", "", "", time.Hour))
+	_, err := s.db.Exec(`DELETE FROM event_revision_search`)
+	require.NoError(t, err)
+
+	// Asked for up to 100 rows, a step takes only what fits: 3 MiB each
+	// against 8 MiB is three at a time (the row that crosses the bound is
+	// the last one in).
+	var steps []int
+	for id, rev := "", int64(0); ; {
+		b, err := s.BackfillRevisionSearch(ctx, id, rev, 100)
+		require.NoError(t, err)
+		steps = append(steps, b.Written)
+		if b.Done {
+			break
+		}
+		require.Less(t, len(steps), 20, "the walk must end")
+		id, rev = b.NextID, b.NextRev
+	}
+	assert.Equal(t, []int{3, 3, 2}, steps)
+	var n int
+	require.NoError(t, s.db.QueryRow(`SELECT COUNT(*) FROM event_revision_search`).Scan(&n))
+	assert.Equal(t, 8, n, "every revision was indexed")
+	_, rev, err := s.SearchReady(ctx)
+	require.NoError(t, err)
+	assert.True(t, rev)
+	// One blob over the whole bound still goes through, alone.
+	p, err := s.SearchHistory(ctx, HistoryQuery{Search: mustQuery(t, "perimeter "), PageSize: 1})
+	require.NoError(t, err)
+	assert.Equal(t, 7, p.Total)
+}
