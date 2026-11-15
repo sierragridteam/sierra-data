@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"math/rand/v2"
 	"runtime/debug"
@@ -142,6 +143,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 		goTracked(func() { s.runMeshMaintenance(ctx) })
 	}
 	goTracked(func() { s.runLiteBackfill(ctx) })
+	goTracked(func() { s.runSearchBackfill(ctx) })
 	if s.roadSampling.Interval > 0 && s.roadSampling.Sample != nil {
 		goTracked(func() { s.runRoadSampling(ctx) })
 	}
@@ -254,6 +256,105 @@ var (
 )
 
 const liteBackfillBatch = 50
+
+// The search backfill (store event_search, event_revision_search). It starts
+// soon after the writer term does, because until its first walk finishes a
+// text query is refused (503) rather than answered from a partial index.
+// Batches are short writer transactions with a pause between them, so polls
+// interleave. Sizes from the stored data on 2026-11-15: 12k events and 75k
+// revisions, a few minutes in all on the first run and one cheap scan on
+// every later one.
+var (
+	searchBackfillAfter = 5 * time.Second
+	searchBackfillPause = 200 * time.Millisecond
+	searchBackfillRetry = time.Minute
+)
+
+const (
+	searchBackfillEvents    = 200
+	searchBackfillRevisions = 100 // revisions carry full shapes
+)
+
+// runSearchBackfill brings the search index level with the store, then
+// exits: rows for events and revisions written before the index existed or
+// by a release that does not maintain it (the previous release's writer
+// during a deploy), and rows built by older rules (a search.DocVersion bump).
+// Every write keeps the index current after that, so each later writer term
+// finds nothing to do. Unlike the lite backfill it retries after a failure:
+// search stays unavailable until a walk completes.
+func (s *Scheduler) runSearchBackfill(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Errorw(ctx, "Search backfill: recovered from panic", "error", r)
+		}
+	}()
+	sleep := func(d time.Duration) bool {
+		timer := time.NewTimer(d)
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return false
+		case <-s.stopping():
+			return false
+		case <-timer.C:
+			return true
+		}
+	}
+	if !sleep(searchBackfillAfter) {
+		return
+	}
+	for {
+		events, revisions, skipped, err := s.searchBackfillWalk(ctx, sleep)
+		if err == nil {
+			if events > 0 || revisions > 0 || skipped > 0 {
+				logging.Infow(ctx, "Search backfill complete", "events", events, "revisions", revisions, "skippedUnreadable", skipped)
+			}
+			return
+		}
+		if ctx.Err() != nil || stderrors.Is(err, errSearchBackfillStopped) {
+			return
+		}
+		logging.Errorw(ctx, "Search backfill failed; text search stays unavailable until a walk completes. Retrying",
+			"error", err, "events", events, "revisions", revisions, "retryIn", searchBackfillRetry.String())
+		if !sleep(searchBackfillRetry) {
+			return
+		}
+	}
+}
+
+var errSearchBackfillStopped = stderrors.New("search backfill stopped")
+
+// searchBackfillWalk is one pass over events, then revisions.
+func (s *Scheduler) searchBackfillWalk(ctx context.Context, sleep func(time.Duration) bool) (events, revisions, skipped int, err error) {
+	for after := ""; ; {
+		b, err := s.store.BackfillEventSearch(ctx, after, searchBackfillEvents)
+		if err != nil {
+			return events, revisions, skipped, err
+		}
+		events, skipped = events+b.Written, skipped+b.Skipped
+		if b.Done {
+			break
+		}
+		after = b.NextID
+		if !sleep(searchBackfillPause) {
+			return events, revisions, skipped, errSearchBackfillStopped
+		}
+	}
+	for id, rev := "", int64(0); ; {
+		b, err := s.store.BackfillRevisionSearch(ctx, id, rev, searchBackfillRevisions)
+		if err != nil {
+			return events, revisions, skipped, err
+		}
+		revisions, skipped = revisions+b.Written, skipped+b.Skipped
+		if b.Done {
+			return events, revisions, skipped, nil
+		}
+		id, rev = b.NextID, b.NextRev
+		if !sleep(searchBackfillPause) {
+			return events, revisions, skipped, errSearchBackfillStopped
+		}
+	}
+}
 
 // runLiteBackfill writes the geometry-free list copy (store event_lite) for
 // events stored before it existed, then exits. Every new write keeps the copy

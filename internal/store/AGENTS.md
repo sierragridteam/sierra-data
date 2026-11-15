@@ -372,6 +372,54 @@ transaction (`DO NOTHING`, so a concurrent upsert's newer copy wins), and skips
 a blob that will not unmarshal rather than stopping on it. Revisions are never
 lite.
 
+## Search tables: `event_search`, `event_revision_search`
+
+Full-text search (migration 0004, `search.go`, text rules in
+`internal/search`). Both tables are derived state like `event_lite`: every row
+is rebuilt from a proto blob by `search.Build`, and nothing here is the only
+home of a value.
+
+- **Separate tables, not columns on `events`.** `events` is updated
+  constantly for reasons that are not text (`last_seen_at`, telemetry
+  refreshes, status, `observed_at`). An update that is not heap-only would
+  re-insert every word of the event into a GIN index on the same table. Here a
+  row is written only when its text can have changed, and the upsert keeps the
+  stored vector when the text hash is equal.
+- **Write rule.** A new revision (`UpsertEvent`, `TransitionEvents`) writes
+  the current row and the revision's snapshot row in one statement
+  (`putSearch`). The hash-equal refresh writes the current row only when the
+  AI summary changed: telemetry, burn observations and place ids are not in
+  the text. A new write path for `events.proto` must call `putSearch` if it can
+  change anything `search.Build` reads; `TestSearchRowsFollowEveryWritePath`
+  pins both directions (text changes are indexed; a telemetry refresh and
+  `TouchSeen` leave the row's `xmin` alone).
+- **History is a snapshot.** `event_revision_search` holds each revision's text
+  as stored and is never updated by a later refresh, like `event_revisions`.
+- **Readiness is explicit.** A text query against an index that is not known
+  complete returns `ErrSearchNotReady` (503 at the API), never an empty page.
+  "Complete" is the `search_ready:*` rows in `versions`, set when a backfill
+  walk reaches the end of the table. The scheduler runs the walk at the start
+  of every writer term (`runSearchBackfill`): it builds rows for events and
+  revisions that have none, rows whose `revision` is behind their event (the
+  previous release's writer does not know these tables and keeps writing
+  during a deploy) and rows built by other rules (`doc_version`). After the
+  first walk it finds nothing and costs one scan.
+- **Changing the rules.** Bump `search.DocVersion` with any change to
+  `search.Build`'s output or to `tsvExpr`. The next writer term rebuilds every
+  row. While it runs, results mix old and new rules; they are not refused.
+- **Tokenising identifiers.** PostgreSQL reads a hyphen before a digit as a
+  minus sign, so `indexText` turns a hyphen next to a digit into a space on
+  both the document and the query (`CCU-043`, `West-1w`, `SR-26`).
+- **Validators.** A backfill changes results without a revision, so it bumps
+  the `search` version, which `SearchVersion` folds into the ETag of a request
+  with `q` or `counts`.
+- **Plans.** `plans_test.go` lists the search statements; GIN can only be read
+  through a bitmap scan, so those two calls keep bitmap scans on
+  (`keepBitmap`). Measured on a copy of the stored events (12,262, 2026-11-15):
+  `event_search` 24 MB with a 7.5 MB index; a search with its count and
+  snippets about 20 ms. Each statement is capped at 5 s
+  (`searchStatementTimeout`, `ErrSearchTimeout`).
+
 ## The mesh tables are measurements, not records
 
 Four tables hang off the mesh subsystem and none of them is proto-blob
