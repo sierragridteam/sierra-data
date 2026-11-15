@@ -2517,9 +2517,10 @@ message GetEventHistoryRequest {
   string page_token = 3;
   // Include `enhancement.request` and `enhancement.response`. Default false.
   bool enhancement_io = 4;
-  // `BASE64` (default, legacy) or `OBJECT`; same as on `/api/v1/events`.
+  // `BASE64` (default, legacy), `OBJECT`, or `NONE` (no shape, only bbox and
+  // centroid, for lists that do not draw); same as on `/api/v1/events`.
   string geometry_format = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    enum: ["BASE64", "OBJECT"]
+    enum: ["BASE64", "OBJECT", "NONE"]
     default: "BASE64"
   }];
 }
@@ -2549,9 +2550,10 @@ message ListHistoryRequest {
   string page_token = 6;
   // Include `enhancement.request` and `enhancement.response`. Default false.
   bool enhancement_io = 7;
-  // `BASE64` (default, legacy) or `OBJECT`; same as on `/api/v1/events`.
+  // `BASE64` (default, legacy), `OBJECT`, or `NONE` (no shape, only bbox and
+  // centroid, for lists that do not draw); same as on `/api/v1/events`.
   string geometry_format = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    enum: ["BASE64", "OBJECT"]
+    enum: ["BASE64", "OBJECT", "NONE"]
     default: "BASE64"
   }];
   // Text search: only revisions whose text matched at that revision. Same

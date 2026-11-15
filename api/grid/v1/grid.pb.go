@@ -6466,7 +6466,8 @@ type GetEventHistoryRequest struct {
 	PageToken string `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
 	// Include `enhancement.request` and `enhancement.response`. Default false.
 	EnhancementIo bool `protobuf:"varint,4,opt,name=enhancement_io,json=enhancementIo,proto3" json:"enhancement_io,omitempty"`
-	// `BASE64` (default, legacy) or `OBJECT`; same as on `/api/v1/events`.
+	// `BASE64` (default, legacy), `OBJECT`, or `NONE` (no shape, only bbox and
+	// centroid, for lists that do not draw); same as on `/api/v1/events`.
 	GeometryFormat string `protobuf:"bytes,5,opt,name=geometry_format,json=geometryFormat,proto3" json:"geometry_format,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -6558,7 +6559,8 @@ type ListHistoryRequest struct {
 	PageToken string `protobuf:"bytes,6,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
 	// Include `enhancement.request` and `enhancement.response`. Default false.
 	EnhancementIo bool `protobuf:"varint,7,opt,name=enhancement_io,json=enhancementIo,proto3" json:"enhancement_io,omitempty"`
-	// `BASE64` (default, legacy) or `OBJECT`; same as on `/api/v1/events`.
+	// `BASE64` (default, legacy), `OBJECT`, or `NONE` (no shape, only bbox and
+	// centroid, for lists that do not draw); same as on `/api/v1/events`.
 	GeometryFormat string `protobuf:"bytes,8,opt,name=geometry_format,json=geometryFormat,proto3" json:"geometry_format,omitempty"`
 	// Text search: only revisions whose text matched at that revision. Same
 	// syntax and limits as `q` on `/api/v1/events`.
@@ -9451,14 +9453,14 @@ const file_grid_proto_rawDesc = "" +
 	"\brevision\x18\x06 \x01(\rR\brevision\x12\x14\n" +
 	"\x05field\x18\a \x01(\tR\x05field\x12\x16\n" +
 	"\x06before\x18\b \x01(\tR\x06before\x12\x14\n" +
-	"\x05after\x18\t \x01(\tR\x05after\"\xff\x01\n" +
+	"\x05after\x18\t \x01(\tR\x05after\"\x86\x02\n" +
 	"\x16GetEventHistoryRequest\x12,\n" +
 	"\x02id\x18\x01 \x01(\tB\x1c\x92A\x19J\x17\"burn:calaveras-county\"R\x02id\x12)\n" +
 	"\tpage_size\x18\x02 \x01(\x05B\f\x92A\tY\x00\x00\x00\x00\x00\x00i@R\bpageSize\x12\x1d\n" +
 	"\n" +
 	"page_token\x18\x03 \x01(\tR\tpageToken\x12%\n" +
-	"\x0eenhancement_io\x18\x04 \x01(\bR\renhancementIo\x12F\n" +
-	"\x0fgeometry_format\x18\x05 \x01(\tB\x1d\x92A\x1a:\x06BASE64\xf2\x02\x06BASE64\xf2\x02\x06OBJECTR\x0egeometryFormat\"\xad\x04\n" +
+	"\x0eenhancement_io\x18\x04 \x01(\bR\renhancementIo\x12M\n" +
+	"\x0fgeometry_format\x18\x05 \x01(\tB$\x92A!:\x06BASE64\xf2\x02\x06BASE64\xf2\x02\x06OBJECT\xf2\x02\x04NONER\x0egeometryFormat\"\xb4\x04\n" +
 	"\x12ListHistoryRequest\x12-\n" +
 	"\x05place\x18\x01 \x01(\tB\x17\x92A\x14J\x12\"calaveras-county\"R\x05place\x12{\n" +
 	"\x05layer\x18\x02 \x03(\tBe\x92Ab\xf2\x02\bWILDFIRE\xf2\x02\n" +
@@ -9469,8 +9471,8 @@ const file_grid_proto_rawDesc = "" +
 	"\tpage_size\x18\x05 \x01(\x05B\f\x92A\tY\x00\x00\x00\x00\x00\x00i@R\bpageSize\x12\x1d\n" +
 	"\n" +
 	"page_token\x18\x06 \x01(\tR\tpageToken\x12%\n" +
-	"\x0eenhancement_io\x18\a \x01(\bR\renhancementIo\x12F\n" +
-	"\x0fgeometry_format\x18\b \x01(\tB\x1d\x92A\x1a:\x06BASE64\xf2\x02\x06BASE64\xf2\x02\x06OBJECTR\x0egeometryFormat\x12(\n" +
+	"\x0eenhancement_io\x18\a \x01(\bR\renhancementIo\x12M\n" +
+	"\x0fgeometry_format\x18\b \x01(\tB$\x92A!:\x06BASE64\xf2\x02\x06BASE64\xf2\x02\x06OBJECT\xf2\x02\x04NONER\x0egeometryFormat\x12(\n" +
 	"\x01q\x18\t \x01(\tB\x1a\x92A\x17J\x12\"evacuation order\"x\xc8\x01R\x01q\x12\x19\n" +
 	"\bq_typing\x18\n" +
 	" \x01(\bR\aqTyping\x12'\n" +

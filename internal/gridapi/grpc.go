@@ -367,7 +367,7 @@ func (g *GridServer) GetEventHistory(ctx context.Context, req *gridv1.GetEventHi
 	if err != nil {
 		return nil, invalidErr(err)
 	}
-	geomFmt, err := parseGeometryFormat(req.GetGeometryFormat())
+	geomFmt, err := parseListGeometryFormat(req.GetGeometryFormat())
 	if err != nil {
 		return nil, invalidErr(err)
 	}
@@ -434,7 +434,7 @@ func (g *GridServer) ListHistory(ctx context.Context, req *gridv1.ListHistoryReq
 		return nil, invalidErr(err)
 	}
 	hq.PageToken = req.GetPageToken()
-	geomFmt, err := parseGeometryFormat(req.GetGeometryFormat())
+	geomFmt, err := parseListGeometryFormat(req.GetGeometryFormat())
 	if err != nil {
 		return nil, invalidErr(err)
 	}

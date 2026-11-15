@@ -537,3 +537,61 @@ func TestFinderDropsLookAlikes(t *testing.T) {
 	all, _ := matchText(res.GetHits()[0].GetMatch())
 	assert.Contains(t, all, "(Guardrail Work) · Hwy 26 from")
 }
+
+// The revision lists take geometryFormat=NONE like the events list: a list
+// that does not draw should not carry shapes. (The explorer's saved-updates
+// view asked for it and got a 400.)
+func TestHistoryListsTakeGeometryNone(t *testing.T) {
+	g, _ := searchServer(t)
+	shapes := func(revs []*gridv1.EventRevision) (with, located int) {
+		for _, r := range revs {
+			geom := r.GetEvent().GetGeometry()
+			if len(geom.GetGeojson()) > 0 || geom.GetObject() != nil {
+				with++
+			}
+			if geom.GetCentroid() != nil {
+				located++
+			}
+		}
+		return
+	}
+	full, err := g.ListHistory(rpcBG(), &gridv1.ListHistoryRequest{})
+	require.NoError(t, err)
+	withShape, _ := shapes(full.GetRevisions())
+	require.Positive(t, withShape, "the fixture has shapes to drop")
+
+	for _, format := range []string{"NONE", "none"} {
+		bare, err := g.ListHistory(rpcBG(), &gridv1.ListHistoryRequest{GeometryFormat: format})
+		require.NoError(t, err, format)
+		require.Len(t, bare.GetRevisions(), len(full.GetRevisions()))
+		with, located := shapes(bare.GetRevisions())
+		assert.Zero(t, with, "no revision carries a shape")
+		assert.Positive(t, located, "bbox and centroid stay, so a list can still place the event")
+	}
+	one, err := g.GetEventHistory(rpcBG(), &gridv1.GetEventHistoryRequest{Id: "calfire:f1", GeometryFormat: "NONE"})
+	require.NoError(t, err)
+	with, _ := shapes(one.GetRevisions())
+	assert.Zero(t, with)
+	// With a search, per revision and collapsed.
+	found, err := g.ListHistory(rpcBG(), &gridv1.ListHistoryRequest{Q: "fire", GeometryFormat: "NONE"})
+	require.NoError(t, err)
+	require.NotEmpty(t, found.GetRevisions())
+	with, _ = shapes(found.GetRevisions())
+	assert.Zero(t, with)
+	collapsed, err := g.ListHistory(rpcBG(), &gridv1.ListHistoryRequest{Q: "fire", Collapse: "event", GeometryFormat: "NONE"})
+	require.NoError(t, err)
+	require.NotEmpty(t, collapsed.GetCollapsed())
+	for _, c := range collapsed.GetCollapsed() {
+		assert.Empty(t, c.GetFirst().GetEvent().GetGeometry().GetGeojson())
+	}
+	// The ETag separates the forms, and other values are still refused.
+	tag := func(format string) string {
+		return rpcTag(t, func(ctx context.Context) error {
+			_, err := g.ListHistory(ctx, &gridv1.ListHistoryRequest{GeometryFormat: format})
+			return err
+		})
+	}
+	assert.NotEqual(t, tag(""), tag("NONE"))
+	_, err = g.ListHistory(rpcBG(), &gridv1.ListHistoryRequest{GeometryFormat: "WKT"})
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+}

@@ -109,6 +109,14 @@ deep research only use tools with exactly those names and shapes
 (`{results: [{id, title, url}]}` and `{id, title, text, url, metadata}`). They
 are thin forms of `grid_search` and `grid_event`.
 
+### `geometryFormat=NONE` on the history lists
+
+`GET /api/v1/history` and `GET /api/v1/events/{id}/history` accept
+`geometryFormat=NONE`, as `/api/v1/events` does: each revision's event keeps
+`geometry.bbox` and `geometry.centroid` and carries no shape. They answered
+400 to it before, which is what the Grid explorer's saved-updates list was
+sending.
+
 ### MCP: `grid_events` and `grid_history` search text
 
 `grid_events` takes `q` and `count`, and returns `total`, `counts`, a `match`
