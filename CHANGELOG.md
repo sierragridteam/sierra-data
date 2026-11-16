@@ -146,7 +146,7 @@ stays. An event on any other layer answers 404.
 ### New enum values, declared ahead of use
 
 `Layer` gains `SOURCE_HEALTH`, `CHAIN_CONTROL`, `ROAD_SEGMENT` and `WEATHER`;
-`SourceKind` gains `INTERNAL`; `TimelineKind` gains `TIMELINE_READING`. No
+`SourceKind` gains `INTERNAL`; `TimelineKind` gains `TIMELINE_READING`. `provenance.sourceId` gains `grid` (source health), `caltrans-cc` (chain control) and `roads` (monitored roads). No
 response carries the layer or source-kind values until the flag for its layer
 is on. They are published first
 because a client with closed enums (the TypeScript SDK validates responses)

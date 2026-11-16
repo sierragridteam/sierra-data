@@ -3251,7 +3251,10 @@
             "psps",
             "meshcore",
             "burnline",
-            "calfire-burn"
+            "calfire-burn",
+            "grid",
+            "caltrans-cc",
+            "roads"
           ],
           "description": "Source registry id; joins to `Source.id` on `/api/v1/sources`."
         },

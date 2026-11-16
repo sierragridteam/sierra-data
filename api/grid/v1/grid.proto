@@ -570,7 +570,7 @@ message Provenance {
   // Source registry id; joins to `Source.id` on `/api/v1/sources`.
   string source_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     example: "\"chp\""
-    enum: ["calfire", "firis", "caloes", "nws", "usgs", "chp", "caltrans", "pge", "psps", "meshcore", "burnline", "calfire-burn"]
+    enum: ["calfire", "firis", "caloes", "nws", "usgs", "chp", "caltrans", "pge", "psps", "meshcore", "burnline", "calfire-burn", "grid", "caltrans-cc", "roads"]
   }];
   // Display name of the publisher, e.g. "CAL FIRE", "NWS Sacramento CA",
   // "CHP / Caltrans".
