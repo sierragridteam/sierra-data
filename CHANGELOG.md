@@ -21,6 +21,74 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-16
+
+### BREAKING: Related mesh nodes follow the gateway that read them, not the whole monitor
+
+`GET /api/v1/events/{id}/related` for a mesh node listed every node read by
+the same monitor, so every gateway and shared repeater of the SIERRA relay
+was related to every other, across parts of the mesh that cannot hear each
+other. Relations now follow the reads the monitor states:
+
+- `mesh-monitor-gateway`, `RELATION_MEDIUM`: a gateway and a repeater read
+  through it. Reasons: "Read through this gateway" and, from the repeater, "A
+  gateway this node is read through".
+- `mesh-monitor-peer`, `RELATION_CONTEXT`: repeaters read through the same
+  gateway ("Read through the same gateway, SIERRA Eagle Gateway"), and gateways
+  that read the same repeater ("Also reads SIERRA Eagle One").
+
+Nothing is followed further than that, so two groups with no gateway and no
+repeater in common (Pinebrook, Eagle) no longer list each other. A gateway
+that has read no repeater, and a repeater the relay has not read through a
+published gateway, have no related events. The nodes of a monitor that states
+no gateways (an operator's own monitor reading from one place) still list each
+other as `mesh-monitor-peer` ("Also read by …").
+
+Migration: none for the response shape or rule names. A client that matched
+the old reason sentences ("Read by …, which listens through this gateway", "A
+gateway of …", "Another gateway of …") must update them. Right after this
+deploy the relay's nodes list nothing until each repeater's next successful
+read (within its 30-minute cycle) reports its gateway.
+
+### `mesh.telemetry.readVia`: the gateways a node was read through
+
+New field on a mesh event's `telemetry`: `readVia`, the public keys (lowercase
+hex) of the gateway nodes a monitor has read the node through. An empty list
+for gateways, for nodes no monitor reads, and for monitors that state none.
+The SIERRA relay reports the gateway that last read each shared repeater plus
+any other that read it in the past 7 days, naming only gateways it publishes
+as nodes. Additive; not part of the revision hash.
+
+### A mesh node's read path is recorded per reading, and its moves are on the timeline
+
+Additive.
+
+- `MeshAdminTelemetry.via` (on `mesh.telemetry.admin` and on every sample of
+  `GET /api/v1/mesh/telemetry`): the public key of the gateway node that
+  reading was taken through, or an empty string when the monitor states none
+  (always empty on samples archived before today). The archive keeps it per
+  read, so the series shows which gateway each reading came through.
+- `GET /api/v1/events/{id}/timeline` for a mesh node has a new entry kind,
+  `TIMELINE_READ_PATH` (clock `SOURCE`, `field: "readVia"`): a monitor's read
+  went through a different gateway than its previous one. `label` is "Read
+  through SIERRA Eagle Gateway", `before` and `after` are the gateways' names
+  (their keys when the Grid holds no node for them), `before` empty for the
+  first read that stated a gateway. The 50 most recent, from the archive.
+  These are not revisions: the gateway of a read is deliberately outside the
+  revision hash, so a failover between two gateways does not fill a node's
+  history. A client that switches on `kind` should treat unknown kinds
+  generically, as before.
+
+### Ingest: `mesh.repeater` reports take `read_via`
+
+Each entry in a `mesh.repeater` report may carry `read_via`: a list of node
+ids (public keys or prefixes, like `id`) of the reporter's own radios it has
+read that node through. Optional; a monitor with one vantage point leaves it
+out. Entries that are not node ids, name the node itself, or exceed 16 are
+ignored with a warning. It may also carry `via`: the one of those radios that
+took the reading in this entry (the read at `last_success`). See
+`docs/mesh-reporter-guide.md`.
+
 ## 2026-11-15
 
 ### Text search on events and history (`q`)

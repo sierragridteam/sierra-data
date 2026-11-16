@@ -67,6 +67,12 @@ type ReportEntry struct {
 	DirectDups     *int64   `json:"direct_dups"`
 	FloodDups      *int64   `json:"flood_dups"`
 	Online         bool     `json:"online"`
+	// ReadVia is the gateway nodes a shared repeater has been read through, by
+	// pubkey: only radios this report also lists, so an excluded gateway's
+	// radio is never named.
+	ReadVia []string `json:"read_via,omitempty"`
+	// Via is the one that took this entry's reading, under the same rule.
+	Via string `json:"via,omitempty"`
 }
 
 // Report builds the complete current set. A node never reached carries no
@@ -100,6 +106,14 @@ func (p *Poller) Report() Report {
 		}
 		e := ReportEntry{ID: st.pubkey, Name: st.name, LastAttempt: unix(st.lastAttempt),
 			LastSuccess: unix(st.lastSuccess), Online: st.outcome == outcomeOK}
+		for _, gw := range st.readVia {
+			if p.nodes[gw] != nil && !p.nodes[gw].lastAttempt.IsZero() {
+				e.ReadVia = append(e.ReadVia, gw)
+				if gw == st.lastVia && st.sample != nil {
+					e.Via = gw
+				}
+			}
+		}
 		if s := st.sample; s != nil {
 			e.BatteryVoltage, e.UptimeS, e.TxQueueLen = s.BatteryVoltage, s.UptimeS, s.TxQueueLen
 			e.NoiseFloorDBm, e.LastRSSIdBm, e.LastSNRdB = s.NoiseFloorDBm, s.LastRSSIdBm, s.LastSNRdB

@@ -879,3 +879,35 @@ func TestUnreachableMonitoredNodeKeepsItsLastReadings(t *testing.T) {
 		check(t, res.Events[0])
 	})
 }
+
+// The gateways a node is read through are every monitor's, not only the one
+// with the freshest reading, and ride forward while a monitor is silent.
+func TestReadViaIsTheUnionAndSurvivesASilentMonitor(t *testing.T) {
+	reg := &fakeMeshRegistry{connected: 1, nodes: []meshcore.NodeState{{
+		PubKey: fullKey, Role: meshcore.RoleRepeater, Name: "SIERRA Arnold Summit",
+		HasLocation: true, Lat: 38.1, Lng: -120.4, LastHeardAt: pollNow,
+	}}}
+	relay := report(fullKey, "", pollNow.Add(-time.Minute), func(r *pushingest.MeshNodeReport) {
+		r.ReporterID, r.ReadVia = "relay", []string{"bb02", "aa01"}
+	})
+	other := report(fullKey, "", pollNow, func(r *pushingest.MeshNodeReport) { r.ReadVia = []string{"aa01"} })
+	n := pushNormalizer(t, reg, pushingest.MeshSnapshot{Live: 2, Reports: []pushingest.MeshNodeReport{relay, other}})
+	res, err := n.Poll(testCtx(), established())
+	require.NoError(t, err)
+	require.Len(t, res.Events, 1)
+	assert.Equal(t, []string{"aa01", "bb02"}, res.Events[0].GetMesh().GetTelemetry().GetReadVia())
+
+	// The relay goes quiet; the other monitor's report states no gateway.
+	stored := res.Events[0]
+	n = pushNormalizer(t, reg, pushingest.MeshSnapshot{Live: 1, MonitorSilent: true,
+		Reports: []pushingest.MeshNodeReport{report(fullKey, "", pollNow)}})
+	res, err = n.Poll(testCtx(), &fakePrior{events: []*gridv1.Event{stored}})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"aa01", "bb02"}, res.Events[0].GetMesh().GetTelemetry().GetReadVia())
+
+	// Every monitor live and none states a gateway: cleared.
+	n = pushNormalizer(t, reg, pushingest.MeshSnapshot{Live: 1, Reports: []pushingest.MeshNodeReport{report(fullKey, "", pollNow)}})
+	res, err = n.Poll(testCtx(), &fakePrior{events: []*gridv1.Event{stored}})
+	require.NoError(t, err)
+	assert.Empty(t, res.Events[0].GetMesh().GetTelemetry().GetReadVia())
+}

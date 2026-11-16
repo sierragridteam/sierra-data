@@ -94,7 +94,8 @@ type GridServiceClient interface {
 	// clock it is on. `SOURCE` entries are times the upstream stated: when CHP
 	// took the report and each line of its log, when a fire started, when a
 	// closure was planned and set up, when an alert takes effect and ends,
-	// when a mesh node was last heard. `GRID` entries are when the Grid
+	// when a mesh node was last heard and when a monitor's reads of it moved
+	// to a different gateway. `GRID` entries are when the Grid
 	// recorded something: first stored, a status change (resolved, expired,
 	// back again), a change to severity or a tracked figure (fire size and
 	// containment, evacuation level, customers out). Use this instead of
@@ -113,14 +114,17 @@ type GridServiceClient interface {
 	// side: an evacuation lists its fire. Relations state what the sources say
 	// or how events coincide, never a cause the sources do not state.
 	//
-	// Mesh nodes relate differently, by structure, not by situation: a node's
-	// related events are the other nodes read by the same operator-run monitor
-	// (`mesh.telemetry.admin.reporterId`), whatever their status. A gateway
-	// (the companion radio a monitor listens through) lists the repeaters that
-	// monitor reads and they list it (`mesh-monitor-gateway`); two repeaters,
-	// or two gateways, of one monitor list each other (`mesh-monitor-peer`).
-	// The claim is only that one monitor reads both: which gateway a repeater
-	// was read through is not reported. A node no monitor reads has none, and
+	// Mesh nodes relate differently, by structure, not by situation: along the
+	// reads an operator-run monitor states (`mesh.telemetry.readVia`), whatever
+	// the nodes' status. A gateway (a companion radio a monitor listens through)
+	// lists the repeaters read through it and they list it
+	// (`mesh-monitor-gateway`); repeaters read through the same gateway, and
+	// gateways that read the same repeater, list each other
+	// (`mesh-monitor-peer`). Nothing is followed further, so parts of the mesh
+	// that share no gateway and no repeater share no relations, even under one
+	// monitor. The nodes of a monitor that states no gateways (it reads them
+	// all from one place; `mesh.telemetry.admin.reporterId`) are each other's
+	// `mesh-monitor-peer`. A node no monitor reads has none, and
 	// a mesh node is never related to a fire, outage or road report. For radio
 	// links between nodes use `GET /api/v1/mesh/links`. Computed
 	// at read time from the stored events (every status), so rules can change
@@ -521,7 +525,8 @@ type GridServiceServer interface {
 	// clock it is on. `SOURCE` entries are times the upstream stated: when CHP
 	// took the report and each line of its log, when a fire started, when a
 	// closure was planned and set up, when an alert takes effect and ends,
-	// when a mesh node was last heard. `GRID` entries are when the Grid
+	// when a mesh node was last heard and when a monitor's reads of it moved
+	// to a different gateway. `GRID` entries are when the Grid
 	// recorded something: first stored, a status change (resolved, expired,
 	// back again), a change to severity or a tracked figure (fire size and
 	// containment, evacuation level, customers out). Use this instead of
@@ -540,14 +545,17 @@ type GridServiceServer interface {
 	// side: an evacuation lists its fire. Relations state what the sources say
 	// or how events coincide, never a cause the sources do not state.
 	//
-	// Mesh nodes relate differently, by structure, not by situation: a node's
-	// related events are the other nodes read by the same operator-run monitor
-	// (`mesh.telemetry.admin.reporterId`), whatever their status. A gateway
-	// (the companion radio a monitor listens through) lists the repeaters that
-	// monitor reads and they list it (`mesh-monitor-gateway`); two repeaters,
-	// or two gateways, of one monitor list each other (`mesh-monitor-peer`).
-	// The claim is only that one monitor reads both: which gateway a repeater
-	// was read through is not reported. A node no monitor reads has none, and
+	// Mesh nodes relate differently, by structure, not by situation: along the
+	// reads an operator-run monitor states (`mesh.telemetry.readVia`), whatever
+	// the nodes' status. A gateway (a companion radio a monitor listens through)
+	// lists the repeaters read through it and they list it
+	// (`mesh-monitor-gateway`); repeaters read through the same gateway, and
+	// gateways that read the same repeater, list each other
+	// (`mesh-monitor-peer`). Nothing is followed further, so parts of the mesh
+	// that share no gateway and no repeater share no relations, even under one
+	// monitor. The nodes of a monitor that states no gateways (it reads them
+	// all from one place; `mesh.telemetry.admin.reporterId`) are each other's
+	// `mesh-monitor-peer`. A node no monitor reads has none, and
 	// a mesh node is never related to a fire, outage or road report. For radio
 	// links between nodes use `GET /api/v1/mesh/links`. Computed
 	// at read time from the stored events (every status), so rules can change

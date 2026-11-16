@@ -212,3 +212,40 @@ func TestFirstIngestedAtIsWrittenOnce(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, map[string]time.Time{"usgs:q1": time.Unix(1000, 0).UTC()}, got)
 }
+
+// A node's read path moves when a monitor's read goes through a different
+// gateway than its previous one. Reads that state no gateway are not a move,
+// each monitor is compared with itself, and the gateway survives a round trip.
+func TestMeshReadPathChanges(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	t0 := time.Date(2026, 11, 16, 12, 0, 0, 0, time.UTC)
+	node := "de0715314cfa9b5e00112233"
+	read := func(n int, reporter, via string) MeshTelemetrySample {
+		r := sample(node, t0.Add(time.Duration(n)*30*time.Minute))
+		r.Reporter, r.Via, r.LastSuccessAt, r.UptimeS = reporter, via, r.ReportedAt.Add(-time.Minute), int64(1000+n)
+		return r
+	}
+	require.NoError(t, s.InsertMeshTelemetry(ctx, []MeshTelemetrySample{
+		read(0, "relay", "aa01"), read(1, "relay", "aa01"), read(2, "relay", ""), read(3, "relay", "aa01"),
+		read(4, "alanpi", ""), read(5, "relay", "aa02"), read(6, "relay", "aa01"),
+	}))
+	got, _, err := s.MeshTelemetry(ctx, node, t0.Add(-time.Hour), t0.Add(24*time.Hour))
+	require.NoError(t, err)
+	require.Len(t, got, 7)
+	assert.Equal(t, "aa01", got[0].Via)
+
+	changes, err := s.MeshReadPathChanges(ctx, node, 10)
+	require.NoError(t, err)
+	at := func(n int) time.Time { return t0.Add(time.Duration(n)*30*time.Minute - time.Minute) }
+	assert.Equal(t, []MeshReadPathChange{
+		{At: at(6), Reporter: "relay", From: "aa02", To: "aa01"},
+		{At: at(5), Reporter: "relay", From: "aa01", To: "aa02"},
+		{At: at(0), Reporter: "relay", From: "", To: "aa01"},
+	}, changes)
+
+	changes, err = s.MeshReadPathChanges(ctx, node, 1)
+	require.NoError(t, err)
+	require.Len(t, changes, 1, "the most recent ones")
+	assert.Equal(t, "aa01", changes[0].To)
+}

@@ -66,6 +66,50 @@ type repeaterJob struct {
 	cycle  *repeaterCycle // nil between cycles
 	// While hibernating: when to next ask the Grid whether it's alive.
 	nextAliveCheck time.Time
+	// via is when each gateway radio (pinned pubkey) last read it; see
+	// noteVia. Saved with the reading.
+	via map[string]time.Time
+	// lastVia is the gateway radio that took the last successful read.
+	lastVia string
+}
+
+// readViaWindow is how long a gateway that read a repeater stays reported as
+// one it is read through. The gateway that read it last always is.
+const readViaWindow = 7 * 24 * time.Hour
+
+// savedReading is what RepeaterPollState.Reading holds: the last reading and
+// the gateway radios that have read the repeater.
+type savedReading struct {
+	Sample
+	ReadVia map[string]time.Time `json:"read_via,omitempty"`
+	// Via is the radio that took this reading ("" when it has no pinned key).
+	Via string `json:"via,omitempty"`
+}
+
+// noteVia records that the radio read the repeater now, and drops radios that
+// last read it more than readViaWindow ago.
+func (j *repeaterJob) noteVia(radio string, now time.Time) {
+	if radio == "" {
+		return // a gateway with no pinned key can't be named
+	}
+	if j.via == nil {
+		j.via = map[string]time.Time{}
+	}
+	j.via[radio] = now
+	for pk, at := range j.via {
+		if now.Sub(at) > readViaWindow {
+			delete(j.via, pk)
+		}
+	}
+}
+
+func (j *repeaterJob) viaList() []string {
+	out := make([]string, 0, len(j.via))
+	for pk := range j.via {
+		out = append(out, pk)
+	}
+	slices.Sort(out)
+	return out
 }
 
 // repeaterCycle is a cycle in progress.
@@ -103,8 +147,10 @@ func (p *Poller) RepeaterTick(ctx context.Context) {
 		return
 	}
 	var gateways []string
+	p.pinned = map[string]string{}
 	for _, r := range recs {
 		gateways = append(gateways, r.Name)
+		p.pinned[r.Name] = r.PinnedPubkey
 	}
 	current := map[string]bool{}
 	for _, c := range creds {
@@ -139,7 +185,9 @@ func (p *Poller) tickRepeater(ctx context.Context, c meshrelay.RepeaterCredentia
 			j.state.NextCycle = now.Add(p.offset(c.Pubkey))
 		}
 		p.jobs[c.Pubkey] = j
-		p.restore(c)
+		saved := savedFrom(c)
+		j.via, j.lastVia = saved.ReadVia, saved.Via
+		p.restore(c, saved, j.viaList())
 	}
 	// A refused password waits for the share to be updated.
 	if r := j.state.RefusedAt; r != nil {
@@ -240,7 +288,9 @@ func (p *Poller) endCycle(ctx context.Context, j *repeaterJob, c meshrelay.Repea
 	case res != nil:
 		outcome = outcomeOK
 		st.Primary, st.FailedCycles, st.HibernatingSince = cy.via, 0, nil
-		if b, err := json.Marshal(sampleFromCheck(*res)); err == nil {
+		j.lastVia = p.pinned[cy.via]
+		j.noteVia(j.lastVia, cy.start)
+		if b, err := json.Marshal(savedReading{Sample: *sampleFromCheck(*res), ReadVia: j.via, Via: j.lastVia}); err == nil {
 			st.Reading = b
 		}
 	case errors.Is(cy.lastErr, meshops.ErrLoginFailed):
@@ -295,6 +345,7 @@ func (p *Poller) endCycle(ctx context.Context, j *repeaterJob, c meshrelay.Repea
 	switch outcome {
 	case outcomeOK:
 		ns.lastAttempt, ns.lastSuccess, ns.sample = cy.start, cy.start, sampleFromCheck(*res)
+		ns.readVia, ns.lastVia = j.viaList(), j.lastVia
 		if res.Name != "" {
 			ns.name = res.Name
 		}
@@ -322,11 +373,11 @@ func (p *Poller) endCycle(ctx context.Context, j *repeaterJob, c meshrelay.Repea
 // the report, from what the relay kept: the last attempt and success, and
 // the saved reading. The report is the complete set, so without this a
 // restart would blank its readings on the Grid until its next cycle.
-func (p *Poller) restore(c meshrelay.RepeaterCredential) {
+func (p *Poller) restore(c meshrelay.RepeaterCredential, saved savedReading, via []string) {
 	if c.LastAttemptAt == nil {
 		return // never tried: not reported yet
 	}
-	ns := &nodeState{pubkey: c.Pubkey, name: c.Name, lastAttempt: *c.LastAttemptAt, outcome: outcomeFailed}
+	ns := &nodeState{pubkey: c.Pubkey, name: c.Name, lastAttempt: *c.LastAttemptAt, outcome: outcomeFailed, readVia: via, lastVia: saved.Via}
 	if c.LastOKAt != nil {
 		ns.lastSuccess = *c.LastOKAt
 		if c.LastError == "" {
@@ -334,16 +385,25 @@ func (p *Poller) restore(c meshrelay.RepeaterCredential) {
 		}
 	}
 	if len(c.Poll.Reading) > 0 && !ns.lastSuccess.IsZero() {
-		var s Sample
-		if err := json.Unmarshal(c.Poll.Reading, &s); err == nil {
-			ns.sample = &s
-		}
+		ns.sample = &saved.Sample
 	}
 	p.mu.Lock()
 	if p.repeaters[c.Pubkey] == nil {
 		p.repeaters[c.Pubkey] = ns
 	}
 	p.mu.Unlock()
+}
+
+// savedFrom decodes the reading the relay kept for a repeater (zero when
+// none, or unreadable).
+func savedFrom(c meshrelay.RepeaterCredential) savedReading {
+	var s savedReading
+	if len(c.Poll.Reading) > 0 {
+		if err := json.Unmarshal(c.Poll.Reading, &s); err != nil {
+			return savedReading{}
+		}
+	}
+	return s
 }
 
 // waitingText says why no gateway could try, for the first few.

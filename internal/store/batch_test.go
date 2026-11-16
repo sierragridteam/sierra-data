@@ -142,14 +142,14 @@ func sequentialTelemetry(ctx context.Context, tx *sql.Tx, samples []MeshTelemetr
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO mesh_telemetry (`+telemetryColumns+`)
-			VALUES (`+params(1, 29)+`) ON CONFLICT (pubkey, reported_at) DO NOTHING`,
+			VALUES (`+params(1, 30)+`) ON CONFLICT (pubkey, reported_at) DO NOTHING`,
 			t.PubKey, t.ReportedAt.Unix(), t.ReceivedAt.Unix(), t.Reporter,
 			unixTimeOrNil(t.LastSuccessAt), unixTimeOrNil(t.LastAttemptAt),
 			t.BatteryVolts, t.BatteryPct, t.BatteryPctSource, t.TemperatureC, t.Humidity, t.Pressure,
 			t.NoiseFloorDBm, t.LastSNRdB, t.LastRSSIdBm, t.TxQueueLen,
 			t.UptimeS, t.AirtimeMs, t.RxAirtimeMs, t.PacketsSent, t.PacketsRecv,
 			t.SentFlood, t.SentDirect, t.RecvFlood, t.RecvDirect,
-			t.DirectDups, t.FloodDups, t.FullEvts, t.RecvErrors); err != nil {
+			t.DirectDups, t.FloodDups, t.FullEvts, t.RecvErrors, t.Via); err != nil {
 			return err
 		}
 	}

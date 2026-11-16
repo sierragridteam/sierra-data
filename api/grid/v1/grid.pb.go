@@ -702,13 +702,14 @@ const (
 	RelationConfidence_RELATION_CONFIDENCE_UNSPECIFIED RelationConfidence = 0
 	// Coincidence in time and place worth showing as context; no link claimed
 	// (an outage inside a High Wind Warning's area). For mesh nodes: two
-	// repeaters, or two gateways, read by the same monitor.
+	// repeaters read through the same gateway, or two gateways that read the
+	// same repeater.
 	RelationConfidence_RELATION_CONTEXT RelationConfidence = 1
 	// Plausible from time and place alone (a shutoff near a burning fire).
 	RelationConfidence_RELATION_LOW RelationConfidence = 2
 	// Time and place plus a corroborating fact (PG&E lists the cause as fire),
 	// or the nearest fire to an evacuation zone issued soon after it started.
-	// For mesh nodes: a gateway and a node read by the same monitor.
+	// For mesh nodes: a gateway and a node read through it.
 	RelationConfidence_RELATION_MEDIUM RelationConfidence = 3
 	// A source names the other event (Cal OES notes name the fire).
 	RelationConfidence_RELATION_HIGH RelationConfidence = 4
@@ -846,6 +847,12 @@ const (
 	TimelineKind_TIMELINE_STATUS TimelineKind = 11
 	// GRID. A tracked value changed between revisions; `field` names it.
 	TimelineKind_TIMELINE_CHANGED TimelineKind = 12
+	// SOURCE. A monitor read a mesh node through a different gateway than its
+	// previous read (or stated a gateway for the first time). `field` is
+	// `readVia`; `before` and `after` are the gateways' names (their public
+	// keys when the Grid holds no node for them), `before` empty for the first.
+	// Not a revision: read from the telemetry archive, the 50 most recent.
+	TimelineKind_TIMELINE_READ_PATH TimelineKind = 13
 )
 
 // Enum value maps for TimelineKind.
@@ -864,6 +871,7 @@ var (
 		10: "TIMELINE_FIRST_RECORDED",
 		11: "TIMELINE_STATUS",
 		12: "TIMELINE_CHANGED",
+		13: "TIMELINE_READ_PATH",
 	}
 	TimelineKind_value = map[string]int32{
 		"TIMELINE_KIND_UNSPECIFIED": 0,
@@ -879,6 +887,7 @@ var (
 		"TIMELINE_FIRST_RECORDED":   10,
 		"TIMELINE_STATUS":           11,
 		"TIMELINE_CHANGED":          12,
+		"TIMELINE_READ_PATH":        13,
 	}
 )
 
@@ -3062,6 +3071,18 @@ type MeshTelemetry struct {
 	// Presence window: grid.meshcore.relayPresence. See "Two activity clocks" and
 	// "Relay presence" in internal/ingest/AGENTS.md. --)
 	LastRelayedAt *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=last_relayed_at,json=lastRelayedAt,proto3" json:"last_relayed_at,omitempty"`
+	// Public keys (lowercase hex) of the gateway nodes a monitor has read this
+	// node through: a monitor that listens through several radios (the SIERRA
+	// relay's gateways) logs in to a repeater over the mesh from one of them, and
+	// says which. Empty list for a gateway itself, for a node no monitor reads,
+	// and for a monitor that states no gateway. `GET /api/v1/events/{id}/related`
+	// links mesh nodes along these reads.
+	//
+	// (-- The union over every monitor's current report, not part of `admin`:
+	// `admin` is the single freshest reading, so a second monitor reading the
+	// same node would drop the first one's gateways. Carried forward while a
+	// monitor is silent, like `admin`. --)
+	ReadVia       []string `protobuf:"bytes,11,rep,name=read_via,json=readVia,proto3" json:"read_via,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3152,6 +3173,13 @@ func (x *MeshTelemetry) GetLastRelayedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *MeshTelemetry) GetReadVia() []string {
+	if x != nil {
+		return x.ReadVia
+	}
+	return nil
+}
+
 // MeshAdminTelemetry is one reading taken from a node's own admin interface by an
 // operator-run monitor. It is the node's self-reported view, which is why it
 // sits beside rather than replaces the gateway-reported `snr`/`rssi`: those are
@@ -3174,6 +3202,12 @@ type MeshAdminTelemetry struct {
 	// The monitor's last attempt to read this node, successful or not. Can be
 	// `null` (always `null` on archived samples).
 	LastAttemptAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=last_attempt_at,json=lastAttemptAt,proto3" json:"last_attempt_at,omitempty"`
+	// Public key (lowercase hex) of the gateway node this reading was taken
+	// through, for a monitor that listens through several radios (the SIERRA
+	// relay). Empty string when the monitor states none. The archive keeps it
+	// per sample, so the series shows when a node's read path moved from one
+	// gateway to another; the event timeline lists those moves (`READ_PATH`).
+	Via string `protobuf:"bytes,5,opt,name=via,proto3" json:"via,omitempty"`
 	// Battery voltage in volts. Nullable.
 	BatteryVolts *wrapperspb.DoubleValue `protobuf:"bytes,10,opt,name=battery_volts,json=batteryVolts,proto3" json:"battery_volts,omitempty"`
 	// Battery charge in percent, 0-100. Nullable. See `batteryPercentSource`.
@@ -3281,6 +3315,13 @@ func (x *MeshAdminTelemetry) GetLastAttemptAt() *timestamppb.Timestamp {
 		return x.LastAttemptAt
 	}
 	return nil
+}
+
+func (x *MeshAdminTelemetry) GetVia() string {
+	if x != nil {
+		return x.Via
+	}
+	return ""
 }
 
 func (x *MeshAdminTelemetry) GetBatteryVolts() *wrapperspb.DoubleValue {
@@ -5209,15 +5250,15 @@ type PlaceSummary struct {
 	// Overall posture. The rules below are checked in order and the first match
 	// wins.
 	//
-	// - `ACTIVE`: an active evacuation at ORDER, WARNING or SHELTER_IN_PLACE; or
-	//   any active EXTREME event; or an active wildfire at SEVERE or above.
-	// - `WATCH`: any active SEVERE event; or an active evacuation ADVISORY; or
-	//   fire weather `elevated` (Fire Weather Watch) or `red-flag` (Red Flag
-	//   Warning) for a place inside a coverage area; or the evacuation source
-	//   UNAVAILABLE (unknown is never quiet); or any layer feeding the
-	//   summary UNAVAILABLE while an active event is MODERATE or above.
-	// - `QUIET`: otherwise. A MODERATE or lower event on its own leaves the
-	//   place QUIET.
+	//   - `ACTIVE`: an active evacuation at ORDER, WARNING or SHELTER_IN_PLACE; or
+	//     any active EXTREME event; or an active wildfire at SEVERE or above.
+	//   - `WATCH`: any active SEVERE event; or an active evacuation ADVISORY; or
+	//     fire weather `elevated` (Fire Weather Watch) or `red-flag` (Red Flag
+	//     Warning) for a place inside a coverage area; or the evacuation source
+	//     UNAVAILABLE (unknown is never quiet); or any layer feeding the
+	//     summary UNAVAILABLE while an active event is MODERATE or above.
+	//   - `QUIET`: otherwise. A MODERATE or lower event on its own leaves the
+	//     place QUIET.
 	//
 	// Only these inputs can raise it: ACTIVE events on the WILDFIRE,
 	// EVACUATION, WEATHER_ALERT, EARTHQUAKE, ROAD_INCIDENT and POWER layers
@@ -6350,9 +6391,9 @@ type TimelineEntry struct {
 	Detail string `protobuf:"bytes,5,opt,name=detail,proto3" json:"detail,omitempty"`
 	// For GRID entries, the revision that recorded it; 0 otherwise.
 	Revision uint32 `protobuf:"varint,6,opt,name=revision,proto3" json:"revision,omitempty"`
-	// For CHANGED and STATUS: the field (`status`, `severity`, `acres`,
-	// `containment`, `level`, `customersAffected`) and its values before and
-	// after, as displayed.
+	// For CHANGED, STATUS and READ_PATH: the field (`status`, `severity`,
+	// `acres`, `containment`, `level`, `customersAffected`, `readVia`) and its
+	// values before and after, as displayed.
 	Field         string `protobuf:"bytes,7,opt,name=field,proto3" json:"field,omitempty"`
 	Before        string `protobuf:"bytes,8,opt,name=before,proto3" json:"before,omitempty"`
 	After         string `protobuf:"bytes,9,opt,name=after,proto3" json:"after,omitempty"`
@@ -9158,7 +9199,7 @@ const file_grid_proto_rawDesc = "" +
 	"\"repeater\"\xf2\x02\tcompanion\xf2\x02\brepeater\xf2\x02\vroom_server\xf2\x02\x06sensorR\bnodeType\x120\n" +
 	"\x04name\x18\x03 \x01(\tB\x1c\x92A\x19J\x17\"SIERRA Hathaway Pines\"R\x04name\x124\n" +
 	"\ttelemetry\x18\x04 \x01(\v2\x16.grid.v1.MeshTelemetryR\ttelemetry\x12O\n" +
-	"\freachability\x18\x05 \x01(\x0e2\x19.grid.v1.MeshReachabilityB\x10\x92A\rJ\v\"REACHABLE\"R\freachability\"\xfb\x03\n" +
+	"\freachability\x18\x05 \x01(\x0e2\x19.grid.v1.MeshReachabilityB\x10\x92A\rJ\v\"REACHABLE\"R\freachability\"\xe1\x04\n" +
 	"\rMeshTelemetry\x129\n" +
 	"\x03snr\x18\x01 \x01(\v2\x1c.google.protobuf.DoubleValueB\t\x92A\x06J\x0411.8R\x03snr\x129\n" +
 	"\x04rssi\x18\x02 \x01(\v2\x1b.google.protobuf.Int32ValueB\b\x92A\x05J\x03-39R\x04rssi\x12A\n" +
@@ -9168,8 +9209,9 @@ const file_grid_proto_rawDesc = "" +
 	"\x05admin\x18\b \x01(\v2\x1b.grid.v1.MeshAdminTelemetryR\x05admin\x12>\n" +
 	"\rlast_heard_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vlastHeardAt\x12B\n" +
 	"\x0flast_relayed_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\rlastRelayedAtJ\x04\b\x04\x10\x05J\x04\b\a\x10\bR\x04pathR\n" +
-	"path_nodes\"\xf6\v\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\rlastRelayedAt\x12d\n" +
+	"\bread_via\x18\v \x03(\tBI\x92AFJD[\"6f1c0d4a9b7e2c35a8d0f4e1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5\"]R\areadViaJ\x04\b\x04\x10\x05J\x04\b\a\x10\bR\x04pathR\n" +
+	"path_nodes\"\xd1\f\n" +
 	"\x12MeshAdminTelemetry\x12.\n" +
 	"\vreporter_id\x18\x01 \x01(\tB\r\x92A\n" +
 	"J\b\"alanpi\"R\n" +
@@ -9177,7 +9219,8 @@ const file_grid_proto_rawDesc = "" +
 	"\vreported_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"reportedAt\x12B\n" +
 	"\x0flast_success_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\rlastSuccessAt\x12B\n" +
-	"\x0flast_attempt_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\rlastAttemptAt\x12L\n" +
+	"\x0flast_attempt_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\rlastAttemptAt\x12Y\n" +
+	"\x03via\x18\x05 \x01(\tBG\x92ADJB\"6f1c0d4a9b7e2c35a8d0f4e1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5\"R\x03via\x12L\n" +
 	"\rbattery_volts\x18\n" +
 	" \x01(\v2\x1c.google.protobuf.DoubleValueB\t\x92A\x06J\x043.97R\fbatteryVolts\x12P\n" +
 	"\x0fbattery_percent\x18\v \x01(\v2\x1c.google.protobuf.DoubleValueB\t\x92A\x06J\x0471.1R\x0ebatteryPercent\x12`\n" +
@@ -9745,7 +9788,7 @@ const file_grid_proto_rawDesc = "" +
 	"\rTimelineClock\x12\x1e\n" +
 	"\x1aTIMELINE_CLOCK_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15TIMELINE_CLOCK_SOURCE\x10\x01\x12\x17\n" +
-	"\x13TIMELINE_CLOCK_GRID\x10\x02*\xc0\x02\n" +
+	"\x13TIMELINE_CLOCK_GRID\x10\x02*\xd8\x02\n" +
 	"\fTimelineKind\x12\x1d\n" +
 	"\x19TIMELINE_KIND_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fTIMELINE_BEGINS\x10\x01\x12\x10\n" +
@@ -9760,7 +9803,8 @@ const file_grid_proto_rawDesc = "" +
 	"\x17TIMELINE_FIRST_RECORDED\x10\n" +
 	"\x12\x13\n" +
 	"\x0fTIMELINE_STATUS\x10\v\x12\x14\n" +
-	"\x10TIMELINE_CHANGED\x10\f*q\n" +
+	"\x10TIMELINE_CHANGED\x10\f\x12\x16\n" +
+	"\x12TIMELINE_READ_PATH\x10\r*q\n" +
 	"\n" +
 	"SearchKind\x12\x1b\n" +
 	"\x17SEARCH_KIND_UNSPECIFIED\x10\x00\x12\t\n" +

@@ -1,6 +1,7 @@
 package gridapi
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	gridv1 "github.com/sierragridteam/sierra-data/api/grid/v1"
+	"github.com/sierragridteam/sierra-data/internal/store"
 )
 
 func at(min int) *timestamppb.Timestamp {
@@ -103,4 +105,55 @@ func TestGetEventTimelineRPC(t *testing.T) {
 	assert.Equal(t, "caltrans:d10-1", tl.GetEventId())
 	_, err = g.GetEventTimeline(rpcBG(), &gridv1.GetEventTimelineRequest{Id: "nope:1"})
 	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+// A mesh node's timeline lists the moves of its read path from the telemetry
+// archive, naming the gateways, on the monitor's clock.
+func TestTimelineMeshReadPathChanges(t *testing.T) {
+	s := newTestService(t)
+	ctx := context.Background()
+	require.NoError(t, s.Store.SeedSources(ctx, []store.SourceSeed{{ID: "meshcore", Name: "MeshCore", PollInterval: time.Minute}}))
+	node := func(key, name string) {
+		upsert(t, s.Store, &gridv1.Event{
+			Id: "meshcore:" + key, Layer: gridv1.Layer_MESH, Category: "node", Headline: name,
+			Severity: gridv1.Severity_INFO, Status: gridv1.EventStatus_ACTIVE,
+			ObservedAt: timestamppb.New(base), Provenance: &gridv1.Provenance{SourceId: "meshcore", SourceName: "MeshCore"},
+			Detail: &gridv1.Event_Mesh{Mesh: &gridv1.MeshDetail{PublicKey: key, Name: name}},
+		})
+	}
+	node("aa01aa01", "Eagle Gateway")
+	node("bb01bb01", "Eagle One")
+	read := func(n int, via string) store.MeshTelemetrySample {
+		at := base.Add(time.Duration(n) * 30 * time.Minute)
+		return store.MeshTelemetrySample{PubKey: "bb01bb01", Reporter: "relay", ReportedAt: at, ReceivedAt: at,
+			LastSuccessAt: at, UptimeS: int64(100 + n), Via: via}
+	}
+	// The second gateway has no node on the Grid: it shows by key.
+	require.NoError(t, s.Store.InsertMeshTelemetry(ctx, []store.MeshTelemetrySample{
+		read(0, "aa01aa01"), read(1, "aa01aa01"), read(2, "cc02cc02cc02cc02"),
+	}))
+
+	tl, err := NewGridServer(s).GetEventTimeline(rpcBG(), &gridv1.GetEventTimelineRequest{Id: "meshcore:bb01bb01"})
+	require.NoError(t, err)
+	var moves []*gridv1.TimelineEntry
+	for _, e := range tl.GetEntries() {
+		if e.GetKind() == gridv1.TimelineKind_TIMELINE_READ_PATH {
+			moves = append(moves, e)
+		}
+	}
+	require.Len(t, moves, 2)
+	assert.Equal(t, "Read through Eagle Gateway", moves[0].GetLabel())
+	assert.Equal(t, "relay", moves[0].GetDetail())
+	assert.Empty(t, moves[0].GetBefore())
+	assert.Equal(t, "Read through cc02cc02cc02", moves[1].GetLabel())
+	assert.Equal(t, "was Eagle Gateway", moves[1].GetDetail())
+	assert.Equal(t, "readVia", moves[1].GetField())
+	assert.Equal(t, base.Add(time.Hour).Unix(), moves[1].GetAt().AsTime().Unix())
+	assert.Equal(t, gridv1.TimelineClock_TIMELINE_CLOCK_SOURCE, moves[1].GetClock())
+
+	arch, err := NewGridServer(s).GetMeshTelemetry(rpcBG(), &gridv1.GetMeshTelemetryRequest{Node: "bb01bb01",
+		From: timestamppb.New(base.Add(-time.Hour)), To: timestamppb.New(base.Add(3 * time.Hour))})
+	require.NoError(t, err)
+	require.Len(t, arch.GetSamples(), 3)
+	assert.Equal(t, "cc02cc02cc02cc02", arch.GetSamples()[2].GetReading().GetVia())
 }

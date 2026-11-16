@@ -448,3 +448,37 @@ func TestKnownStreamsAllDispatch(t *testing.T) {
 		assert.True(t, ok, "stream %q is advertised but does not dispatch", s)
 	}
 }
+
+// read_via names the gateways a node was read through. Bad entries are
+// dropped with a warning; the node and its good entries still land.
+func TestReadViaIsNormalizedAndBadEntriesWarn(t *testing.T) {
+	r := testRegistry(t)
+	body := `{"schema_version":1,"generated_at":"2026-09-15T00:23:32+00:00","repeaters":[
+	  {"id":"de0715314cfa9b5e","name":"Rptr","last_attempt":1789431672,"last_success":1789431672,"nb_sent":5,
+	   "read_via":["BB00AA11CC22DD33","aa00aa11cc22dd33","bb00aa11cc22dd33","nope","de0715314cfa9b5e"]},
+	  {"id":"aa00aa11cc22dd33","name":"Gateway","last_attempt":1789431672,"last_success":1789431672,"nb_sent":5}
+	]}`
+	w := post(r, testToken, MeshStream, body)
+	require.Equal(t, http.StatusAccepted, w.Code)
+	assert.Contains(t, w.Body.String(), `"accepted":2`)
+	assert.Contains(t, w.Body.String(), "2 read_via entries")
+	via := map[string][]string{}
+	for _, nr := range r.MeshReports().Reports {
+		via[nr.Name] = nr.ReadVia
+	}
+	assert.Equal(t, map[string][]string{"Rptr": {"aa00aa11cc22dd33", "bb00aa11cc22dd33"}, "Gateway": nil}, via)
+
+	// via is the gateway of this reading: on the reading, and one of read_via.
+	r = testRegistry(t)
+	w = post(r, testToken, MeshStream, `{"schema_version":1,"generated_at":"2026-09-15T00:23:32+00:00","repeaters":[
+	  {"id":"de0715314cfa9b5e","last_attempt":1789431672,"last_success":1789431672,"nb_sent":5,"via":"CC00AA11CC22DD33"},
+	  {"id":"aa00aa11cc22dd33","last_attempt":1789431672,"last_success":1789431672,"nb_sent":5,"via":"aa00aa11cc22dd33"}
+	]}`)
+	require.Equal(t, http.StatusAccepted, w.Code)
+	assert.Contains(t, w.Body.String(), "is not another node's id")
+	got := map[string]string{}
+	for _, nr := range r.MeshReports().Reports {
+		got[nr.NodeID] = nr.Telemetry.GetVia() + "|" + strings.Join(nr.ReadVia, ",")
+	}
+	assert.Equal(t, map[string]string{"de0715314cfa9b5e": "cc00aa11cc22dd33|cc00aa11cc22dd33", "aa00aa11cc22dd33": "|"}, got)
+}

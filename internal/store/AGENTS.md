@@ -280,7 +280,7 @@ write that bypasses `inTx`: the epoch fence lives there.
   CONFLICT DO UPDATE`, so fold repeated keys in Go first (mesh activity folds
   to the per-clock MAX, which is what GREATEST row by row produced); chunk by
   size (a perimeter blob is large: `transitionChunk` 100) or by parameter
-  count (65,535 per statement: telemetry 29 x 1,000); keep it inside the one
+  count (65,535 per statement: telemetry 30 x 1,000); keep it inside the one
   `inTx` (the epoch fence is the first statement and unchanged). Where the
   per-row loop's later rows saw its earlier rows (telemetry's skip rules), the
   batch must reproduce that in Go, and `TestMeshTelemetryBatchMatchesSequentialReference`
@@ -481,6 +481,13 @@ Two details that look optional and are not:
   under that prefix until an advert supplies the full key. The promotion retires
   the provisional event, and without the rename the samples are orphaned under a
   key nothing refers to any more: silently, once per node, with no way to notice.
+
+- **`via`** (migration 0005) — the gateway node the read was taken through,
+  `''` when the monitor states none. It is the only history of a node's read
+  path: the event's `telemetry.readVia` is hash-excluded on purpose (a
+  failover would mint a revision), so `MeshReadPathChanges` derives the moves
+  from consecutive rows per reporter (rows without a gateway are skipped, not
+  counted as a move) and the event timeline lists them.
 
 No Tier 1 rollup here yet, deliberately: ~864 rows/day for nine nodes is 315k
 rows a year. `mesh_link_rollup` exists because the advert firehose is orders of
