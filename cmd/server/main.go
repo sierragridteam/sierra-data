@@ -164,6 +164,7 @@ var gridSourceInfo = map[string]struct{ name, attribution, homepage string }{
 	"chp":                       {"CHP (traffic incidents)", "quickmap.dot.ca.gov", quickMapURL},
 	"caltrans":                  {"Caltrans (chain control + lane closures)", caltrans.SourceQuickMap, quickMapURL}, // attribution: see caltransAttribution
 	ingest.ChainControlSourceID: {"Caltrans (chain control)", caltrans.SourceCWWP2 + " · " + caltrans.SourceQuickMap, quickMapURL},
+	ingest.RoadSegmentSourceID:  {"Road conditions (monitored roads)", "Google · quickmap.dot.ca.gov", quickMapURL},
 	"meshcore":                  {"MeshCore Mesh", "MeshCore community mesh", "https://map.meshcore.io"},
 	"pge":                       {"PG&E (electric outages)", "Pacific Gas and Electric", pge.OutageMapURL},
 	"psps":                      {"PG&E (public safety power shutoffs)", "Pacific Gas and Electric", pge.PSPSUpdatesURL},
@@ -426,7 +427,8 @@ func gridSourceSeeds(cfg *config.Config) []store.SourceSeed {
 
 	seeds := make([]store.SourceSeed, 0, len(ids)+len(cfg.Grid.Ingest.Reporters))
 	for _, id := range ids {
-		if id == ingest.ChainControlSourceID && !cfg.Grid.ChainControl.Record {
+		if (id == ingest.ChainControlSourceID && !cfg.Grid.ChainControl.Record) ||
+			(id == ingest.RoadSegmentSourceID && !cfg.Grid.RoadSegments.Record) {
 			// Tuned in config, but not a source until its events are recorded:
 			// a registry row nothing polls would read as a feed that is down.
 			continue

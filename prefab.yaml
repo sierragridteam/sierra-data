@@ -466,6 +466,14 @@ grid:
   chainControl:
     record: false
 
+  # Monitored roads as events: one ROAD_SEGMENT event per roads.monitoredRoads
+  # entry (`road:<id>`), revised when it closes, reopens or its congestion
+  # level changes. The travel-time series is road_samples either way
+  # (GET /api/v1/events/{id}/samples needs the event). Off, a road's status
+  # history is only what the samples imply.
+  roadSegments:
+    record: false
+
   # PG&E power layer. No geography knobs: unlike fire, an outage outside the
   # footprint is not a threat to it, so the layer uses the plain hazards union.
   #
@@ -550,6 +558,14 @@ grid:
       disappearance: "expire"
       expireAfter: "24h"
     chp:
+      pollInterval: "5m"
+      disappearance: "resolve"
+    roads:
+      # Monitored roads' state as events (grid.roadSegments.record; not a
+      # source row while that is off). Reads the roads service's cached set,
+      # which refreshes every 15 minutes; 5m bounds how late a closure is
+      # recorded after that refresh. resolve: a road removed from
+      # roads.monitoredRoads ends its event.
       pollInterval: "5m"
       disappearance: "resolve"
     caltrans-cc:

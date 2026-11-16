@@ -880,6 +880,31 @@ record.
   status change, that is a revision per poll: zero it in the hash then, with
   the usual note in the store guide. Not seen in the 2026-11-13 captures.
 
+## Monitored roads as events (`road_segment.go`)
+
+With `grid.roadSegments.record`, `RoadSegmentNormalizer` (source `roads`, 5m)
+stores one long-lived event per `roads.monitoredRoads` entry, layer
+`ROAD_SEGMENT`, id `road:<id>`. It is the mesh-node pattern: **the event
+holds the state, a table holds the series.** The road sampler
+(`runRoadSampling`) still writes `road_samples` every refresh, and
+`GET /api/v1/events/{id}/samples` serves them through the event.
+
+- **Hashed: status, congestion level, the seasonal closures past its ends.**
+  Travel time and delay are samples and never on the event.
+- **Deterministic only.** The roads service's `status_explanation` is
+  model-written and reworded between refreshes; on the event it would mint a
+  revision each time.
+- **A refresh without a travel time is a gap, not a change**: the congestion
+  level is carried from `Prior`, for the severity too.
+- **No geometry**; places are preset (the road's corridor, the places at
+  either end).
+- **Fail-loud.** The roads service failing is a hard error; a monitored road
+  it has no status for is a `PerSource` error; no monitored roads is
+  `errEmptyScope`.
+- Congestion can sit on a band edge and flap. If a road's history fills with
+  CLEAR/LIGHT pairs, add a hold (the mesh reachability shape), do not drop
+  the field.
+
 ## Weather-alert headline: deterministic, never AI
 
 `nws.Alert.ShortHeadline` composes `<Event> — <reason>` from the product name

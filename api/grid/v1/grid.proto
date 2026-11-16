@@ -384,6 +384,7 @@ message Event {
     BurnStatusDetail burn_status = 31;
     SourceHealthDetail source_health = 33;
     ChainControlDetail chain_control = 34;
+    RoadSegmentDetail road_segment = 35;
   }
 
   // Gauge/AirQuality/Announcement details — defined with their pollers.
@@ -448,9 +449,12 @@ enum Layer {
   // change of level is a new event, so the events on a highway are a storm's
   // sequence. Written only when the Grid has chain-control recording on.
   CHAIN_CONTROL = 17;
-  // One event per monitored road, revised when its status or congestion level
-  // changes. The travel-time series is `GET /api/v1/events/{id}/samples`.
-  // Reserved until the Grid writes them; no events today.
+  // One event per monitored road (`road:{road id}`, source `roads`), revised
+  // when its status, its congestion level or a seasonal closure past its end
+  // changes: its history is when the road closed and reopened. No geometry
+  // (the shape is the `road_segment` map layer). The travel-time series is
+  // `GET /api/v1/events/{id}/samples`. Written only when the Grid has
+  // road-segment recording on.
   ROAD_SEGMENT = 18;
   // Reserved for one event per weather location, revised when its state
   // changes (precipitation, freezing); no events today.
@@ -1304,6 +1308,39 @@ message BurnStatusDetail {
   google.protobuf.Timestamp calfire_observed_at = 7;
 }
 
+// RoadSegmentDetail is one monitored road's state (layer ROAD_SEGMENT, event
+// id `road:{road id}`, the id of its feature on the `road_segment` map
+// layer). The event holds the state and is revised when it changes; the
+// numbers that move at every refresh (travel time, delay) are samples:
+// `GET /api/v1/events/{id}/samples`.
+message RoadSegmentDetail {
+  // The monitored segment id (`road.roadId` on the map layer).
+  string road_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"hwy4-arnold-bearvalley\""}];
+  // The highway, and which part of it.
+  string name = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"Hwy 4\""}];
+  string section = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"Arnold to Bear Valley\""}];
+  // `OPEN`, `RESTRICTED`, `CLOSED` or `MAINTENANCE`, as on the map layer.
+  string status = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"OPEN\""}];
+  // `CLEAR`, `LIGHT`, `MODERATE`, `HEAVY` or `SEVERE`. Empty string until a
+  // travel time has been read. When a refresh has no travel time, the last
+  // known level is kept rather than written as a change.
+  string congestion = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"CLEAR\""}];
+  // Named seasonal closures in effect past one of the segment's ends (the
+  // Ebbetts Pass winter closure past Bear Valley). They do not change
+  // `status`: the segment itself is open up to its end. Empty when none.
+  repeated RoadSegmentBeyond beyond = 6;
+}
+
+// RoadSegmentBeyond is a named seasonal closure past a segment's end.
+message RoadSegmentBeyond {
+  // The closure's name.
+  string name = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"Ebbetts Pass winter closure\""}];
+  // `END`: past the segment's destination. `START`: before its origin.
+  string side = 2;
+  // What the highway is there: `CLOSED`.
+  string status = 3;
+}
+
 // ChainControlDetail is one stretch of highway under one chain requirement
 // (layer CHAIN_CONTROL, event id `cc:{route}:{level}`, e.g. `cc:hwy4:r2`; a
 // second stretch of the same level on one route is `cc:hwy88:r2:2`). Caltrans
@@ -1738,6 +1775,30 @@ service GridService {
     };
   }
 
+  // Get an event's samples.
+  //
+  // The dense numeric series behind an event whose layer has one. The event's
+  // revisions record when its state changed; its samples are the readings in
+  // between. Today one layer has samples: ROAD_SEGMENT (`road:{road id}`),
+  // one sample per roads refresh (about every 15 minutes) with status,
+  // congestion, travel time and delay, kept 400 days. It is the series
+  // `GET /api/v1/roads/{road}/history` returns. Default window: the 7 days
+  // before `to` (default now); windows over 400 days are clamped.
+  rpc GetEventSamples(GetEventSamplesRequest) returns (EventSamples) {
+    option (google.api.http) = {get: "/api/v1/events/{id}/samples"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      tags: "Events"
+      responses: {
+        key: "404"
+        value: {description: "NOT_FOUND: no event has this id, or its layer keeps no samples."}
+      }
+      responses: {
+        key: "400"
+        value: {description: "INVALID_ARGUMENT: `from` not before `to`."}
+      }
+    };
+  }
+
   // List events related to one event.
   //
   // Events about the same situation, each with the rule that matched, a
@@ -2128,6 +2189,28 @@ message GetRoadHistoryRequest {
   google.protobuf.Timestamp from = 2;
   // Window end, RFC 3339, exclusive. Default: now.
   google.protobuf.Timestamp to = 3;
+}
+
+// GetEventSamplesRequest names an event and a window.
+message GetEventSamplesRequest {
+  // The event id, e.g. `road:hwy4-arnold-bearvalley`.
+  string id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"road:hwy4-arnold-bearvalley\""}];
+  // Window start, RFC 3339, inclusive. Default: 7 days before `to`.
+  google.protobuf.Timestamp from = 2;
+  // Window end, RFC 3339, exclusive. Default: now.
+  google.protobuf.Timestamp to = 3;
+}
+
+// EventSamples is one event's samples over a window. The list that is filled
+// depends on the event's layer.
+message EventSamples {
+  string event_id = 1;
+  // The event's layer, which says which list below holds the samples.
+  Layer layer = 2;
+  google.protobuf.Timestamp from = 3 [(google.api.field_behavior) = REQUIRED];
+  google.protobuf.Timestamp to = 4 [(google.api.field_behavior) = REQUIRED];
+  // ROAD_SEGMENT: one per roads refresh, oldest first.
+  repeated RoadSample road = 5;
 }
 
 // RoadSample is a segment at one roads refresh.

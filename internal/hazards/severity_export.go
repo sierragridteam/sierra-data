@@ -103,3 +103,7 @@ func PSPSStageRecognized(stage string) bool { return pspsStageRecognized(stage) 
 // incidents and FIRIS perimeters (e.g. "Salt Springs Fire" and "Salt Springs" →
 // "saltsprings").
 func NormFireName(s string) string { return normFireName(s) }
+
+// SeverityFromRoad grades a monitored road from its status and congestion,
+// as the road_segment map layer does.
+func SeverityFromRoad(rd *api.Road) string { return roadSeverity(rd) }

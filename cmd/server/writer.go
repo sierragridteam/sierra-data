@@ -355,15 +355,23 @@ func (a *gridApp) startTerm(actx context.Context, lease *store.Lease) (*writerTe
 
 	// Chain requirements as events: the same stretches the chain_control map
 	// layer shows, read through the hazards service's cache.
-	if appConfig.Grid.ChainControl.Record {
-		placesAt := func(ctx context.Context, lat, lng float64) ([]string, error) {
-			found, err := gridStore.PlacesContaining(ctx, lat, lng)
-			ids := make([]string, len(found))
-			for i, p := range found {
-				ids[i] = p.GetId()
-			}
-			return ids, err
+	placesAt := func(ctx context.Context, lat, lng float64) ([]string, error) {
+		found, err := gridStore.PlacesContaining(ctx, lat, lng)
+		ids := make([]string, len(found))
+		for i, p := range found {
+			ids[i] = p.GetId()
 		}
+		return ids, err
+	}
+	// Each monitored road's state as an event (its travel-time series stays
+	// in road_samples, written by the scheduler's road sampler).
+	if appConfig.Grid.RoadSegments.Record && a.roadsService != nil {
+		pollers = append(pollers, ingest.PollerSpec{
+			Normalizer: ingest.NewRoadSegmentNormalizer(appConfig, a.roadsService, placesAt),
+			Interval:   gridPollInterval(appConfig, ingest.RoadSegmentSourceID),
+		})
+	}
+	if appConfig.Grid.ChainControl.Record {
 		pollers = append(pollers, ingest.PollerSpec{
 			Normalizer: ingest.NewChainControlNormalizer(appConfig, a.hazards, placesAt),
 			Interval:   gridPollInterval(appConfig, ingest.ChainControlSourceID),

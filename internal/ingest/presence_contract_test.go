@@ -226,6 +226,10 @@ func presencePollers(t *testing.T) map[string]Normalizer {
 		"power":         newPowerNormalizer(power, testNow),
 		"burn status":   newBurnNormalizer(stdCfg(), &fakeCalfireBurn{rows: suspendedRows()}, freshLine("red")),
 		"mesh":          NewNetworkNormalizer(testConfig(), mesh, nil),
+		"road segment": NewRoadSegmentNormalizer(roadSegmentConfig(), &fakeRoadLister{roads: []*api.Road{
+			road("hwy4-arnold-bearvalley", api.RoadStatus_OPEN, api.CongestionLevel_CLEAR, 38),
+			road("hwy49-angels-sonora", api.RoadStatus_CLOSED, api.CongestionLevel_CLEAR, 25),
+		}}, nil),
 		"chain control": NewChainControlNormalizer(testConfig(), &fakeChainSource{stretches: []hazards.Feature{hwy4()}}, nil),
 	}
 }

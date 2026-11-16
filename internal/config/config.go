@@ -207,6 +207,11 @@ type GridConfig struct {
 	// map layer does not depend on it. Turn it on only once every deployed
 	// consumer of the SDK knows the CHAIN_CONTROL layer.
 	ChainControl ChainControlRecordConfig `koanf:"chainControl"`
+	// RoadSegments.Record stores each monitored road's state as a
+	// ROAD_SEGMENT event (source roads), revised when it closes, reopens or
+	// its congestion level changes. Turn it on only once every deployed
+	// consumer of the SDK knows the ROAD_SEGMENT layer.
+	RoadSegments ChainControlRecordConfig `koanf:"roadSegments"`
 	Power        PowerConfig              `koanf:"power"`
 	Burn         BurnConfig               `koanf:"burn"`
 	Ingest       IngestConfig             `koanf:"ingest"`

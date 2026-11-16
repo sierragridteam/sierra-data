@@ -114,6 +114,35 @@ stretches, with the same ids, headlines and severity, as the features of
   sign) records what it has, marks `caltrans-cc` on `/api/v1/sources`, and
   resolves nothing.
 
+### Monitored roads are events, and events can have samples
+
+A monitored road's history was a table of samples: every 15 minutes, a status
+and a travel time. "When did Hwy 4 close" had to be worked out from them, and
+it was not in the same history as everything else.
+
+With `grid.roadSegments.record` (off as shipped) each monitored road is one
+long-lived event: layer `ROAD_SEGMENT`, source `roads`, id `road:{road id}`
+(the id of its feature on the `road_segment` map layer).
+
+- `roadSegment` carries `roadId`, `name`, `section`, `status`, `congestion`
+  and `beyond` (named seasonal closures in effect past the segment's end,
+  such as the Ebbetts Pass winter closure).
+- A revision is a change of one of those: the road closed, reopened, traffic
+  went from clear to heavy, the winter closure took effect. A refresh with a
+  new travel time writes nothing. A refresh with no travel time keeps the
+  last congestion level.
+- The event is always `ACTIVE`; closed is its state, in `roadSegment.status`
+  and `category`, with `severity` as on the map layer.
+- No geometry. The shape is the map layer's. The event is attached to its own
+  corridor place and to the places at either end.
+- The place summary does not count these events; its roads domain already
+  reports the roads. That exclusion is temporary.
+
+New endpoint: **`GET /api/v1/events/{id}/samples`** (`from`, `to`) returns the
+series behind an event whose layer keeps one. Today that is `ROAD_SEGMENT`:
+`road[]` is the same samples as `GET /api/v1/roads/{road}/history`, which
+stays. An event on any other layer answers 404.
+
 ### New enum values, declared ahead of use
 
 `Layer` gains `SOURCE_HEALTH`, `CHAIN_CONTROL`, `ROAD_SEGMENT` and `WEATHER`;

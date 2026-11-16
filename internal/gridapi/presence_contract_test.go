@@ -122,6 +122,15 @@ func TestResponsesHonorFieldPresence(t *testing.T) {
 	seedRoadSamples(t, s, s.Cfg.Roads.MonitoredRoads[0].ID)
 	rh, err := g.GetRoadHistory(rpcBG(), &gridv1.GetRoadHistoryRequest{Road: s.Cfg.Roads.MonitoredRoads[0].ID})
 	check("GetRoadHistory", rh, err)
+	require.NoError(t, s.Store.SeedSources(context.Background(), []store.SourceSeed{{ID: "roads", Name: "Road conditions", PollInterval: 5 * time.Minute}}))
+	upsert(t, s.Store, &gridv1.Event{
+		Id: "road:" + s.Cfg.Roads.MonitoredRoads[0].ID, Layer: gridv1.Layer_ROAD_SEGMENT, Category: "open",
+		Severity: gridv1.Severity_INFO, Status: gridv1.EventStatus_ACTIVE, Headline: "Hwy 4: open",
+		Provenance: &gridv1.Provenance{SourceId: "roads", SourceName: "Road conditions", FetchedAt: timestamppb.New(base)},
+		Detail:     &gridv1.Event_RoadSegment{RoadSegment: &gridv1.RoadSegmentDetail{RoadId: s.Cfg.Roads.MonitoredRoads[0].ID, Status: "OPEN"}},
+	})
+	es, err := g.GetEventSamples(rpcBG(), &gridv1.GetEventSamplesRequest{Id: "road:" + s.Cfg.Roads.MonitoredRoads[0].ID})
+	check("GetEventSamples", es, err)
 	scan, err := g.ListScanners(rpcBG(), &gridv1.ListScannersRequest{})
 	check("ListScanners", scan, err)
 

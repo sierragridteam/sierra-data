@@ -363,6 +363,11 @@ func revisionChanges(a, b *gridv1.Event) []*gridv1.TimelineEntry {
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "permission", "Burning "+burnPermissionText(bb.GetPermission()), burnPermissionText(ba.GetPermission()), burnPermissionText(bb.GetPermission()))
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "burnDay", "County line: "+nonEmptyOr(burnDayText(bb.GetBurnDay()), "no answer"), burnDayText(ba.GetBurnDay()), burnDayText(bb.GetBurnDay()))
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "calfireStatus", "CAL FIRE: "+nonEmptyOr(calfireText(bb.GetCalfireStatus()), "unknown"), calfireText(ba.GetCalfireStatus()), calfireText(bb.GetCalfireStatus()))
+	case gridv1.Layer_ROAD_SEGMENT:
+		ra, rb := a.GetRoadSegment(), b.GetRoadSegment()
+		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "roadStatus", roadStatusLabel(ra.GetStatus(), rb.GetStatus()), enumWord(ra.GetStatus()), enumWord(rb.GetStatus()))
+		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "congestion", "Traffic "+strings.ToLower(nonEmptyOr(rb.GetCongestion(), "unknown")), enumWord(ra.GetCongestion()), enumWord(rb.GetCongestion()))
+		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "beyond", nonEmptyOr(beyondNames(rb), "Seasonal closure lifted"), beyondNames(ra), beyondNames(rb))
 	case gridv1.Layer_CHAIN_CONTROL:
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "extent", "Now "+chainExtent(b.GetChainControl()), chainExtent(a.GetChainControl()), chainExtent(b.GetChainControl()))
 	case gridv1.Layer_SOURCE_HEALTH:
@@ -373,6 +378,33 @@ func revisionChanges(a, b *gridv1.Event) []*gridv1.TimelineEntry {
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "customersAffected", countText(cb)+" customers out", countText(ca), countText(cb))
 	}
 	return out
+}
+
+// roadStatusLabel words a monitored road's change of status.
+func roadStatusLabel(from, to string) string {
+	switch to {
+	case "OPEN":
+		if from == "" {
+			return "Open"
+		}
+		return "Reopened"
+	case "CLOSED":
+		return "Closed"
+	case "RESTRICTED":
+		return "Restricted"
+	case "MAINTENANCE":
+		return "Roadwork"
+	}
+	return nonEmptyOr(enumWord(to), "Status unknown")
+}
+
+// beyondNames lists the seasonal closures in effect past a road's ends.
+func beyondNames(d *gridv1.RoadSegmentDetail) string {
+	var names []string
+	for _, b := range d.GetBeyond() {
+		names = append(names, b.GetName()+" in effect")
+	}
+	return strings.Join(names, "; ")
 }
 
 // chainExtent is a chain-control stretch's two ends: "A to B", or "A".

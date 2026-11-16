@@ -1,6 +1,7 @@
 package gridapi
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -49,5 +50,40 @@ func TestGetRoadHistory(t *testing.T) {
 		assert.Equal(t, codes.NotFound, status.Code(err), id)
 	}
 	_, err = g.GetRoadHistory(rpcBG(), &gridv1.GetRoadHistoryRequest{Road: road, From: timestamppb.New(base), To: timestamppb.New(base)})
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+}
+
+// The samples of a ROAD_SEGMENT event are the road's archive, reached through
+// the event: the same rows GetRoadHistory returns. Other layers keep none.
+func TestGetEventSamples(t *testing.T) {
+	s := newTestService(t)
+	road := s.Cfg.Roads.MonitoredRoads[0].ID
+	seedRoadSamples(t, s, road)
+	require.NoError(t, s.Store.SeedSources(context.Background(), []store.SourceSeed{
+		{ID: "roads", Name: "Road conditions", PollInterval: 5 * time.Minute},
+	}))
+	upsert(t, s.Store, &gridv1.Event{
+		Id: "road:" + road, Layer: gridv1.Layer_ROAD_SEGMENT, Category: "open",
+		Severity: gridv1.Severity_INFO, Status: gridv1.EventStatus_ACTIVE, Headline: "Hwy 4: open",
+		Provenance: &gridv1.Provenance{SourceId: "roads", SourceName: "Road conditions", FetchedAt: timestamppb.New(base)},
+		Detail:     &gridv1.Event_RoadSegment{RoadSegment: &gridv1.RoadSegmentDetail{RoadId: road, Name: "Hwy 4", Status: "OPEN", Congestion: "CLEAR"}},
+	})
+	g := NewGridServer(s)
+
+	got, err := g.GetEventSamples(rpcBG(), &gridv1.GetEventSamplesRequest{Id: "road:" + road})
+	require.NoError(t, err)
+	assert.Equal(t, gridv1.Layer_ROAD_SEGMENT, got.GetLayer())
+	assert.Equal(t, "road:"+road, got.GetEventId())
+	h, err := g.GetRoadHistory(rpcBG(), &gridv1.GetRoadHistoryRequest{Road: road})
+	require.NoError(t, err)
+	require.Len(t, got.GetRoad(), len(h.GetSamples()))
+	assert.Equal(t, h.GetSamples()[0].GetAt().AsTime(), got.GetRoad()[0].GetAt().AsTime())
+	assert.Equal(t, int32(42), got.GetRoad()[0].GetDurationMinutes().GetValue())
+
+	_, err = g.GetEventSamples(rpcBG(), &gridv1.GetEventSamplesRequest{Id: "road:nowhere"})
+	assert.Equal(t, codes.NotFound, status.Code(err))
+	_, err = g.GetEventSamples(rpcBG(), &gridv1.GetEventSamplesRequest{Id: "usgs:q1"})
+	assert.Equal(t, codes.NotFound, status.Code(err), "an event on a layer without samples")
+	_, err = g.GetEventSamples(rpcBG(), &gridv1.GetEventSamplesRequest{Id: "road:" + road, From: timestamppb.New(base), To: timestamppb.New(base)})
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 }
