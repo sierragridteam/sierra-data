@@ -317,6 +317,11 @@ func (a *gridApp) startTerm(actx context.Context, lease *store.Lease) (*writerTe
 		return nil, fmt.Errorf("seed grid sources: %w", err)
 	}
 	retireOrphanedSources(actx, gridStore)
+	// After the registry is seeded: a feed with no health event, or one whose
+	// event disagrees with its row, gets a revision (a no-op with the layer off).
+	if err := gridStore.SeedSourceHealth(actx); err != nil {
+		return nil, fmt.Errorf("seed source health: %w", err)
+	}
 	if err := places.Seed(actx, gridStore, appConfig); err != nil {
 		return nil, fmt.Errorf("seed grid places: %w", err)
 	}

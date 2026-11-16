@@ -175,7 +175,16 @@ func seedPresenceFixtures(t *testing.T, s *Service) {
 		{ID: "caltrans", Name: "Caltrans", PollInterval: 10 * time.Minute},
 		{ID: "pge", Name: "PG&E", PollInterval: 5 * time.Minute},
 		{ID: "burnline", Name: "County burn line", PollInterval: time.Hour},
+		store.GridSourceSeed(),
 	}))
+	upsert(t, s.Store, &gridv1.Event{
+		Id: "source:caloes", Layer: gridv1.Layer_SOURCE_HEALTH, Category: "unavailable",
+		Severity: gridv1.Severity_INFO, Status: gridv1.EventStatus_ACTIVE, Headline: "Cal OES: unavailable",
+		Provenance: &gridv1.Provenance{SourceId: store.GridSourceID, SourceName: "The Grid", FetchedAt: timestamppb.New(base)},
+		Detail: &gridv1.Event_SourceHealth{SourceHealth: &gridv1.SourceHealthDetail{
+			SourceId: "caloes", Status: gridv1.SourceStatus_UNAVAILABLE, Since: timestamppb.New(base), Error: "HTTP 503",
+		}},
+	})
 	require.NoError(t, s.Store.RecordAttempt(ctx, "caloes", nil))
 	prov := func(id string) *gridv1.Provenance {
 		return &gridv1.Provenance{SourceId: id, SourceName: id, FetchedAt: timestamppb.New(base)}

@@ -59,11 +59,38 @@ Two things to know once it is on, neither a shape change:
   `burnStatus.burnLines[].observation.observedAt` and
   `burnStatus.calfireObservedAt`, as before.
 
+### Source health has a history: the `SOURCE_HEALTH` layer
+
+`GET /api/v1/sources` says whether a source is healthy now. Nothing said when
+it was not, so a quiet week in an event's history could mean nothing happened
+or that the Grid could not see.
+
+With `grid.sourceHealth.enabled` (off as shipped) the Grid keeps one
+long-lived event per upstream feed, id `source:{source id}`, layer
+`SOURCE_HEALTH`: permanently `ACTIVE`, always `INFO`, in no place.
+`sourceHealth` carries `sourceId`, `status`, `since`, the `error` of the
+attempt that changed the status, and `lastSuccessAt`. A revision is a change
+of status and nothing else, so `GET /api/v1/events/source:nws/history` is the
+list of NWS outages as the Grid saw them.
+
+- `since` is the time of the attempt that found the new status. A source goes
+  from `STALE` to `UNAVAILABLE` at the first failed attempt after its stale
+  window, not when the window ran out.
+- Feeds only. Push reporters (`alanpi`, `relay`, `burn-line`) get no event.
+- These events are owned by a new source row, `grid`, of kind `INTERNAL`,
+  which `/api/v1/sources` lists. It is not polled and has no health event.
+- They appear in an unscoped `/api/v1/events`, in search and in the MCP
+  `grid_events` tool (about twenty of them), and in no place's events or
+  summary.
+- History starts when the flag goes on. The first revision's `since` is that
+  moment, not when the source entered its status.
+
 ### New enum values, declared ahead of use
 
 `Layer` gains `SOURCE_HEALTH`, `CHAIN_CONTROL`, `ROAD_SEGMENT` and `WEATHER`;
 `SourceKind` gains `INTERNAL`; `TimelineKind` gains `TIMELINE_READING`. No
-response carries the layer or source-kind values yet. They are published first
+response carries the layer or source-kind values until the flag for its layer
+is on. They are published first
 because a client with closed enums (the TypeScript SDK validates responses)
 rejects a value it does not know: update the SDK to 0.5.0 or later before the
 Grid starts writing these layers.

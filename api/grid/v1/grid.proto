@@ -382,6 +382,7 @@ message Event {
     PowerDetail power = 27;
     // BURN_STATUS detail (one county's residential burning status).
     BurnStatusDetail burn_status = 31;
+    SourceHealthDetail source_health = 33;
   }
 
   // Gauge/AirQuality/Announcement details — defined with their pollers.
@@ -435,9 +436,10 @@ enum Layer {
   // always INFO; its revision history is the record of changes.
   BURN_STATUS = 15;
   // One event per upstream feed (`source:{source id}`), saying whether the Grid
-  // can read it. Ambient, permanently ACTIVE, always INFO; a revision is a
-  // change of the source's status, so its history is the record of outages.
-  // Reserved until the Grid writes them; no events today.
+  // can read it (source `grid`). Ambient, permanently ACTIVE, always INFO, in
+  // no place; a revision is a change of the source's status, so its history
+  // is the record of outages. Written only when the Grid has source-health
+  // recording on.
   SOURCE_HEALTH = 16;
   // One event per stretch of highway under a chain requirement, from Caltrans
   // (source `caltrans-cc`). RESOLVED when Caltrans lifts it; a change of level
@@ -673,9 +675,10 @@ enum SourceKind {
   // An operator-run monitor that pushes to the Grid's ingest endpoint. Health
   // only: no event carries its id, and `homepageUrl` is empty.
   REPORTER = 2;
-  // The Grid itself: the owner of events the Grid derives from its own state
-  // (the SOURCE_HEALTH layer). Not polled. Reserved until the Grid writes
-  // those events; no row has this kind today.
+  // The Grid itself (row `grid`): the owner of events the Grid derives from
+  // its own state (the SOURCE_HEALTH layer). Not polled: it records a success
+  // each time a Grid process takes over writing, and has no health event of
+  // its own. Listed only when the Grid has source-health recording on.
   INTERNAL = 3;
 }
 
@@ -1296,6 +1299,31 @@ message BurnStatusDetail {
   // scrape fails, that facet is carried forward from the stored event while
   // observed_at still advances. --)
   google.protobuf.Timestamp calfire_observed_at = 7;
+}
+
+// SourceHealthDetail is one upstream feed's health as the Grid last found it
+// to change (layer SOURCE_HEALTH, event id `source:{source id}`). The event is
+// revised only when `status` changes, so its history answers "when was this
+// source down?": join an event's `provenance.sourceId` to `source:{id}` and a
+// quiet stretch in that event's history reads as quiet or as blind. The
+// source's current health, with its latest error and attempt time, is
+// `GET /api/v1/sources`.
+message SourceHealthDetail {
+  // The source registry id (`Source.id`).
+  string source_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"nws\""}];
+  // The source's status from `since` on.
+  SourceStatus status = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"UNAVAILABLE\""}];
+  // When the Grid found the source in this status: the time of the attempt
+  // that changed it. A source goes from STALE to UNAVAILABLE at the first
+  // failed attempt after its stale window, not at the moment the window ran
+  // out. For the first revision it is when the Grid began recording.
+  google.protobuf.Timestamp since = 3 [(google.api.field_behavior) = REQUIRED];
+  // The error of the attempt that changed the status. Empty string for OK.
+  // Later attempts' errors are not recorded here.
+  string error = 4;
+  // The source's last successful attempt as of `since`. `null` if it had
+  // never succeeded.
+  google.protobuf.Timestamp last_success_at = 5;
 }
 
 // BurnLineReading is one recorded phone line's answer for today.
@@ -2370,7 +2398,7 @@ message ListEventsRequest {
   // (for MESH) also work. FIRE_WEATHER, GAUGE, AIR_QUALITY and ANNOUNCEMENT are
   // accepted but no events carry them. Default: every layer.
   repeated string layer = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    enum: ["WILDFIRE", "EVACUATION", "WEATHER_ALERT", "EARTHQUAKE", "ROAD_INCIDENT", "POWER", "MESH", "BURN_STATUS"]
+    enum: ["WILDFIRE", "EVACUATION", "WEATHER_ALERT", "EARTHQUAKE", "ROAD_INCIDENT", "POWER", "MESH", "BURN_STATUS", "SOURCE_HEALTH", "CHAIN_CONTROL", "ROAD_SEGMENT"]
   }];
   // Only these statuses. Repeat the parameter or comma-separate.
   // Case-insensitive. Default: ACTIVE and SCHEDULED. Pass `ACTIVE` alone to drop
@@ -2620,7 +2648,7 @@ message ListHistoryRequest {
   string place = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"calaveras-county\""}];
   // Only these layers; same rules as on `/api/v1/events`.
   repeated string layer = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    enum: ["WILDFIRE", "EVACUATION", "WEATHER_ALERT", "EARTHQUAKE", "ROAD_INCIDENT", "POWER", "MESH", "BURN_STATUS"]
+    enum: ["WILDFIRE", "EVACUATION", "WEATHER_ALERT", "EARTHQUAKE", "ROAD_INCIDENT", "POWER", "MESH", "BURN_STATUS", "SOURCE_HEALTH", "CHAIN_CONTROL", "ROAD_SEGMENT"]
   }];
   // Window start on each revision's `observedAt`, RFC 3339, inclusive. Default:
   // no lower bound.

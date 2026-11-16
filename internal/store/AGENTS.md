@@ -144,6 +144,31 @@ A reading revision is not a sample table: each is a full snapshot, affordable
 only for sparse readings (two burn calls a day). A dense series goes to a
 typed table with its subject as an event (`mesh_telemetry`, `road_samples`).
 
+## Source health as events (`source_health.go`)
+
+With `WithSourceHealth` (`grid.sourceHealth.enabled`) each FEED row of
+`sources` has one long-lived event, `source:<id>`, layer `SOURCE_HEALTH`:
+permanently ACTIVE, INFO, no geometry, no places. `sources` stays the registry
+and the current health; the event is its history.
+
+- **A revision is a status change, nothing else.** Nothing in the event is
+  hash-excluded, so it never takes the refresh path. The snapshot's error is
+  the one from the attempt that changed the status.
+- **Written in `RecordAttempt`'s transaction** (`upsertEventTx`, which is
+  `UpsertEvent`'s body for a caller that already holds the write
+  transaction). Two transactions could commit the status without its history,
+  and nothing would repair that. A failed event write rolls the attempt back.
+- **Owned by the `grid` source row** (`GridSourceSeed`, kind `INTERNAL`).
+  `events.source_id` is a foreign key, and an event owned by the source it
+  describes would be swept by that source's own poller.
+- **Seeded each writer term** (`SeedSourceHealth`, after `SeedSources`): a
+  feed already attempted and without an event gets one; an event that
+  disagrees with its row gets a revision, comparing statuses, never hashes; a
+  health event whose source left the registry is RESOLVED. It also records
+  the `grid` row's success.
+- **Feeds only.** A reporter's health is process memory for the mesh streams,
+  so a deploy would write an outage that did not happen.
+
 ## `last_seen_at` vs `observed_at`
 
 Two different questions, do not conflate:

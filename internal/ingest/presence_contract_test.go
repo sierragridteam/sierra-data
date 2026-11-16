@@ -25,6 +25,7 @@ import (
 	"github.com/sierragridteam/sierra-data/internal/openapispec"
 	"github.com/sierragridteam/sierra-data/internal/places"
 	"github.com/sierragridteam/sierra-data/internal/store"
+	"github.com/sierragridteam/sierra-data/internal/storetest"
 )
 
 // TestNormalizersHonorFieldPresence is the normalizer half of the spec's
@@ -44,7 +45,12 @@ import (
 func TestNormalizersHonorFieldPresence(t *testing.T) {
 	ctx := testCtx()
 	cfg := testConfig()
-	st := newSchedStore(t)
+	// Source health on: every poller's first attempt then writes its source's
+	// SOURCE_HEALTH event, which is how that layer's fields get here.
+	st, err := store.Open(storetest.URL(t), store.WithSourceHealth(true))
+	require.NoError(t, err)
+	t.Cleanup(func() { st.Close() })
+	require.NoError(t, st.SeedSources(ctx, []store.SourceSeed{store.GridSourceSeed()}))
 	require.NoError(t, places.Seed(ctx, st, &config.Config{Hazards: cfg.Hazards}))
 
 	pollers := presencePollers(t)

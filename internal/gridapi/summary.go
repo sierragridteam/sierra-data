@@ -201,7 +201,7 @@ func (s *Service) buildPlaceSummary(ctx context.Context, hb hazardsBuilder, plac
 	//     planned roadwork is a calendar.
 	hazardEvents := make([]*gridv1.Event, 0, len(events))
 	for _, ev := range events {
-		if ev.GetLayer() == gridv1.Layer_MESH || ev.GetLayer() == gridv1.Layer_BURN_STATUS {
+		if ambientLayer(ev.GetLayer()) || countedElsewhere(ev.GetLayer()) {
 			continue
 		}
 		if ev.GetLayer() == gridv1.Layer_POWER && ev.GetSeverity() == gridv1.Severity_INFO {
@@ -629,6 +629,28 @@ func sourceRows(sources []*gridv1.Source) []*gridv1.SummarySourceHealth {
 		})
 	}
 	return out
+}
+
+// ambientLayer reports whether a layer is ambient: its events are state, not
+// hazards, and are left out of the summary's hazard rollups (`totalActive`,
+// `severityCounts`, `topEvents`, `mode`). It says nothing about lifetime: a
+// burn status is permanent and a mesh node expires.
+func ambientLayer(l gridv1.Layer) bool {
+	switch l {
+	case gridv1.Layer_MESH, gridv1.Layer_BURN_STATUS, gridv1.Layer_SOURCE_HEALTH, gridv1.Layer_WEATHER:
+		return true
+	}
+	return false
+}
+
+// countedElsewhere reports whether a layer's events are hazards the summary
+// already counts from another reading of the same thing. TEMPORARY: the roads
+// domain reads chain controls and road status from the live roads service,
+// so counting the stored events too would report each requirement and each
+// closure twice. Remove a layer from here when the roads domain reads its
+// events.
+func countedElsewhere(l gridv1.Layer) bool {
+	return l == gridv1.Layer_CHAIN_CONTROL || l == gridv1.Layer_ROAD_SEGMENT
 }
 
 // storeLayerEnum resolves a layer slug onto its store Layer enum for layers

@@ -95,14 +95,21 @@ func (s *Store) DeleteSource(ctx context.Context, id string) error {
 // status=OK. On failure: last_error set, and status degrades to STALE while
 // the last success is within stale_after (default 3x poll interval), then
 // UNAVAILABLE — never-succeeded sources go straight to UNAVAILABLE.
+//
+// With WithSourceHealth, a feed whose status changed gets a SOURCE_HEALTH
+// event revision in this same transaction (source_health.go): two
+// transactions could commit the status without its history, and nothing
+// would repair it.
 func (s *Store) RecordAttempt(ctx context.Context, id string, attemptErr error) error {
 	now := time.Now()
 	return s.inTx(ctx, func(tx *sql.Tx) error {
 		var pollInterval int64
 		var staleAfter, lastSuccess sql.NullInt64
+		var name string
+		var kind, oldStatus int32
 		err := tx.QueryRow(
-			`SELECT poll_interval_seconds, stale_after_seconds, last_success_at FROM sources WHERE id = $1`, id,
-		).Scan(&pollInterval, &staleAfter, &lastSuccess)
+			`SELECT poll_interval_seconds, stale_after_seconds, last_success_at, name, kind, status FROM sources WHERE id = $1`, id,
+		).Scan(&pollInterval, &staleAfter, &lastSuccess, &name, &kind, &oldStatus)
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("store: record attempt for unseeded source %q", id)
 		}
@@ -118,7 +125,10 @@ func (s *Store) RecordAttempt(ctx context.Context, id string, attemptErr error) 
 			if err != nil {
 				return fmt.Errorf("store: record success %s: %w", id, err)
 			}
-			return nil
+			return s.sourceStatusChanged(ctx, tx, sourceHealthState{
+				id: id, name: name, kind: gridv1.SourceKind(kind), status: gridv1.SourceStatus_OK,
+				lastSuccess: now, at: now,
+			}, gridv1.SourceStatus(oldStatus))
 		}
 
 		staleWindow := staleAfter.Int64
@@ -134,7 +144,11 @@ func (s *Store) RecordAttempt(ctx context.Context, id string, attemptErr error) 
 			now.Unix(), attemptErr.Error(), int32(status), id); err != nil {
 			return fmt.Errorf("store: record failure %s: %w", id, err)
 		}
-		return nil
+		st := sourceHealthState{id: id, name: name, kind: gridv1.SourceKind(kind), status: status, err: attemptErr.Error(), at: now}
+		if lastSuccess.Valid {
+			st.lastSuccess = time.Unix(lastSuccess.Int64, 0)
+		}
+		return s.sourceStatusChanged(ctx, tx, st, gridv1.SourceStatus(oldStatus))
 	})
 }
 

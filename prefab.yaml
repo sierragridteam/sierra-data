@@ -452,6 +452,13 @@ grid:
   readings:
     enabled: false
 
+  # Source health as events: one long-lived SOURCE_HEALTH event per upstream
+  # feed (`source:<id>`), revised when the feed's status changes, so "when was
+  # this source down?" has an answer. Off, only the current status is kept
+  # (/api/v1/sources).
+  sourceHealth:
+    enabled: false
+
   # PG&E power layer. No geography knobs: unlike fire, an outage outside the
   # footprint is not a threat to it, so the layer uses the plain hazards union.
   #

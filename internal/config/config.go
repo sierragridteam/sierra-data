@@ -197,9 +197,14 @@ type GridConfig struct {
 	Wildfire    WildfireConfig          `koanf:"wildfire"`
 	Places      PlacesConfig            `koanf:"places"`
 	Readings    ReadingsConfig          `koanf:"readings"`
-	Power       PowerConfig             `koanf:"power"`
-	Burn        BurnConfig              `koanf:"burn"`
-	Ingest      IngestConfig            `koanf:"ingest"`
+	// SourceHealth records each feed's status changes as SOURCE_HEALTH events
+	// (one long-lived event per feed, owned by the `grid` source row). Turn it
+	// on only once every deployed consumer of the SDK knows the SOURCE_HEALTH
+	// layer and the INTERNAL source kind.
+	SourceHealth ReadingsConfig `koanf:"sourceHealth"`
+	Power        PowerConfig    `koanf:"power"`
+	Burn         BurnConfig     `koanf:"burn"`
+	Ingest       IngestConfig   `koanf:"ingest"`
 }
 
 // GridDatabaseConfig is the Grid store's PostgreSQL connection.

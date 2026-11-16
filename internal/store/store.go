@@ -82,6 +82,9 @@ type Store struct {
 
 	// readings turns on READING revisions (WithReadings).
 	readings bool
+	// sourceHealth records each feed's status changes as SOURCE_HEALTH
+	// events (WithSourceHealth).
+	sourceHealth bool
 
 	maxConns, minConns int32
 	schemaVersion      atomic.Int64
@@ -107,6 +110,7 @@ type openConfig struct {
 	wildfireBuffer float64
 	townRadius     float64
 	readings       bool
+	sourceHealth   bool
 	maxConns       int32
 	minConns       int32
 	lockTimeout    time.Duration
@@ -167,6 +171,13 @@ func WithTownRadius(meters float64) Option {
 // via grid.readings.enabled.
 func WithReadings(on bool) Option {
 	return func(c *openConfig) { c.readings = on }
+}
+
+// WithSourceHealth makes RecordAttempt write a SOURCE_HEALTH event revision
+// whenever a feed's status changes (source_health.go). Off (the default), a
+// source's history is not kept. Configured via grid.sourceHealth.enabled.
+func WithSourceHealth(on bool) Option {
+	return func(c *openConfig) { c.sourceHealth = on }
 }
 
 // WithMaxConns bounds the pool (grid.database.maxConns). Zero or negative
@@ -323,7 +334,7 @@ func openReader(url string, opts ...Option) (*Store, openConfig, error) {
 	}
 	db := stdlib.OpenDBFromPool(pool)
 	s := &Store{pool: pool, db: db, wildfireBuffer: cfg.wildfireBuffer,
-		townRadius: cfg.townRadius, readings: cfg.readings, maxConns: cfg.maxConns, minConns: cfg.minConns}
+		townRadius: cfg.townRadius, readings: cfg.readings, sourceHealth: cfg.sourceHealth, maxConns: cfg.maxConns, minConns: cfg.minConns}
 	v, err := migrations.Apply(ctx, db)
 	if err != nil {
 		s.Close()

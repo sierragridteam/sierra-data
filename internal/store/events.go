@@ -153,12 +153,27 @@ func (s *Store) UpsertEvent(ctx context.Context, ev *gridv1.Event) (UpsertResult
 	if ev.GetId() == "" {
 		return UpsertResult{}, fmt.Errorf("store: upsert event with empty id")
 	}
+	var res UpsertResult
+	err := s.inTx(ctx, func(tx *sql.Tx) (err error) {
+		res, err = s.upsertEventTx(ctx, tx, ev)
+		return err
+	})
+	if err != nil {
+		return UpsertResult{}, err
+	}
+	return res, nil
+}
+
+// upsertEventTx is UpsertEvent inside a write transaction the caller holds,
+// for a write that must commit with something else (a source's status and
+// its SOURCE_HEALTH revision, RecordAttempt).
+func (s *Store) upsertEventTx(ctx context.Context, tx *sql.Tx, ev *gridv1.Event) (UpsertResult, error) {
 	// Hash the event exactly as passed — before any store-side mutation — so
 	// the stored hash always matches what the next poll's ContentHash yields.
 	hash := ContentHash(ev)
 
 	var res UpsertResult
-	err := s.inTx(ctx, func(tx *sql.Tx) error {
+	err := func() error {
 		var oldRev, oldReadings uint32
 		var oldHash string
 		var pre storedForRefresh
@@ -254,7 +269,7 @@ func (s *Store) UpsertEvent(ctx context.Context, ev *gridv1.Event) (UpsertResult
 			return err
 		}
 		return replaceEventPlaces(tx, c.GetId(), c.PlaceIds)
-	})
+	}()
 	if err != nil {
 		return UpsertResult{}, err
 	}

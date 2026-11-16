@@ -470,6 +470,12 @@ func gridSourceSeeds(cfg *config.Config) []store.SourceSeed {
 			Disappearance: store.DisappearanceExpire,
 		})
 	}
+	// The row that owns the Grid's own events (source health). Seeded only
+	// while the layer is on: a client with closed enums does not know its
+	// kind before then.
+	if cfg.Grid.SourceHealth.Enabled {
+		seeds = append(seeds, store.GridSourceSeed())
+	}
 	return seeds
 }
 
