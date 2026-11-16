@@ -5,7 +5,7 @@ Shared domain vocabulary for this project — entities, named processes, and sta
 ## Events & lifecycle
 
 ### Event
-A single occurrence the Grid tracks and serves — a wildfire, an evacuation, a weather alert, an earthquake, a road incident, a mesh node — as a canonical record carrying geometry, severity, a source-namespaced id, and full revision history.
+A thing the Grid tracks and serves, with a state and a history, that lasts as long as what it describes — a wildfire, an evacuation, a weather alert, an earthquake, a road incident, a mesh node, a county's burn status. It is a canonical record carrying geometry, severity, a source-namespaced id, and full revision history. An Event is not a moment: a later report about the same thing revises its Event rather than creating another.
 
 An Event has a lifecycle status: Active or Scheduled while live, Resolved when a feed that authoritatively lists everything current drops it, Expired when a feed that goes quiet without confirming an ending passes the event's own expiry or a per-source grace. Every status change is a Revision, so the record of an ending is part of history, not a deletion.
 
