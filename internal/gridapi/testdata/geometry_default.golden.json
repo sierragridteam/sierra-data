@@ -40,6 +40,7 @@
       "observedAt": "2026-07-01T12:00:00Z",
       "ingestedAt": null,
       "revision": 1,
+      "readings": 0,
       "enhancement": null
     },
     {
@@ -83,6 +84,7 @@
       "observedAt": "2026-07-01T15:00:00Z",
       "ingestedAt": null,
       "revision": 2,
+      "readings": 0,
       "enhancement": null
     },
     {
@@ -112,6 +114,7 @@
       "observedAt": "2026-07-01T11:00:00Z",
       "ingestedAt": null,
       "revision": 1,
+      "readings": 0,
       "enhancement": null
     },
     {
@@ -154,6 +157,7 @@
       "observedAt": "2026-07-01T10:00:00Z",
       "ingestedAt": null,
       "revision": 1,
+      "readings": 0,
       "enhancement": {
         "model": "gpt-5-mini",
         "enhancedAt": null,
@@ -203,6 +207,7 @@
       "observedAt": "2026-07-01T12:00:00Z",
       "ingestedAt": null,
       "revision": 1,
+      "readings": 0,
       "enhancement": null
     }
   ],
@@ -253,6 +258,7 @@
   "observedAt": "2026-07-01T15:00:00Z",
   "ingestedAt": null,
   "revision": 2,
+  "readings": 0,
   "enhancement": null
 }
 {
@@ -302,9 +308,11 @@
         "observedAt": "2026-07-01T15:00:00Z",
         "ingestedAt": null,
         "revision": 2,
+        "readings": 0,
         "enhancement": null
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     },
     {
       "revision": 1,
@@ -351,9 +359,11 @@
         "observedAt": "2026-07-01T14:00:00Z",
         "ingestedAt": null,
         "revision": 1,
+        "readings": 0,
         "enhancement": null
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     }
   ],
   "nextPageToken": "",
@@ -408,9 +418,11 @@
         "observedAt": "2026-07-01T15:00:00Z",
         "ingestedAt": null,
         "revision": 2,
+        "readings": 0,
         "enhancement": null
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     },
     {
       "revision": 1,
@@ -457,9 +469,11 @@
         "observedAt": "2026-07-01T14:00:00Z",
         "ingestedAt": null,
         "revision": 1,
+        "readings": 0,
         "enhancement": null
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     },
     {
       "revision": 1,
@@ -505,9 +519,11 @@
         "observedAt": "2026-07-01T12:00:00Z",
         "ingestedAt": null,
         "revision": 1,
+        "readings": 0,
         "enhancement": null
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     },
     {
       "revision": 1,
@@ -550,9 +566,11 @@
         "observedAt": "2026-07-01T12:00:00Z",
         "ingestedAt": null,
         "revision": 1,
+        "readings": 0,
         "enhancement": null
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     },
     {
       "revision": 1,
@@ -585,9 +603,11 @@
         "observedAt": "2026-07-01T11:00:00Z",
         "ingestedAt": null,
         "revision": 1,
+        "readings": 0,
         "enhancement": null
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     },
     {
       "revision": 1,
@@ -633,6 +653,7 @@
         "observedAt": "2026-07-01T10:00:00Z",
         "ingestedAt": null,
         "revision": 1,
+        "readings": 0,
         "enhancement": {
           "model": "gpt-5-mini",
           "enhancedAt": null,
@@ -645,7 +666,8 @@
           "response": ""
         }
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     }
   ],
   "nextPageToken": "",

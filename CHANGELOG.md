@@ -21,33 +21,52 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
-## 2026-11-17
+## 2026-11-16 (later)
 
-### BREAKING for clients with closed enums: `calfireStatus` can be `CALFIRE_BURNING_ALLOWED`
+### Revisions have a kind: `CHANGE` or `READING`
 
-Since 2026-11-06 CAL FIRE's burn page has said "Burning Allowed" for some
-counties (Calaveras and Tuolumne among them), a wording the Grid did not
-read. The county's CAL FIRE facet kept its earlier `CALFIRE_PERMIT_REQUIRED`,
-carried forward, with a `calfireObservedAt` that stopped moving, while the
-`calfire-burn` source read `OK`.
+Until now the Grid kept history for one thing: a change in an event's content
+or status. A reading that confirmed the state was written over the last one.
+A county burn line that says "not a burn day" three days running left one
+revision, and the three calls were gone.
 
-The Grid now reads it as `CALFIRE_BURNING_ALLOWED`: CAL FIRE is not
-restricting burning in the county, and the air district's burn-day call
-decides. `permission` is `ALLOWED` on a burn day and `PROHIBITED` on a
-no-burn day, as with the permit statuses. It says nothing about whether a
-permit is needed.
+- `EventRevision.kind` is `CHANGE` (what every revision has been) or `READING`:
+  a reading with content of its own arrived and the state held. The snapshot
+  is the event as it stood with that reading. Never unspecified.
+- `Event.readings` counts an event's `READING` revisions, so
+  `revision - readings` is its number of changes.
+- `GET /api/v1/events/{id}/history` and `GET /api/v1/history` take `kind`
+  (`CHANGE`, `READING`, repeated or comma-separated). **The default is
+  `CHANGE`**, so a client that does not ask sees what it sees today. `q` with
+  `kind=READING` is a 400: text search is over changes.
+- `GET /api/v1/stats` reports `changes` and `readings` beside `revisions`,
+  overall and per layer.
+- `GET /api/v1/events/{id}/timeline` reads changes, counts changes in "N
+  changes since" (it said "revisions"), diffs burn status (`permission`,
+  `burnDay`, `calfireStatus`, which it never did), and lists up to 50 readings
+  as `TIMELINE_READING` entries on the source's clock.
+- The MCP `grid_history` tool takes `kind`.
 
-Also changed: when CAL FIRE's page answers with wording the Grid cannot read
-for a county, or without that county, `calfireStatus` is
-`CALFIRE_BURN_STATUS_UNKNOWN` (so `permission` is `UNKNOWN`) and the
-`calfire-burn` source reads `STALE`/`UNAVAILABLE` with the wording in
-`lastError`. The earlier status used to be carried forward silently; it is
-now carried only while the page itself cannot be fetched.
+Readings are written only when `grid.readings.enabled` is on, and it ships
+off. Today one layer records them: `BURN_STATUS`, one per call to a burn line.
+Two things to know once it is on, neither a shape change:
 
-Migration: a client that validates `calfireStatus` against a fixed list must
-know the new value first (TypeScript SDK 0.5.0 or later accepts values it
-does not know). Treat it as "CAL FIRE does not prohibit burning", never as
-"no permit required".
+- Revision numbers in default history can skip (3, 7, 12): the numbers
+  between are readings.
+- A burn event's `revision` moves with each call, and its `observedAt` moves
+  only with a revision, like every other layer's. It used to follow the hourly
+  check. For "when was this last checked" read
+  `burnStatus.burnLines[].observation.observedAt` and
+  `burnStatus.calfireObservedAt`, as before.
+
+### New enum values, declared ahead of use
+
+`Layer` gains `SOURCE_HEALTH`, `CHAIN_CONTROL`, `ROAD_SEGMENT` and `WEATHER`;
+`SourceKind` gains `INTERNAL`; `TimelineKind` gains `TIMELINE_READING`. No
+response carries the layer or source-kind values yet. They are published first
+because a client with closed enums (the TypeScript SDK validates responses)
+rejects a value it does not know: update the SDK to 0.5.0 or later before the
+Grid starts writing these layers.
 
 ## 2026-11-16
 

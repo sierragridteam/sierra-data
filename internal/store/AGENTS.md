@@ -35,7 +35,7 @@ event→place join so the hot read path never touches geometry.
 with volatile fields zeroed**. `UpsertEvent` writes a new revision only when the
 hash differs from the stored one. Zeroed fields and the reason each is excluded:
 
-- `revision`, `ingested_at`, `observed_at`, `provenance.fetched_at` — bookkeeping
+- `revision`, `readings`, `ingested_at`, `observed_at`, `provenance.fetched_at` — bookkeeping
   timestamps/counters. Upstream re-stamping a record it didn't actually change
   must not mint a revision.
 - `place_ids` — derived at ingest (geometry match ∪ caller preset), not upstream
@@ -60,11 +60,17 @@ hash differs from the stored one. Zeroed fields and the reason each is excluded:
   ANSWER does not; hashed, it would mint a revision a day. The lines' `burn_day`
   and the facets stay hashed: a changed answer IS the transition.
 
-**Every hash-excluded field needs a way back into the blob**, or it freezes at
+**Every hash-excluded field is either a reading, with its history in
+`event_revisions`, or is listed here with the reason its history is not
+kept**, and either way it needs a way back into the blob, or it freezes at
 whatever was current the last time something hashed changed. The hash-equal
-path (`refreshEventPlaces`) persists, without a revision: place_ids, a fresh
-enhancement/summary, mesh telemetry, and burn status's observations (plus the
-burn event's `observed_at`/`fetched_at`, which follow the reading). The
+path (`refreshEventPlaces`) persists, without a revision: place_ids (derived),
+a fresh enhancement/summary (derived text), mesh telemetry (`mesh_telemetry`
+is its archive), CAL FIRE's `calfire_observed_at` (a stamp with no content;
+an outage shows as source health) and `fetched_at`. A burn line's observation
+is a reading: see "Revision kinds" below. With readings off
+(`grid.readings.enabled: false`) the refresh path also persists the
+observations and moves the burn event's `observed_at`, as it did before. The
 scheduler skips hash-equal events entirely unless the poller lists them in
 `PollResult.ForceWrite`, so a poller with such a field must list them — mesh
 does (coalesced), burn does (every event; two an hour). Burn status shipped
@@ -105,13 +111,47 @@ equals what the next poll's `ContentHash` yields.
 - `status` **is** hashed content — that's what makes a resolve→reappear cycle
   produce revisions rather than silently no-op.
 
+## Revision kinds: changes and readings
+
+`event_revisions.kind` (migration 0006) is 1 `CHANGE` or 2 `READING`, and
+`events.readings` / `Event.readings` count an event's readings. A change is
+what a revision has always been. A reading is a hash-equal upsert whose
+reading advanced (`readingAdvanced`, one rule per layer; today burn status: a
+line's call is later than the stored call of the same line). It is written by
+`writeReading`, only with `WithReadings` (`grid.readings.enabled`):
+
+- The stored blob takes the incoming detail and `observed_at`; `revision` and
+  `readings` increment; `content_hash` stays; a snapshot row is inserted with
+  `kind = 2`; the lite copy is rewritten; the `revisions` version is bumped.
+- No search rows (`event_search`, `event_revision_search`): a reading's
+  content is outside the search text. `BackfillRevisionSearch` skips kind 2,
+  or its walk would never end.
+- `event_places` is not touched. The refresh path reconciles places on the
+  next hash-equal poll.
+- The comparison is per line, never the latest call across lines, and an
+  equal call time is not an advance: the burn poller re-offers the same call
+  every hour and that must write nothing.
+- A read-modify-write on the stored blob, safe only under the single writer.
+
+Every history read (`EventHistoryPage`, `QueryHistoryPage`) defaults to
+changes; the filter is a literal (`kindFilterSQL`) so the default plans do not
+depend on a parameter. Revision numbers in a default read therefore skip. A
+row written without `kind` (the previous release's writer) is a change by the
+column default. `readings` is counted by the store: a poller's event never
+carries it, so `UpsertEvent` copies the stored count onto a change.
+
+A reading revision is not a sample table: each is a full snapshot, affordable
+only for sparse readings (two burn calls a day). A dense series goes to a
+typed table with its subject as an event (`mesh_telemetry`, `road_samples`).
+
 ## `last_seen_at` vs `observed_at`
 
 Two different questions, do not conflate:
 
 - `observed_at` (blob + index column, caller-owned) — *when the content was
-  observed*. Moves only on a content change or a transition — except burn
-  status, where it follows each new reading (see the hash-equal path above).
+  observed*. Moves only with a revision (a content change, a transition, a
+  reading). While readings are off, burn status is the exception: its
+  `observed_at` follows each hourly check (see the hash-equal path above).
 - `last_seen_at` (column only, `TouchSeen`) — *when a successful poll last
   included this event*, **coalesced**: the scheduler passes a staleness cutoff
   and only rows whose stamp is older than the coalescing window

@@ -12,6 +12,8 @@ An Event has a lifecycle status: Active or Scheduled while live, Resolved when a
 ### Revision
 An immutable snapshot of an Event written on any content change or lifecycle transition. Volatile bookkeeping (re-stamped timestamps, AI enhancement, high-frequency telemetry) is excluded from the change test, so re-observing an unchanged record does not mint a Revision.
 
+A Revision has a kind. A **Change** is written when the Event's content or status changed. A **Reading** is written when a reading with content of its own (a burn line's call: message, transcript, confidence) arrived and the state held; the change test is unaffected, and history leaves Readings out unless asked. A poll that only confirms what is stored is neither: it writes nothing.
+
 ### Disappearance sweep
 The per-tick reconciliation that transitions Events which are absent from a *successful, complete* poll of their Source, governed by that Source's disappearance policy (resolve immediately, or expire only after a grace). See Fail-loud.
 
