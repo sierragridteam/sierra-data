@@ -197,8 +197,11 @@ func (s *Server) registerTools() []tool {
 				"event's current revision, the text stopped matching after it. Pass every_revision=true for each " +
 				"matching revision instead. Limits: only stored revisions are searched (see search.since; a source " +
 				"that was down left a gap), a revision is stored when content changes rather than on every poll, and " +
-				"location/layer are the event's current ones. No match is not proof it never said so.",
-			InputSchema: json.RawMessage(`{"type":"object","properties":{"location":{"type":"string"},"layer":{"type":"string"},"from":{"type":"string","description":"RFC3339 start"},"to":{"type":"string","description":"RFC3339 end"},"q":{"type":"string","description":"text search over each revision's text"},"every_revision":{"type":"boolean","description":"with q: one row per matching revision instead of one per event"},"limit":{"type":"integer"},"page_token":{"type":"string"}}}`),
+				"location/layer are the event's current ones. No match is not proof it never said so. By default only " +
+				"revisions where something changed are returned; kind=READING (or CHANGE,READING) adds readings that " +
+				"confirmed an unchanged state, such as each daily call to a county burn line. kind=READING cannot be " +
+				"combined with q.",
+			InputSchema: json.RawMessage(`{"type":"object","properties":{"location":{"type":"string"},"layer":{"type":"string"},"kind":{"type":"string","description":"CHANGE (default), READING, or both comma-separated"},"from":{"type":"string","description":"RFC3339 start"},"to":{"type":"string","description":"RFC3339 end"},"q":{"type":"string","description":"text search over each revision's text"},"every_revision":{"type":"boolean","description":"with q: one row per matching revision instead of one per event"},"limit":{"type":"integer"},"page_token":{"type":"string"}}}`),
 			Handler:     s.handleHistory,
 		},
 	}
@@ -572,7 +575,7 @@ func (s *Server) handleHistory(ctx context.Context, args map[string]interface{})
 		}
 		q.Set("place", slug)
 	}
-	for _, k := range []string{"layer", "from", "to", "page_token"} {
+	for _, k := range []string{"layer", "kind", "from", "to", "page_token"} {
 		if v := argStr(args, k); v != "" {
 			q.Set(k, v)
 		}

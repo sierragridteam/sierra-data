@@ -489,7 +489,9 @@ func putRevisionSearch(ctx context.Context, tx *sql.Tx, rows []searchRow) error 
 // BackfillRevisionSearch is BackfillEventSearch for event_revision_search:
 // revisions after (afterID, afterRev) in primary-key order that have no row
 // or one built by other rules. A revision never changes, so there is no
-// stamp to compare.
+// stamp to compare. Only changes (kind 1): a READING revision has no search
+// row by design (its content is outside the search text), so the walk must
+// not count it as missing, or it would never reach the end.
 func (s *Store) BackfillRevisionSearch(ctx context.Context, afterID string, afterRev int64, batch int) (SearchBackfill, error) {
 	var res SearchBackfill
 	err := s.inTx(ctx, func(tx *sql.Tx) error {
@@ -508,7 +510,8 @@ func (s *Store) BackfillRevisionSearch(ctx context.Context, afterID string, afte
 			    SELECT r.event_id, r.revision, r.observed_at, r.proto
 			    FROM event_revisions r
 			    LEFT JOIN event_revision_search s ON s.event_id = r.event_id AND s.revision = r.revision
-			    WHERE (r.event_id, r.revision) > ($1, $2) AND (s.event_id IS NULL OR s.doc_version <> $3)
+			    WHERE (r.event_id, r.revision) > ($1, $2) AND r.kind = 1
+			      AND (s.event_id IS NULL OR s.doc_version <> $3)
 			    ORDER BY r.event_id, r.revision LIMIT $4
 			  ) c
 			) t WHERE before < $5 ORDER BY event_id, revision`, afterID, afterRev, search.DocVersion, batch, revisionBackfillBytes)
@@ -977,7 +980,7 @@ func (s *Store) SearchHistory(ctx context.Context, q HistoryQuery) (RevisionSear
 		var args sqlArgs
 		var sb strings.Builder
 		// Keys first, blobs for the page only (revisions carry full shapes).
-		sb.WriteString(`SELECT r.revision, r.observed_at, r.ingested_at, r.proto, r.event_id FROM (` +
+		sb.WriteString(`SELECT r.revision, r.kind, r.observed_at, r.ingested_at, r.proto, r.event_id FROM (` +
 			`SELECT s.event_id, s.revision, s.observed_at` + historySearchFrom + historyFilterSQL(q, &args))
 		if q.PageToken != "" {
 			var cur historyCursor
@@ -1086,7 +1089,7 @@ func (s *Store) SearchHistoryByEvent(ctx context.Context, q HistoryQuery) (Histo
 
 		var args sqlArgs
 		var sb strings.Builder
-		sb.WriteString(`SELECT r.revision, r.observed_at, r.ingested_at, r.proto, g.event_id, g.last_rev, g.last_at, g.n FROM (` +
+		sb.WriteString(`SELECT r.revision, r.kind, r.observed_at, r.ingested_at, r.proto, g.event_id, g.last_rev, g.last_at, g.n FROM (` +
 			`SELECT s.event_id, MIN(s.revision) AS first_rev, MAX(s.revision) AS last_rev, MAX(s.observed_at) AS last_at, COUNT(*) AS n` +
 			historySearchFrom + historyFilterSQL(q, &args) + ` GROUP BY s.event_id`)
 		if q.PageToken != "" {

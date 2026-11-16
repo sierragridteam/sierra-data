@@ -15,6 +15,7 @@ type LayerTotals struct {
 	Layer     gridv1.Layer
 	Events    int64
 	Revisions int64
+	Readings  int64 // of Revisions, the READING ones
 }
 
 // Totals is what the store has recorded: events in every status, the
@@ -22,6 +23,7 @@ type LayerTotals struct {
 type Totals struct {
 	Events    int64
 	Revisions int64
+	Readings  int64 // of Revisions, the READING ones; the rest are changes
 	Sources   int
 	Since     time.Time // zero when there are no events
 	Layers    []LayerTotals
@@ -53,7 +55,7 @@ func (s *Store) Totals(ctx context.Context, placeID string) (Totals, error) {
 	err := s.readTx(ctx, func(tx *sql.Tx) error {
 		// SUM over bigint is numeric in PostgreSQL; cast back for the scan.
 		rows, err := tx.QueryContext(ctx, `
-			SELECT e.layer, COUNT(*), SUM(e.revision)::bigint
+			SELECT e.layer, COUNT(*), SUM(e.revision)::bigint, SUM(e.readings)::bigint
 			FROM `+from+` `+where+`
 			GROUP BY e.layer`, args...)
 		if err != nil {
@@ -63,12 +65,13 @@ func (s *Store) Totals(ctx context.Context, placeID string) (Totals, error) {
 		for rows.Next() {
 			var lt LayerTotals
 			var layer int32
-			if err := rows.Scan(&layer, &lt.Events, &lt.Revisions); err != nil {
+			if err := rows.Scan(&layer, &lt.Events, &lt.Revisions, &lt.Readings); err != nil {
 				return err
 			}
 			lt.Layer = gridv1.Layer(layer)
 			t.Events += lt.Events
 			t.Revisions += lt.Revisions
+			t.Readings += lt.Readings
 			t.Layers = append(t.Layers, lt)
 		}
 		if err := rows.Err(); err != nil {

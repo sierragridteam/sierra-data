@@ -445,6 +445,13 @@ grid:
   places:
     townRadiusMeters: 3000
 
+  # READING revisions: a call to a burn line that repeats yesterday's answer
+  # is kept as a revision of kind READING (left out of history unless asked
+  # for with ?kind=READING) instead of overwriting the last call. Off, a
+  # repeated answer is rewritten in place and its history is lost.
+  readings:
+    enabled: false
+
   # PG&E power layer. No geography knobs: unlike fire, an outage outside the
   # footprint is not a threat to it, so the layer uses the plain hazards union.
   #

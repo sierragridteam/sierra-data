@@ -77,6 +77,27 @@ func parseLayers(vals []string) ([]gridv1.Layer, error) {
 	return out, nil
 }
 
+// parseRevisionKinds accepts repeated kind params (CHANGE, READING;
+// case-insensitive, comma-separated lists too). Empty input returns nil,
+// which the store reads as changes only.
+func parseRevisionKinds(vals []string) ([]gridv1.RevisionKind, error) {
+	var out []gridv1.RevisionKind
+	for _, raw := range vals {
+		for _, v := range strings.Split(raw, ",") {
+			v = strings.TrimSpace(v)
+			if v == "" {
+				continue
+			}
+			n, ok := gridv1.RevisionKind_value[strings.ToUpper(v)]
+			if !ok || n == int32(gridv1.RevisionKind_REVISION_KIND_UNSPECIFIED) {
+				return nil, fmt.Errorf("unknown kind: %q (CHANGE or READING)", v)
+			}
+			out = append(out, gridv1.RevisionKind(n))
+		}
+	}
+	return out, nil
+}
+
 // parseStatuses accepts repeated status params (enum names,
 // case-insensitive). Empty input returns nil, which the store defaults to
 // ACTIVE+SCHEDULED — the "what's happening now" read.

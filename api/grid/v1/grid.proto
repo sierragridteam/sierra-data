@@ -348,6 +348,15 @@ message Event {
   // or status transition. `/api/v1/events/{id}/history` lists every revision.
   uint32 revision = 18 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "2"}];
 
+  // How many of this event's revisions are readings (`EventRevision.kind`
+  // READING): a reading with content of its own arrived and the state held.
+  // `revision - readings` is the number of changes, counting the first. 0 for
+  // every layer that records no readings (today only BURN_STATUS does: one
+  // per call to a burn line).
+  //
+  // (-- Zeroed in store.ContentHash beside revision, and written with it. --)
+  uint32 readings = 32 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "0"}];
+
   // Present when an AI model generated some of this event's text; lists which
   // fields. `null` for events with no AI involvement.
   Enhancement enhancement = 19;
@@ -425,6 +434,22 @@ enum Layer {
   // today (sources `burnline`, `calfire-burn`). Ambient, permanently ACTIVE,
   // always INFO; its revision history is the record of changes.
   BURN_STATUS = 15;
+  // One event per upstream feed (`source:{source id}`), saying whether the Grid
+  // can read it. Ambient, permanently ACTIVE, always INFO; a revision is a
+  // change of the source's status, so its history is the record of outages.
+  // Reserved until the Grid writes them; no events today.
+  SOURCE_HEALTH = 16;
+  // One event per stretch of highway under a chain requirement, from Caltrans
+  // (source `caltrans-cc`). RESOLVED when Caltrans lifts it; a change of level
+  // is a new event. Reserved until the Grid writes them; no events today.
+  CHAIN_CONTROL = 17;
+  // One event per monitored road, revised when its status or congestion level
+  // changes. The travel-time series is `GET /api/v1/events/{id}/samples`.
+  // Reserved until the Grid writes them; no events today.
+  ROAD_SEGMENT = 18;
+  // Reserved for one event per weather location, revised when its state
+  // changes (precipitation, freezing); no events today.
+  WEATHER = 19;
 }
 
 // Severity is the unified 5-level scale shared by every layer: how urgently the
@@ -648,6 +673,10 @@ enum SourceKind {
   // An operator-run monitor that pushes to the Grid's ingest endpoint. Health
   // only: no event carries its id, and `homepageUrl` is empty.
   REPORTER = 2;
+  // The Grid itself: the owner of events the Grid derives from its own state
+  // (the SOURCE_HEALTH layer). Not polled. Reserved until the Grid writes
+  // those events; no row has this kind today.
+  INTERNAL = 3;
 }
 
 // SourceStatus is a source's health. The same three values appear as strings in
@@ -1432,6 +1461,22 @@ message EventRevision {
   // On `/api/v1/history` with `q`: where this revision's text matched. Null
   // otherwise.
   SearchMatch match = 5;
+  // Why this revision was written: the state changed (CHANGE), or a reading
+  // of an unchanged state arrived (READING). Never unspecified.
+  RevisionKind kind = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"CHANGE\""}];
+}
+
+// RevisionKind says why a revision was written.
+enum RevisionKind {
+  // Never returned.
+  REVISION_KIND_UNSPECIFIED = 0;
+  // The event's content or status changed. Every revision of most layers.
+  CHANGE = 1;
+  // A reading with content of its own (a burn line's call: message,
+  // transcript, confidence) arrived and the state held. The snapshot is the
+  // event as it stood with that reading. Left out of history unless asked for
+  // with `kind`.
+  READING = 2;
 }
 
 // EventRevisionList is one page of revisions.
@@ -2514,6 +2559,10 @@ enum TimelineKind {
   // keys when the Grid holds no node for them), `before` empty for the first.
   // Not a revision: read from the telemetry archive, the 50 most recent.
   TIMELINE_READ_PATH = 13;
+  // SOURCE. A reading that confirmed the state without changing it (a burn
+  // line's call). `revision` is the READING revision; `detail` is what the
+  // reading said. The 50 most recent.
+  TIMELINE_READING = 14;
 }
 
 // TimelineEntry is one moment in an event's timeline.
@@ -2556,6 +2605,12 @@ message GetEventHistoryRequest {
   string geometry_format = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     enum: ["BASE64", "OBJECT", "NONE"]
     default: "BASE64"
+  }];
+  // Which kinds of revision to return: `CHANGE`, `READING`. Repeat the
+  // parameter or comma-separate. Case-insensitive. Default: `CHANGE`, so a
+  // reader that does not ask sees only revisions where something changed.
+  repeated string kind = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    enum: ["CHANGE", "READING"]
   }];
 }
 
@@ -2603,6 +2658,13 @@ message ListHistoryRequest {
   // revision. Case-insensitive. Requires `q`. Default: not collapsed.
   string collapse = 11 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     enum: ["event"]
+  }];
+  // Which kinds of revision to return: `CHANGE`, `READING`. Repeat the
+  // parameter or comma-separate. Case-insensitive. Default: `CHANGE`, so a
+  // reader that does not ask sees only revisions where something changed.
+  // Text search (`q`) is over changes only: `q` with `READING` is a 400.
+  repeated string kind = 12 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    enum: ["CHANGE", "READING"]
   }];
 }
 
@@ -3077,6 +3139,11 @@ message Stats {
   int32 events = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "18233"}];
   // Revisions recorded across those events (each event's `revision` summed).
   int32 revisions = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "96410"}];
+  // Of `revisions`, those where the event's content or status changed.
+  int32 changes = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "96100"}];
+  // Of `revisions`, readings that confirmed an unchanged state.
+  // `changes + readings = revisions`.
+  int32 readings = 9 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "310"}];
   // Distinct sources those events came from.
   int32 sources = 4;
   // When the earliest of those events was first stored. Null when there are
@@ -3094,4 +3161,7 @@ message LayerStats {
   Layer layer = 1;
   int32 events = 2;
   int32 revisions = 3;
+  // Of `revisions`, changes and readings (see Stats).
+  int32 changes = 4;
+  int32 readings = 5;
 }

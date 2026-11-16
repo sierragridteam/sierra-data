@@ -80,6 +80,9 @@ type Store struct {
 	// still resolve to that town. See WithTownRadius.
 	townRadius float64
 
+	// readings turns on READING revisions (WithReadings).
+	readings bool
+
 	maxConns, minConns int32
 	schemaVersion      atomic.Int64
 
@@ -103,6 +106,7 @@ type Option func(*openConfig)
 type openConfig struct {
 	wildfireBuffer float64
 	townRadius     float64
+	readings       bool
 	maxConns       int32
 	minConns       int32
 	lockTimeout    time.Duration
@@ -154,6 +158,15 @@ func WithTownRadius(meters float64) Option {
 			c.townRadius = meters
 		}
 	}
+}
+
+// WithReadings turns on READING revisions: a hash-equal upsert whose reading
+// advanced (today a burn line's newer call, see readingAdvanced) writes a
+// revision of kind READING instead of rewriting the blob in place. Off (the
+// default), the hash-equal path is the refresh it has always been. Configured
+// via grid.readings.enabled.
+func WithReadings(on bool) Option {
+	return func(c *openConfig) { c.readings = on }
 }
 
 // WithMaxConns bounds the pool (grid.database.maxConns). Zero or negative
@@ -310,7 +323,7 @@ func openReader(url string, opts ...Option) (*Store, openConfig, error) {
 	}
 	db := stdlib.OpenDBFromPool(pool)
 	s := &Store{pool: pool, db: db, wildfireBuffer: cfg.wildfireBuffer,
-		townRadius: cfg.townRadius, maxConns: cfg.maxConns, minConns: cfg.minConns}
+		townRadius: cfg.townRadius, readings: cfg.readings, maxConns: cfg.maxConns, minConns: cfg.minConns}
 	v, err := migrations.Apply(ctx, db)
 	if err != nil {
 		s.Close()

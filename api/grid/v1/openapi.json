@@ -629,6 +629,23 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "description": "Which kinds of revision to return: `CHANGE`, `READING`. Repeat the\nparameter or comma-separate. Case-insensitive. Default: `CHANGE`, so a\nreader that does not ask sees only revisions where something changed.",
+            "explode": true,
+            "in": "query",
+            "name": "kind",
+            "schema": {
+              "items": {
+                "enum": [
+                  "CHANGE",
+                  "READING"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "form"
           }
         ],
         "responses": {
@@ -930,6 +947,23 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "description": "Which kinds of revision to return: `CHANGE`, `READING`. Repeat the\nparameter or comma-separate. Case-insensitive. Default: `CHANGE`, so a\nreader that does not ask sees only revisions where something changed.\nText search (`q`) is over changes only: `q` with `READING` is a 400.",
+            "explode": true,
+            "in": "query",
+            "name": "kind",
+            "schema": {
+              "items": {
+                "enum": [
+                  "CHANGE",
+                  "READING"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "form"
           }
         ],
         "responses": {
@@ -6102,6 +6136,12 @@
             ],
             "description": "Which source published it, with attribution text to display."
           },
+          "readings": {
+            "description": "How many of this event's revisions are readings (`EventRevision.kind`\nREADING): a reading with content of its own arrived and the state held.\n`revision - readings` is the number of changes, counting the first. 0 for\nevery layer that records no readings (today only BURN_STATUS does: one\nper call to a burn line).\n",
+            "example": 0,
+            "format": "int64",
+            "type": "integer"
+          },
           "revision": {
             "description": "Revision number, starting at 1. It increases by one on every content change\nor status transition. `/api/v1/events/{id}/history` lists every revision.",
             "example": 2,
@@ -6172,6 +6212,7 @@
           "observedAt",
           "placeIds",
           "provenance",
+          "readings",
           "revision",
           "severity",
           "status",
@@ -6321,6 +6362,15 @@
             "format": "date-time",
             "type": "string"
           },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/v1RevisionKind"
+              }
+            ],
+            "description": "Why this revision was written: the state changed (CHANGE), or a reading\nof an unchanged state arrived (READING). Never unspecified.",
+            "example": "CHANGE"
+          },
           "match": {
             "allOf": [
               {
@@ -6346,6 +6396,7 @@
         "required": [
           "event",
           "ingestedAt",
+          "kind",
           "match",
           "observedAt",
           "revision"
@@ -6843,7 +6894,7 @@
       },
       "v1Layer": {
         "default": "LAYER_UNSPECIFIED",
-        "description": "Layer is the event taxonomy. Response values are these UPPERCASE names; the\n`layer` query parameter also accepts lowercase slugs (`road_incident`).\n\nOnly event layers appear here. The condition layers (`road_segment`,\n`chain_control`, `fire_weather`, `message_sign`) are map layers and summary\ninputs, never events.\n\n - LAYER_UNSPECIFIED: Never returned.\n - WILDFIRE: Wildfires: CAL FIRE incidents joined with FIRIS/NIFC perimeters (sources\n`calfire`, `firis`). Scoped wider than other layers, so a fire approaching\nthe region shows up before it arrives.\n - EVACUATION: Evacuation zones under an order, warning, advisory or shelter-in-place,\nfrom Cal OES / Genasys (source `caloes`). Life-safety: see the summary's\n`activeEvacuations`.\n - WEATHER_ALERT: National Weather Service watches, warnings and advisories for the region's\nforecast zones (source `nws`). No geometry; attached to places by zone.\n - FIRE_WEATHER: Reserved. Fire weather is a condition (`GET /api/v1/conditions`), not an\nevent layer; no event carries it.\n - EARTHQUAKE: USGS earthquakes of magnitude 2.5 or more in the last 7 days (source `usgs`).\n - ROAD_INCIDENT: CHP traffic incidents (source `chp`, AI-summarized) and Caltrans planned\nlane-closure windows (source `caltrans`). Planned windows not yet set up are\nSCHEDULED.\n - POWER: \nPG&E electric outages (source `pge`) and Public Safety Power Shutoffs\n(source `psps`). Most outages affect one customer and are INFO.\n - GAUGE: Reserved for stream gauges; no events today.\n - AIR_QUALITY: Reserved for air quality; no events today.\n - MESH: MeshCore community radio nodes (source `meshcore`), one event per node.\nAmbient INFO state, not a hazard. It dominates an unscoped event query.\n - ANNOUNCEMENT: Reserved for announcements; no events today.\n - BURN_STATUS: One event per tracked county saying whether residential burning is allowed\ntoday (sources `burnline`, `calfire-burn`). Ambient, permanently ACTIVE,\nalways INFO; its revision history is the record of changes.",
+        "description": "Layer is the event taxonomy. Response values are these UPPERCASE names; the\n`layer` query parameter also accepts lowercase slugs (`road_incident`).\n\nOnly event layers appear here. The condition layers (`road_segment`,\n`chain_control`, `fire_weather`, `message_sign`) are map layers and summary\ninputs, never events.\n\n - LAYER_UNSPECIFIED: Never returned.\n - WILDFIRE: Wildfires: CAL FIRE incidents joined with FIRIS/NIFC perimeters (sources\n`calfire`, `firis`). Scoped wider than other layers, so a fire approaching\nthe region shows up before it arrives.\n - EVACUATION: Evacuation zones under an order, warning, advisory or shelter-in-place,\nfrom Cal OES / Genasys (source `caloes`). Life-safety: see the summary's\n`activeEvacuations`.\n - WEATHER_ALERT: National Weather Service watches, warnings and advisories for the region's\nforecast zones (source `nws`). No geometry; attached to places by zone.\n - FIRE_WEATHER: Reserved. Fire weather is a condition (`GET /api/v1/conditions`), not an\nevent layer; no event carries it.\n - EARTHQUAKE: USGS earthquakes of magnitude 2.5 or more in the last 7 days (source `usgs`).\n - ROAD_INCIDENT: CHP traffic incidents (source `chp`, AI-summarized) and Caltrans planned\nlane-closure windows (source `caltrans`). Planned windows not yet set up are\nSCHEDULED.\n - POWER: \nPG&E electric outages (source `pge`) and Public Safety Power Shutoffs\n(source `psps`). Most outages affect one customer and are INFO.\n - GAUGE: Reserved for stream gauges; no events today.\n - AIR_QUALITY: Reserved for air quality; no events today.\n - MESH: MeshCore community radio nodes (source `meshcore`), one event per node.\nAmbient INFO state, not a hazard. It dominates an unscoped event query.\n - ANNOUNCEMENT: Reserved for announcements; no events today.\n - BURN_STATUS: One event per tracked county saying whether residential burning is allowed\ntoday (sources `burnline`, `calfire-burn`). Ambient, permanently ACTIVE,\nalways INFO; its revision history is the record of changes.\n - SOURCE_HEALTH: One event per upstream feed (`source:{source id}`), saying whether the Grid\ncan read it. Ambient, permanently ACTIVE, always INFO; a revision is a\nchange of the source's status, so its history is the record of outages.\nReserved until the Grid writes them; no events today.\n - CHAIN_CONTROL: One event per stretch of highway under a chain requirement, from Caltrans\n(source `caltrans-cc`). RESOLVED when Caltrans lifts it; a change of level\nis a new event. Reserved until the Grid writes them; no events today.\n - ROAD_SEGMENT: One event per monitored road, revised when its status or congestion level\nchanges. The travel-time series is `GET /api/v1/events/{id}/samples`.\nReserved until the Grid writes them; no events today.\n - WEATHER: Reserved for one event per weather location, revised when its state\nchanges (precipitation, freezing); no events today.",
         "enum": [
           "LAYER_UNSPECIFIED",
           "WILDFIRE",
@@ -6857,13 +6908,22 @@
           "AIR_QUALITY",
           "MESH",
           "ANNOUNCEMENT",
-          "BURN_STATUS"
+          "BURN_STATUS",
+          "SOURCE_HEALTH",
+          "CHAIN_CONTROL",
+          "ROAD_SEGMENT",
+          "WEATHER"
         ],
         "type": "string"
       },
       "v1LayerStats": {
         "description": "LayerStats is one layer's share of Stats.",
         "properties": {
+          "changes": {
+            "description": "Of `revisions`, changes and readings (see Stats).",
+            "format": "int32",
+            "type": "integer"
+          },
           "events": {
             "format": "int32",
             "type": "integer"
@@ -6871,14 +6931,20 @@
           "layer": {
             "$ref": "#/components/schemas/v1Layer"
           },
+          "readings": {
+            "format": "int32",
+            "type": "integer"
+          },
           "revisions": {
             "format": "int32",
             "type": "integer"
           }
         },
         "required": [
+          "changes",
           "events",
           "layer",
+          "readings",
           "revisions"
         ],
         "type": "object"
@@ -7765,6 +7831,16 @@
         ],
         "type": "object"
       },
+      "v1RevisionKind": {
+        "default": "REVISION_KIND_UNSPECIFIED",
+        "description": "RevisionKind says why a revision was written.\n\n - REVISION_KIND_UNSPECIFIED: Never returned.\n - CHANGE: The event's content or status changed. Every revision of most layers.\n - READING: A reading with content of its own (a burn line's call: message,\ntranscript, confidence) arrived and the state held. The snapshot is the\nevent as it stood with that reading. Left out of history unless asked for\nwith `kind`.",
+        "enum": [
+          "REVISION_KIND_UNSPECIFIED",
+          "CHANGE",
+          "READING"
+        ],
+        "type": "string"
+      },
       "v1RoadHistory": {
         "description": "RoadHistory is one segment's samples over a window.",
         "properties": {
@@ -8318,11 +8394,12 @@
       },
       "v1SourceKind": {
         "default": "SOURCE_KIND_UNSPECIFIED",
-        "description": "SourceKind says what a source registry row describes.\n\n - SOURCE_KIND_UNSPECIFIED: Never returned.\n - FEED: An upstream feed the Grid fetches on a schedule (CAL FIRE, NWS, PG&E, ...).\nEvents name it in `provenance.sourceId`.\n - REPORTER: An operator-run monitor that pushes to the Grid's ingest endpoint. Health\nonly: no event carries its id, and `homepageUrl` is empty.",
+        "description": "SourceKind says what a source registry row describes.\n\n - SOURCE_KIND_UNSPECIFIED: Never returned.\n - FEED: An upstream feed the Grid fetches on a schedule (CAL FIRE, NWS, PG&E, ...).\nEvents name it in `provenance.sourceId`.\n - REPORTER: An operator-run monitor that pushes to the Grid's ingest endpoint. Health\nonly: no event carries its id, and `homepageUrl` is empty.\n - INTERNAL: The Grid itself: the owner of events the Grid derives from its own state\n(the SOURCE_HEALTH layer). Not polled. Reserved until the Grid writes\nthose events; no row has this kind today.",
         "enum": [
           "SOURCE_KIND_UNSPECIFIED",
           "FEED",
-          "REPORTER"
+          "REPORTER",
+          "INTERNAL"
         ],
         "type": "string"
       },
@@ -8356,6 +8433,12 @@
       "v1Stats": {
         "description": "Stats is what the Grid has recorded, overall and per layer.",
         "properties": {
+          "changes": {
+            "description": "Of `revisions`, those where the event's content or status changed.",
+            "example": 96100,
+            "format": "int32",
+            "type": "integer"
+          },
           "computedAt": {
             "description": "When these totals were computed (they are cached for up to five minutes).",
             "format": "date-time",
@@ -8378,6 +8461,12 @@
             "description": "The resolved place id, or empty for every event.",
             "type": "string"
           },
+          "readings": {
+            "description": "Of `revisions`, readings that confirmed an unchanged state.\n`changes + readings = revisions`.",
+            "example": 310,
+            "format": "int32",
+            "type": "integer"
+          },
           "revisions": {
             "description": "Revisions recorded across those events (each event's `revision` summed).",
             "example": 96410,
@@ -8397,10 +8486,12 @@
           }
         },
         "required": [
+          "changes",
           "computedAt",
           "events",
           "layers",
           "place",
+          "readings",
           "revisions",
           "since",
           "sources"
@@ -8771,7 +8862,7 @@
       },
       "v1TimelineKind": {
         "default": "TIMELINE_KIND_UNSPECIFIED",
-        "description": "TimelineKind is what an entry marks.\n\n - TIMELINE_BEGINS: SOURCE. When it began or was reported: CHP's report time, a fire's start,\nan outage's start, an earthquake's origin time, when an alert or\nevacuation takes effect.\n - TIMELINE_LOG: SOURCE. One line of the source's own log (CHP). `detail` is the line\nnumber.\n - TIMELINE_PLANNED_START: SOURCE. A planned start (lane closure window, PSPS de-energization).\n - TIMELINE_SET_UP: SOURCE. The crew reported the closure set up on the road.\n - TIMELINE_PLANNED_END: SOURCE. A planned end.\n - TIMELINE_ENDS: SOURCE. When the source says it ends or expires (an alert's end, an\nevacuation's expiry).\n - TIMELINE_ESTIMATE: SOURCE. An estimate, e.g. PG&E's estimated restoration. Estimates are\nroutinely revised.\n - TIMELINE_ALL_CLEAR: SOURCE. PG&E's all-clear for a shutoff.\n - TIMELINE_ACTIVITY: SOURCE. Latest activity of a mesh node: last advert, last heard, last\nrelayed, a monitor's last read or attempt.\n - TIMELINE_FIRST_RECORDED: GRID. The Grid first stored the event (revision 1).\n - TIMELINE_STATUS: GRID. The event's status changed; `before` and `after` are statuses.\n - TIMELINE_CHANGED: GRID. A tracked value changed between revisions; `field` names it.\n - TIMELINE_READ_PATH: SOURCE. A monitor read a mesh node through a different gateway than its\nprevious read (or stated a gateway for the first time). `field` is\n`readVia`; `before` and `after` are the gateways' names (their public\nkeys when the Grid holds no node for them), `before` empty for the first.\nNot a revision: read from the telemetry archive, the 50 most recent.",
+        "description": "TimelineKind is what an entry marks.\n\n - TIMELINE_BEGINS: SOURCE. When it began or was reported: CHP's report time, a fire's start,\nan outage's start, an earthquake's origin time, when an alert or\nevacuation takes effect.\n - TIMELINE_LOG: SOURCE. One line of the source's own log (CHP). `detail` is the line\nnumber.\n - TIMELINE_PLANNED_START: SOURCE. A planned start (lane closure window, PSPS de-energization).\n - TIMELINE_SET_UP: SOURCE. The crew reported the closure set up on the road.\n - TIMELINE_PLANNED_END: SOURCE. A planned end.\n - TIMELINE_ENDS: SOURCE. When the source says it ends or expires (an alert's end, an\nevacuation's expiry).\n - TIMELINE_ESTIMATE: SOURCE. An estimate, e.g. PG&E's estimated restoration. Estimates are\nroutinely revised.\n - TIMELINE_ALL_CLEAR: SOURCE. PG&E's all-clear for a shutoff.\n - TIMELINE_ACTIVITY: SOURCE. Latest activity of a mesh node: last advert, last heard, last\nrelayed, a monitor's last read or attempt.\n - TIMELINE_FIRST_RECORDED: GRID. The Grid first stored the event (revision 1).\n - TIMELINE_STATUS: GRID. The event's status changed; `before` and `after` are statuses.\n - TIMELINE_CHANGED: GRID. A tracked value changed between revisions; `field` names it.\n - TIMELINE_READ_PATH: SOURCE. A monitor read a mesh node through a different gateway than its\nprevious read (or stated a gateway for the first time). `field` is\n`readVia`; `before` and `after` are the gateways' names (their public\nkeys when the Grid holds no node for them), `before` empty for the first.\nNot a revision: read from the telemetry archive, the 50 most recent.\n - TIMELINE_READING: SOURCE. A reading that confirmed the state without changing it (a burn\nline's call). `revision` is the READING revision; `detail` is what the\nreading said. The 50 most recent.",
         "enum": [
           "TIMELINE_KIND_UNSPECIFIED",
           "TIMELINE_BEGINS",
@@ -8786,7 +8877,8 @@
           "TIMELINE_FIRST_RECORDED",
           "TIMELINE_STATUS",
           "TIMELINE_CHANGED",
-          "TIMELINE_READ_PATH"
+          "TIMELINE_READ_PATH",
+          "TIMELINE_READING"
         ],
         "type": "string"
       },

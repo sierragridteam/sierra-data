@@ -196,6 +196,7 @@ type GridConfig struct {
 	Meshcore    MeshcoreConfig          `koanf:"meshcore"`
 	Wildfire    WildfireConfig          `koanf:"wildfire"`
 	Places      PlacesConfig            `koanf:"places"`
+	Readings    ReadingsConfig          `koanf:"readings"`
 	Power       PowerConfig             `koanf:"power"`
 	Burn        BurnConfig              `koanf:"burn"`
 	Ingest      IngestConfig            `koanf:"ingest"`
@@ -468,6 +469,15 @@ func (w WildfireConfig) PlaceBuffer() float64 {
 		return w.PlaceBufferMeters
 	}
 	return DefaultWildfirePlaceBufferMeters
+}
+
+// ReadingsConfig turns on READING revisions: a reading that confirms an
+// unchanged state (a burn line's daily call) is kept as a revision of its
+// own kind instead of overwriting the last one. Off, the store behaves as it
+// did before revision kinds. Turn it on only once every deployed consumer of
+// the SDK knows the READING kind (the SDK's enums are closed).
+type ReadingsConfig struct {
+	Enabled bool `koanf:"enabled"`
 }
 
 // PlacesConfig tunes the place directory's geometry rules.

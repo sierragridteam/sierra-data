@@ -185,7 +185,8 @@ func (a *gridApp) Serve(ctx context.Context) error {
 		store.WithMinConns(dbCfg.MinConns),
 		store.WithLockContext(ctx),
 		store.WithWildfireProximity(appConfig.Grid.Wildfire.PlaceBuffer()),
-		store.WithTownRadius(appConfig.Grid.Places.TownRadiusMeters))
+		store.WithTownRadius(appConfig.Grid.Places.TownRadiusMeters),
+		store.WithReadings(appConfig.Grid.Readings.Enabled))
 	if err != nil {
 		return fmt.Errorf("open grid store: %w", err)
 	}
