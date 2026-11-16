@@ -79,7 +79,55 @@ func (g *GridServer) GetEventTimeline(ctx context.Context, req *gridv1.GetEventT
 			first = p
 		}
 	}
-	return buildTimeline(ev, revs, first, truncated), nil
+	t := buildTimeline(ev, revs, first, truncated)
+	if native, ok := strings.CutPrefix(req.GetId(), meshActivityPrefix); ok {
+		// Not fatal: the rest of the timeline does not depend on the archive.
+		if err := g.addReadPathChanges(ctx, t, strings.ToLower(native)); err != nil {
+			logError(ctx, "gridapi: reading mesh read-path changes", err)
+		}
+	}
+	return t, nil
+}
+
+// readPathChangeCap bounds the read-path moves a mesh timeline lists.
+const readPathChangeCap = 50
+
+// addReadPathChanges adds a mesh node's read-path moves (the gateway a
+// monitor reads it through changed) from the telemetry archive. They are on
+// the monitor's clock and are not revisions: the gateway of a read is not
+// hashed (see MeshAdminTelemetry.via).
+func (g *GridServer) addReadPathChanges(ctx context.Context, t *gridv1.EventTimeline, pubkey string) error {
+	changes, err := g.svc.Store.MeshReadPathChanges(ctx, pubkey, readPathChangeCap)
+	if err != nil || len(changes) == 0 {
+		return err
+	}
+	names := map[string]string{"": ""}
+	name := func(key string) string {
+		if n, ok := names[key]; ok {
+			return n
+		}
+		n := key
+		if len(n) > 12 {
+			n = n[:12]
+		}
+		if gw, err := g.svc.Store.GetEvent(ctx, meshActivityPrefix+key); err == nil && gw.GetMesh().GetName() != "" {
+			n = gw.GetMesh().GetName()
+		}
+		names[key] = n
+		return n
+	}
+	for _, c := range changes {
+		detail := c.Reporter
+		if c.From != "" {
+			detail = "was " + name(c.From)
+		}
+		t.Entries = append(t.Entries, &gridv1.TimelineEntry{
+			At: timestamppb.New(c.At), Kind: gridv1.TimelineKind_TIMELINE_READ_PATH, Clock: gridv1.TimelineClock_TIMELINE_CLOCK_SOURCE,
+			Label: "Read through " + name(c.To), Detail: detail, Field: "readVia", Before: name(c.From), After: name(c.To),
+		})
+	}
+	sortTimeline(t)
+	return nil
 }
 
 // buildTimeline derives the timeline from the current event and its
@@ -170,6 +218,11 @@ func buildTimeline(ev *gridv1.Event, revs []*gridv1.EventRevision, first *gridv1
 		}
 	}
 
+	sortTimeline(t)
+	return t
+}
+
+func sortTimeline(t *gridv1.EventTimeline) {
 	sort.SliceStable(t.Entries, func(i, j int) bool {
 		a, b := t.Entries[i].GetAt().AsTime(), t.Entries[j].GetAt().AsTime()
 		if !a.Equal(b) {
@@ -177,7 +230,6 @@ func buildTimeline(ev *gridv1.Event, revs []*gridv1.EventRevision, first *gridv1
 		}
 		return t.Entries[i].GetClock() < t.Entries[j].GetClock() // SOURCE before GRID
 	})
-	return t
 }
 
 // revisionChanges lists the tracked values that differ between consecutive

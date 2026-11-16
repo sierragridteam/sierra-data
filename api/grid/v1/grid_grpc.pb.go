@@ -94,7 +94,8 @@ type GridServiceClient interface {
 	// clock it is on. `SOURCE` entries are times the upstream stated: when CHP
 	// took the report and each line of its log, when a fire started, when a
 	// closure was planned and set up, when an alert takes effect and ends,
-	// when a mesh node was last heard. `GRID` entries are when the Grid
+	// when a mesh node was last heard and when a monitor's reads of it moved
+	// to a different gateway. `GRID` entries are when the Grid
 	// recorded something: first stored, a status change (resolved, expired,
 	// back again), a change to severity or a tracked figure (fire size and
 	// containment, evacuation level, customers out). Use this instead of
@@ -524,7 +525,8 @@ type GridServiceServer interface {
 	// clock it is on. `SOURCE` entries are times the upstream stated: when CHP
 	// took the report and each line of its log, when a fire started, when a
 	// closure was planned and set up, when an alert takes effect and ends,
-	// when a mesh node was last heard. `GRID` entries are when the Grid
+	// when a mesh node was last heard and when a monitor's reads of it moved
+	// to a different gateway. `GRID` entries are when the Grid
 	// recorded something: first stored, a status change (resolved, expired,
 	// back again), a change to severity or a tracked figure (fire size and
 	// containment, evacuation level, customers out). Use this instead of

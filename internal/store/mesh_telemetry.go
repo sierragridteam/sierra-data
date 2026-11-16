@@ -33,6 +33,9 @@ type MeshTelemetrySample struct {
 	// none — "never reached" is a real state (see the reporter guide's rule 3).
 	LastSuccessAt time.Time
 	LastAttemptAt time.Time
+	// Via is the gateway node (public key) the read was taken through, ""
+	// when the monitor states none.
+	Via string
 
 	// Gauges — nil means "not read".
 	BatteryVolts     *float64
@@ -69,7 +72,7 @@ const telemetryColumns = `pubkey, reported_at, received_at, reporter, last_succe
 	noise_floor_dbm, last_snr_db, last_rssi_dbm, tx_queue_len,
 	uptime_s, airtime_ms, rx_airtime_ms, packets_sent, packets_recv,
 	sent_flood, sent_direct, recv_flood, recv_direct,
-	direct_dups, flood_dups, full_evts, recv_errors`
+	direct_dups, flood_dups, full_evts, recv_errors, via`
 
 // InsertMeshTelemetry appends a batch of samples in one transaction, on the
 // single writer goroutine (the scheduler drains them from a PollResult, exactly
@@ -115,7 +118,7 @@ func (s *Store) InsertMeshTelemetry(ctx context.Context, samples []MeshTelemetry
 	})
 }
 
-// telemetryChunk bounds one INSERT: 29 parameters a row against PostgreSQL's
+// telemetryChunk bounds one INSERT: 30 parameters a row against PostgreSQL's
 // 65,535, with headroom.
 const telemetryChunk = 1000
 
@@ -217,13 +220,13 @@ func insertTelemetryChunk(ctx context.Context, tx *sql.Tx, chunk []MeshTelemetry
 		return nil
 	}
 
-	args := make([]any, 0, len(keep)*29)
+	args := make([]any, 0, len(keep)*30)
 	var values strings.Builder
 	for i, t := range keep {
 		if i > 0 {
 			values.WriteString(", ")
 		}
-		values.WriteString("(" + params(i*29+1, 29) + ")")
+		values.WriteString("(" + params(i*30+1, 30) + ")")
 		args = append(args,
 			t.PubKey, t.ReportedAt.Unix(), t.ReceivedAt.Unix(), t.Reporter,
 			unixTimeOrNil(t.LastSuccessAt), unixTimeOrNil(t.LastAttemptAt),
@@ -231,7 +234,7 @@ func insertTelemetryChunk(ctx context.Context, tx *sql.Tx, chunk []MeshTelemetry
 			t.NoiseFloorDBm, t.LastSNRdB, t.LastRSSIdBm, t.TxQueueLen,
 			t.UptimeS, t.AirtimeMs, t.RxAirtimeMs, t.PacketsSent, t.PacketsRecv,
 			t.SentFlood, t.SentDirect, t.RecvFlood, t.RecvDirect,
-			t.DirectDups, t.FloodDups, t.FullEvts, t.RecvErrors)
+			t.DirectDups, t.FloodDups, t.FullEvts, t.RecvErrors, t.Via)
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO mesh_telemetry (`+telemetryColumns+`) VALUES `+
 		values.String()+` ON CONFLICT (pubkey, reported_at) DO NOTHING`, args...); err != nil {
@@ -270,7 +273,7 @@ func (s *Store) MeshTelemetry(ctx context.Context, pubkey string, from, to time.
 			&noise, &snr, &rssi, &queue,
 			&t.UptimeS, &t.AirtimeMs, &t.RxAirtimeMs, &t.PacketsSent, &t.PacketsRecv,
 			&t.SentFlood, &t.SentDirect, &t.RecvFlood, &t.RecvDirect,
-			&t.DirectDups, &t.FloodDups, &t.FullEvts, &t.RecvErrors,
+			&t.DirectDups, &t.FloodDups, &t.FullEvts, &t.RecvErrors, &t.Via,
 		); err != nil {
 			return nil, false, fmt.Errorf("store: scanning mesh telemetry: %w", err)
 		}
@@ -295,6 +298,44 @@ func (s *Store) MeshTelemetry(ctx context.Context, pubkey string, from, to time.
 		return out[:maxTelemetryRows], true, nil
 	}
 	return out, false, nil
+}
+
+// MeshReadPathChange is one move of a node's read path: a monitor's read went
+// through a different gateway than its previous one. From is "" for the first
+// read that stated a gateway.
+type MeshReadPathChange struct {
+	At       time.Time // the monitor's read time (its last_success, else the report's)
+	Reporter string
+	From, To string // gateway public keys
+}
+
+// MeshReadPathChanges lists a node's read-path moves, newest first, at most
+// limit. Reads that state no gateway are skipped, not counted as a move: a
+// gap in what the monitor said is not a change of gateway. Each monitor's
+// reads are compared with its own.
+func (s *Store) MeshReadPathChanges(ctx context.Context, pubkey string, limit int) ([]MeshReadPathChange, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT at, reporter, COALESCE(prev, ''), via FROM (
+		  SELECT COALESCE(last_success_at, reported_at) AS at, reported_at, reporter, via,
+		         LAG(via) OVER (PARTITION BY reporter ORDER BY reported_at) AS prev
+		  FROM mesh_telemetry WHERE pubkey = $1 AND via <> '') r
+		WHERE prev IS DISTINCT FROM via
+		ORDER BY reported_at DESC LIMIT $2`, pubkey, limit)
+	if err != nil {
+		return nil, fmt.Errorf("store: querying mesh read-path changes: %w", err)
+	}
+	defer rows.Close()
+	var out []MeshReadPathChange
+	for rows.Next() {
+		var c MeshReadPathChange
+		var at int64
+		if err := rows.Scan(&at, &c.Reporter, &c.From, &c.To); err != nil {
+			return nil, fmt.Errorf("store: scanning mesh read-path change: %w", err)
+		}
+		c.At = time.Unix(at, 0).UTC()
+		out = append(out, c)
+	}
+	return out, rows.Err()
 }
 
 // MeshTelemetryCoverage reports what we actually HOLD for a node: the oldest and

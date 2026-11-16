@@ -145,6 +145,7 @@ and could not reach. Everything it could not read is `null`, including
 | `last_attempt` | unix seconds \| `null` | When you last *tried* this node, successfully or not. |
 | `last_success` | unix seconds \| `null` | When you last *succeeded*. `null` means never. |
 | `read_via` | array of hex strings | Optional. If your monitor listens through more than one radio, the ids (public keys or prefixes, like `id`) of your radios that have read this node. The Grid uses it to relate a repeater to the gateways it is read through. Leave it out if you read everything from one place. At most 16. |
+| `via` | hex string | Optional. The one of your radios that took *this* reading (the read at `last_success`). The Grid archives it with the reading, which is how a change of path shows up in a node's history. |
 
 **Gauges** — current readings. Send `null` for anything the node did not report.
 

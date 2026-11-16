@@ -148,6 +148,8 @@ type nodeState struct {
 	// Shared repeaters: the gateway radios (pinned pubkeys) that have read it,
 	// sorted (repeaterJob.via).
 	readVia []string
+	// lastVia is the one that took the reading in sample.
+	lastVia string
 }
 
 // New returns a Poller. reps, when not nil, adds the relay's shared

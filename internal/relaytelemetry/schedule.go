@@ -69,6 +69,8 @@ type repeaterJob struct {
 	// via is when each gateway radio (pinned pubkey) last read it; see
 	// noteVia. Saved with the reading.
 	via map[string]time.Time
+	// lastVia is the gateway radio that took the last successful read.
+	lastVia string
 }
 
 // readViaWindow is how long a gateway that read a repeater stays reported as
@@ -80,6 +82,8 @@ const readViaWindow = 7 * 24 * time.Hour
 type savedReading struct {
 	Sample
 	ReadVia map[string]time.Time `json:"read_via,omitempty"`
+	// Via is the radio that took this reading ("" when it has no pinned key).
+	Via string `json:"via,omitempty"`
 }
 
 // noteVia records that the radio read the repeater now, and drops radios that
@@ -182,7 +186,7 @@ func (p *Poller) tickRepeater(ctx context.Context, c meshrelay.RepeaterCredentia
 		}
 		p.jobs[c.Pubkey] = j
 		saved := savedFrom(c)
-		j.via = saved.ReadVia
+		j.via, j.lastVia = saved.ReadVia, saved.Via
 		p.restore(c, saved, j.viaList())
 	}
 	// A refused password waits for the share to be updated.
@@ -284,8 +288,9 @@ func (p *Poller) endCycle(ctx context.Context, j *repeaterJob, c meshrelay.Repea
 	case res != nil:
 		outcome = outcomeOK
 		st.Primary, st.FailedCycles, st.HibernatingSince = cy.via, 0, nil
-		j.noteVia(p.pinned[cy.via], cy.start)
-		if b, err := json.Marshal(savedReading{Sample: *sampleFromCheck(*res), ReadVia: j.via}); err == nil {
+		j.lastVia = p.pinned[cy.via]
+		j.noteVia(j.lastVia, cy.start)
+		if b, err := json.Marshal(savedReading{Sample: *sampleFromCheck(*res), ReadVia: j.via, Via: j.lastVia}); err == nil {
 			st.Reading = b
 		}
 	case errors.Is(cy.lastErr, meshops.ErrLoginFailed):
@@ -340,7 +345,7 @@ func (p *Poller) endCycle(ctx context.Context, j *repeaterJob, c meshrelay.Repea
 	switch outcome {
 	case outcomeOK:
 		ns.lastAttempt, ns.lastSuccess, ns.sample = cy.start, cy.start, sampleFromCheck(*res)
-		ns.readVia = j.viaList()
+		ns.readVia, ns.lastVia = j.viaList(), j.lastVia
 		if res.Name != "" {
 			ns.name = res.Name
 		}
@@ -372,7 +377,7 @@ func (p *Poller) restore(c meshrelay.RepeaterCredential, saved savedReading, via
 	if c.LastAttemptAt == nil {
 		return // never tried: not reported yet
 	}
-	ns := &nodeState{pubkey: c.Pubkey, name: c.Name, lastAttempt: *c.LastAttemptAt, outcome: outcomeFailed, readVia: via}
+	ns := &nodeState{pubkey: c.Pubkey, name: c.Name, lastAttempt: *c.LastAttemptAt, outcome: outcomeFailed, readVia: via, lastVia: saved.Via}
 	if c.LastOKAt != nil {
 		ns.lastSuccess = *c.LastOKAt
 		if c.LastError == "" {

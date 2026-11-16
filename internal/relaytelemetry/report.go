@@ -71,6 +71,8 @@ type ReportEntry struct {
 	// pubkey: only radios this report also lists, so an excluded gateway's
 	// radio is never named.
 	ReadVia []string `json:"read_via,omitempty"`
+	// Via is the one that took this entry's reading, under the same rule.
+	Via string `json:"via,omitempty"`
 }
 
 // Report builds the complete current set. A node never reached carries no
@@ -107,6 +109,9 @@ func (p *Poller) Report() Report {
 		for _, gw := range st.readVia {
 			if p.nodes[gw] != nil && !p.nodes[gw].lastAttempt.IsZero() {
 				e.ReadVia = append(e.ReadVia, gw)
+				if gw == st.lastVia && st.sample != nil {
+					e.Via = gw
+				}
 			}
 		}
 		if s := st.sample; s != nil {

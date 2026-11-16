@@ -59,13 +59,35 @@ The SIERRA relay reports the gateway that last read each shared repeater plus
 any other that read it in the past 7 days, naming only gateways it publishes
 as nodes. Additive; not part of the revision hash.
 
+### A mesh node's read path is recorded per reading, and its moves are on the timeline
+
+Additive.
+
+- `MeshAdminTelemetry.via` (on `mesh.telemetry.admin` and on every sample of
+  `GET /api/v1/mesh/telemetry`): the public key of the gateway node that
+  reading was taken through, or an empty string when the monitor states none
+  (always empty on samples archived before today). The archive keeps it per
+  read, so the series shows which gateway each reading came through.
+- `GET /api/v1/events/{id}/timeline` for a mesh node has a new entry kind,
+  `TIMELINE_READ_PATH` (clock `SOURCE`, `field: "readVia"`): a monitor's read
+  went through a different gateway than its previous one. `label` is "Read
+  through SIERRA Eagle Gateway", `before` and `after` are the gateways' names
+  (their keys when the Grid holds no node for them), `before` empty for the
+  first read that stated a gateway. The 50 most recent, from the archive.
+  These are not revisions: the gateway of a read is deliberately outside the
+  revision hash, so a failover between two gateways does not fill a node's
+  history. A client that switches on `kind` should treat unknown kinds
+  generically, as before.
+
 ### Ingest: `mesh.repeater` reports take `read_via`
 
 Each entry in a `mesh.repeater` report may carry `read_via`: a list of node
 ids (public keys or prefixes, like `id`) of the reporter's own radios it has
 read that node through. Optional; a monitor with one vantage point leaves it
 out. Entries that are not node ids, name the node itself, or exceed 16 are
-ignored with a warning. See `docs/mesh-reporter-guide.md`.
+ignored with a warning. It may also carry `via`: the one of those radios that
+took the reading in this entry (the read at `last_success`). See
+`docs/mesh-reporter-guide.md`.
 
 ## 2026-11-15
 

@@ -370,20 +370,22 @@ func TestReportNamesTheGatewaysARepeaterWasReadThrough(t *testing.T) {
 		p.nodes[radioA] = &nodeState{pubkey: radioA, lastAttempt: t0}
 		return p
 	}
-	via := func(p *Poller) []string {
+	entry := func(p *Poller) ReportEntry {
 		for _, e := range p.Report().Repeaters {
 			if e.ID == h.reps.cred.Pubkey {
-				return e.ReadVia
+				return e
 			}
 		}
 		t.Fatal("repeater not reported")
-		return nil
+		return ReportEntry{}
 	}
+	via := func(p *Poller) []string { return entry(p).ReadVia }
 	p := newPoller()
 	tick := func(d time.Duration) { h.now = t0.Add(d); p.RepeaterTick(h.ctx) }
 
 	tick(0)
 	assert.Equal(t, []string{radioA}, via(p))
+	assert.Equal(t, radioA, entry(p).Via, "the gateway of this reading")
 
 	// Next cycle: A gets no answer, B reads it. Both have read it now, but B's
 	// radio is not in the report, so it is not named.
@@ -392,6 +394,7 @@ func TestReportNamesTheGatewaysARepeaterWasReadThrough(t *testing.T) {
 	}
 	require.Equal(t, "b", h.reps.state.Primary)
 	assert.Equal(t, []string{radioA}, via(p))
+	assert.Empty(t, entry(p).Via, "the reading came through a radio that is not named")
 	p.nodes[radioB] = &nodeState{pubkey: radioB, lastAttempt: t0}
 	assert.Equal(t, []string{radioA, radioB}, via(p))
 
@@ -401,6 +404,7 @@ func TestReportNamesTheGatewaysARepeaterWasReadThrough(t *testing.T) {
 	p.nodes[radioB] = &nodeState{pubkey: radioB, lastAttempt: t0}
 	tick(40 * time.Minute)
 	assert.Equal(t, []string{radioA, radioB}, via(p))
+	assert.Equal(t, radioB, entry(p).Via, "kept across the restart")
 
 	// Read only through B for longer than the window: A drops out.
 	tick(readViaWindow + time.Hour)

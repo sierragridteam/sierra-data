@@ -161,6 +161,9 @@ type meshRepeaterIn struct {
 	// prefix) it has read this node through. Optional: a monitor with one
 	// vantage point has nothing to say here.
 	ReadVia []string `json:"read_via"`
+	// Via is the one of them that took THIS reading (the read at
+	// last_success). Optional, like read_via.
+	Via string `json:"via"`
 }
 
 // ingestMesh parses, validates and buffers one mesh.repeater report. It returns
@@ -214,10 +217,21 @@ func (r *Registry) ingestMesh(_ context.Context, rep *reporter, body []byte, max
 		// A sample exists only if the monitor actually got a reading. Without
 		// this gate a never-reached node (every metric null) would be published
 		// with zeroed counters, asserting that it has sent and received nothing.
+		// The gateway of this reading is one of the gateways it is read through.
+		last := strings.ToLower(strings.TrimSpace(in.Via))
+		if last != "" && (!validNodeID(last) || last == id) {
+			warnings = append(warnings, fmt.Sprintf("repeaters[%d]: via %q is not another node's id; ignored", i, in.Via))
+			last = ""
+		}
 		if !nr.LastSuccess.IsZero() && hasAnyMetric(in) {
 			nr.Telemetry = adminProto(in, nr)
+			nr.Telemetry.Via = last
 		}
-		via, bad := readVia(in.ReadVia, id)
+		all := in.ReadVia
+		if last != "" {
+			all = append([]string{last}, all...)
+		}
+		via, bad := readVia(all, id)
 		nr.ReadVia = via
 		if bad > 0 {
 			warnings = append(warnings, fmt.Sprintf(

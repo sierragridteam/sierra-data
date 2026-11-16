@@ -1051,6 +1051,7 @@ func meshTelemetrySamples(events []*gridv1.Event, now time.Time) []store.MeshTel
 			ReportedAt: admin.GetReportedAt().AsTime(),
 			ReceivedAt: now,
 			Reporter:   admin.GetReporterId(),
+			Via:        admin.GetVia(),
 			// The monitor's own stamps: when it last read the node. The store
 			// uses LastSuccessAt to drop a report that repeats an archived read.
 			LastSuccessAt: tsTime(admin.GetLastSuccessAt()),

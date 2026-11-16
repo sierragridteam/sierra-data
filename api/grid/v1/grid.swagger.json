@@ -484,7 +484,7 @@
     "/api/v1/events/{id}/timeline": {
       "get": {
         "summary": "Get one event's timeline.",
-        "description": "What happened and when, in time order, with each entry marked by whose\nclock it is on. `SOURCE` entries are times the upstream stated: when CHP\ntook the report and each line of its log, when a fire started, when a\nclosure was planned and set up, when an alert takes effect and ends,\nwhen a mesh node was last heard. `GRID` entries are when the Grid\nrecorded something: first stored, a status change (resolved, expired,\nback again), a change to severity or a tracked figure (fire size and\ncontainment, evacuation level, customers out). Use this instead of\ninferring times from revision stamps. Built from the current event and up\nto its 500 most recent revisions (`truncated` says when there were more).\nSupports ETag / If-None-Match.",
+        "description": "What happened and when, in time order, with each entry marked by whose\nclock it is on. `SOURCE` entries are times the upstream stated: when CHP\ntook the report and each line of its log, when a fire started, when a\nclosure was planned and set up, when an alert takes effect and ends,\nwhen a mesh node was last heard and when a monitor's reads of it moved\nto a different gateway. `GRID` entries are when the Grid\nrecorded something: first stored, a status change (resolved, expired,\nback again), a change to severity or a tracked figure (fire size and\ncontainment, evacuation level, customers out). Use this instead of\ninferring times from revision stamps. Built from the current event and up\nto its 500 most recent revisions (`truncated` says when there were more).\nSupports ETag / If-None-Match.",
         "operationId": "GridService_GetEventTimeline",
         "responses": {
           "200": {
@@ -2425,6 +2425,11 @@
           "format": "date-time",
           "description": "The monitor's last attempt to read this node, successful or not. Can be\n`null` (always `null` on archived samples)."
         },
+        "via": {
+          "type": "string",
+          "example": "6f1c0d4a9b7e2c35a8d0f4e1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5",
+          "description": "Public key (lowercase hex) of the gateway node this reading was taken\nthrough, for a monitor that listens through several radios (the SIERRA\nrelay). Empty string when the monitor states none. The archive keeps it\nper sample, so the series shows when a node's read path moved from one\ngateway to another; the event timeline lists those moves (`READ_PATH`)."
+        },
         "batteryVolts": {
           "type": "number",
           "format": "double",
@@ -3925,7 +3930,7 @@
         },
         "field": {
           "type": "string",
-          "description": "For CHANGED and STATUS: the field (`status`, `severity`, `acres`,\n`containment`, `level`, `customersAffected`) and its values before and\nafter, as displayed."
+          "description": "For CHANGED, STATUS and READ_PATH: the field (`status`, `severity`,\n`acres`, `containment`, `level`, `customersAffected`, `readVia`) and its\nvalues before and after, as displayed."
         },
         "before": {
           "type": "string"
@@ -3954,10 +3959,11 @@
         "TIMELINE_ACTIVITY",
         "TIMELINE_FIRST_RECORDED",
         "TIMELINE_STATUS",
-        "TIMELINE_CHANGED"
+        "TIMELINE_CHANGED",
+        "TIMELINE_READ_PATH"
       ],
       "default": "TIMELINE_KIND_UNSPECIFIED",
-      "description": "TimelineKind is what an entry marks.\n\n - TIMELINE_BEGINS: SOURCE. When it began or was reported: CHP's report time, a fire's start,\nan outage's start, an earthquake's origin time, when an alert or\nevacuation takes effect.\n - TIMELINE_LOG: SOURCE. One line of the source's own log (CHP). `detail` is the line\nnumber.\n - TIMELINE_PLANNED_START: SOURCE. A planned start (lane closure window, PSPS de-energization).\n - TIMELINE_SET_UP: SOURCE. The crew reported the closure set up on the road.\n - TIMELINE_PLANNED_END: SOURCE. A planned end.\n - TIMELINE_ENDS: SOURCE. When the source says it ends or expires (an alert's end, an\nevacuation's expiry).\n - TIMELINE_ESTIMATE: SOURCE. An estimate, e.g. PG\u0026E's estimated restoration. Estimates are\nroutinely revised.\n - TIMELINE_ALL_CLEAR: SOURCE. PG\u0026E's all-clear for a shutoff.\n - TIMELINE_ACTIVITY: SOURCE. Latest activity of a mesh node: last advert, last heard, last\nrelayed, a monitor's last read or attempt.\n - TIMELINE_FIRST_RECORDED: GRID. The Grid first stored the event (revision 1).\n - TIMELINE_STATUS: GRID. The event's status changed; `before` and `after` are statuses.\n - TIMELINE_CHANGED: GRID. A tracked value changed between revisions; `field` names it."
+      "description": "TimelineKind is what an entry marks.\n\n - TIMELINE_BEGINS: SOURCE. When it began or was reported: CHP's report time, a fire's start,\nan outage's start, an earthquake's origin time, when an alert or\nevacuation takes effect.\n - TIMELINE_LOG: SOURCE. One line of the source's own log (CHP). `detail` is the line\nnumber.\n - TIMELINE_PLANNED_START: SOURCE. A planned start (lane closure window, PSPS de-energization).\n - TIMELINE_SET_UP: SOURCE. The crew reported the closure set up on the road.\n - TIMELINE_PLANNED_END: SOURCE. A planned end.\n - TIMELINE_ENDS: SOURCE. When the source says it ends or expires (an alert's end, an\nevacuation's expiry).\n - TIMELINE_ESTIMATE: SOURCE. An estimate, e.g. PG\u0026E's estimated restoration. Estimates are\nroutinely revised.\n - TIMELINE_ALL_CLEAR: SOURCE. PG\u0026E's all-clear for a shutoff.\n - TIMELINE_ACTIVITY: SOURCE. Latest activity of a mesh node: last advert, last heard, last\nrelayed, a monitor's last read or attempt.\n - TIMELINE_FIRST_RECORDED: GRID. The Grid first stored the event (revision 1).\n - TIMELINE_STATUS: GRID. The event's status changed; `before` and `after` are statuses.\n - TIMELINE_CHANGED: GRID. A tracked value changed between revisions; `field` names it.\n - TIMELINE_READ_PATH: SOURCE. A monitor read a mesh node through a different gateway than its\nprevious read (or stated a gateway for the first time). `field` is\n`readVia`; `before` and `after` are the gateways' names (their public\nkeys when the Grid holds no node for them), `before` empty for the first.\nNot a revision: read from the telemetry archive, the 50 most recent."
     },
     "v1WeatherAlertDetail": {
       "type": "object",

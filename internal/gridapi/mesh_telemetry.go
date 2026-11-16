@@ -108,6 +108,7 @@ func adminReading(t store.MeshTelemetrySample) *gridv1.MeshAdminTelemetry {
 		ReportedAt:    tsOrNil(t.ReportedAt),
 		LastSuccessAt: tsOrNil(t.LastSuccessAt),
 		LastAttemptAt: tsOrNil(t.LastAttemptAt),
+		Via:           t.Via,
 
 		BatteryVolts:         doubleOrNil(t.BatteryVolts),
 		BatteryPercent:       doubleOrNil(t.BatteryPct),

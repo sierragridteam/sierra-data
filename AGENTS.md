@@ -890,6 +890,11 @@ gateway, gateways of one repeater. Never "same monitor": the relay's
 gateways sit in parts of the mesh that cannot hear each other (Pinebrook,
 Eagle), and those must stay disjoint. Only a monitor that states no gateways
 (alanpi) falls back to "its nodes are peers".
+The report also carries `via`, the radio that took the entry's reading
+(`MeshAdminTelemetry.via`). It is archived per read (`mesh_telemetry.via`),
+and that archive is the history of a node's read path: the timeline's
+`TIMELINE_READ_PATH` entries come from `Store.MeshReadPathChanges`. Do not
+hash either field to get that history; a failover would mint a revision.
 
 ## Deploys: readers and the writer lease
 
