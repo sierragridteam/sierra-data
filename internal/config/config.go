@@ -202,9 +202,14 @@ type GridConfig struct {
 	// on only once every deployed consumer of the SDK knows the SOURCE_HEALTH
 	// layer and the INTERNAL source kind.
 	SourceHealth ReadingsConfig `koanf:"sourceHealth"`
-	Power        PowerConfig    `koanf:"power"`
-	Burn         BurnConfig     `koanf:"burn"`
-	Ingest       IngestConfig   `koanf:"ingest"`
+	// ChainControl.Record stores chain requirements as CHAIN_CONTROL events
+	// (source caltrans-cc), so a storm's sequence is kept. The chain_control
+	// map layer does not depend on it. Turn it on only once every deployed
+	// consumer of the SDK knows the CHAIN_CONTROL layer.
+	ChainControl ChainControlRecordConfig `koanf:"chainControl"`
+	Power        PowerConfig              `koanf:"power"`
+	Burn         BurnConfig               `koanf:"burn"`
+	Ingest       IngestConfig             `koanf:"ingest"`
 }
 
 // GridDatabaseConfig is the Grid store's PostgreSQL connection.
@@ -483,6 +488,11 @@ func (w WildfireConfig) PlaceBuffer() float64 {
 // the SDK knows the READING kind (the SDK's enums are closed).
 type ReadingsConfig struct {
 	Enabled bool `koanf:"enabled"`
+}
+
+// ChainControlRecordConfig is grid.chainControl.
+type ChainControlRecordConfig struct {
+	Record bool `koanf:"record"`
 }
 
 // PlacesConfig tunes the place directory's geometry rules.

@@ -353,6 +353,23 @@ func (a *gridApp) startTerm(actx context.Context, lease *store.Lease) (*writerTe
 		})
 	}
 
+	// Chain requirements as events: the same stretches the chain_control map
+	// layer shows, read through the hazards service's cache.
+	if appConfig.Grid.ChainControl.Record {
+		placesAt := func(ctx context.Context, lat, lng float64) ([]string, error) {
+			found, err := gridStore.PlacesContaining(ctx, lat, lng)
+			ids := make([]string, len(found))
+			for i, p := range found {
+				ids[i] = p.GetId()
+			}
+			return ids, err
+		}
+		pollers = append(pollers, ingest.PollerSpec{
+			Normalizer: ingest.NewChainControlNormalizer(appConfig, a.hazards, placesAt),
+			Interval:   gridPollInterval(appConfig, ingest.ChainControlSourceID),
+		})
+	}
+
 	// Authenticated push ingest (optional): operator-run monitors POST to
 	// /api/v1/ingest/{stream}. The registry (its buffers, rate limits and
 	// reporter health) lives for one term; while it does, the ingest route

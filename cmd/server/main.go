@@ -156,16 +156,17 @@ func retireOrphanedSources(ctx context.Context, st *store.Store) {
 // identical within a pair; the name is the only thing that can tell them apart.
 // Keep the organization recognizable and put the feed's subject in parentheses.
 var gridSourceInfo = map[string]struct{ name, attribution, homepage string }{
-	"usgs":     {"USGS Earthquakes", "U.S. Geological Survey", "https://earthquake.usgs.gov/earthquakes/map/"},
-	"calfire":  {"CAL FIRE (active incidents)", "CAL FIRE", "https://incidents.fire.ca.gov"},
-	"firis":    {"FIRIS (fire perimeters)", "CAL FIRE / FIRIS / NIFC", firisProgramURL},
-	"caloes":   {"Cal OES (evacuation zones)", "Cal OES — reference only", caloes.SourceURL},
-	"nws":      {"National Weather Service (Sacramento)", "NOAA / National Weather Service", "https://www.weather.gov/sto"},
-	"chp":      {"CHP (traffic incidents)", "quickmap.dot.ca.gov", quickMapURL},
-	"caltrans": {"Caltrans (chain control + lane closures)", caltrans.SourceQuickMap, quickMapURL}, // attribution: see caltransAttribution
-	"meshcore": {"MeshCore Mesh", "MeshCore community mesh", "https://map.meshcore.io"},
-	"pge":      {"PG&E (electric outages)", "Pacific Gas and Electric", pge.OutageMapURL},
-	"psps":     {"PG&E (public safety power shutoffs)", "Pacific Gas and Electric", pge.PSPSUpdatesURL},
+	"usgs":                      {"USGS Earthquakes", "U.S. Geological Survey", "https://earthquake.usgs.gov/earthquakes/map/"},
+	"calfire":                   {"CAL FIRE (active incidents)", "CAL FIRE", "https://incidents.fire.ca.gov"},
+	"firis":                     {"FIRIS (fire perimeters)", "CAL FIRE / FIRIS / NIFC", firisProgramURL},
+	"caloes":                    {"Cal OES (evacuation zones)", "Cal OES — reference only", caloes.SourceURL},
+	"nws":                       {"National Weather Service (Sacramento)", "NOAA / National Weather Service", "https://www.weather.gov/sto"},
+	"chp":                       {"CHP (traffic incidents)", "quickmap.dot.ca.gov", quickMapURL},
+	"caltrans":                  {"Caltrans (chain control + lane closures)", caltrans.SourceQuickMap, quickMapURL}, // attribution: see caltransAttribution
+	ingest.ChainControlSourceID: {"Caltrans (chain control)", caltrans.SourceCWWP2 + " · " + caltrans.SourceQuickMap, quickMapURL},
+	"meshcore":                  {"MeshCore Mesh", "MeshCore community mesh", "https://map.meshcore.io"},
+	"pge":                       {"PG&E (electric outages)", "Pacific Gas and Electric", pge.OutageMapURL},
+	"psps":                      {"PG&E (public safety power shutoffs)", "Pacific Gas and Electric", pge.PSPSUpdatesURL},
 	// Two authorities gate a legal burn and both are carried; see
 	// internal/ingest/burn_status.go. The burn line row covers every configured
 	// county's line, so its name stays generic.
@@ -425,6 +426,11 @@ func gridSourceSeeds(cfg *config.Config) []store.SourceSeed {
 
 	seeds := make([]store.SourceSeed, 0, len(ids)+len(cfg.Grid.Ingest.Reporters))
 	for _, id := range ids {
+		if id == ingest.ChainControlSourceID && !cfg.Grid.ChainControl.Record {
+			// Tuned in config, but not a source until its events are recorded:
+			// a registry row nothing polls would read as a feed that is down.
+			continue
+		}
 		tuning := cfg.Grid.Sources[id]
 		info, ok := gridSourceInfo[id]
 		if !ok {

@@ -363,11 +363,50 @@ func revisionChanges(a, b *gridv1.Event) []*gridv1.TimelineEntry {
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "permission", "Burning "+burnPermissionText(bb.GetPermission()), burnPermissionText(ba.GetPermission()), burnPermissionText(bb.GetPermission()))
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "burnDay", "County line: "+nonEmptyOr(burnDayText(bb.GetBurnDay()), "no answer"), burnDayText(ba.GetBurnDay()), burnDayText(bb.GetBurnDay()))
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "calfireStatus", "CAL FIRE: "+nonEmptyOr(calfireText(bb.GetCalfireStatus()), "unknown"), calfireText(ba.GetCalfireStatus()), calfireText(bb.GetCalfireStatus()))
+	case gridv1.Layer_CHAIN_CONTROL:
+		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "extent", "Now "+chainExtent(b.GetChainControl()), chainExtent(a.GetChainControl()), chainExtent(b.GetChainControl()))
+	case gridv1.Layer_SOURCE_HEALTH:
+		sa, sb := a.GetSourceHealth().GetStatus(), b.GetSourceHealth().GetStatus()
+		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "sourceStatus", sourceStatusLabel(sb), sourceStatusWord(sa), sourceStatusWord(sb))
 	case gridv1.Layer_POWER:
 		ca, cb := a.GetPower().GetCustomersAffected(), b.GetPower().GetCustomersAffected()
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "customersAffected", countText(cb)+" customers out", countText(ca), countText(cb))
 	}
 	return out
+}
+
+// chainExtent is a chain-control stretch's two ends: "A to B", or "A".
+func chainExtent(d *gridv1.ChainControlDetail) string {
+	from, to := d.GetFrom().GetPlace(), d.GetTo().GetPlace()
+	if from == "" || strings.EqualFold(from, to) {
+		return nonEmptyOr(from, to)
+	}
+	return from + " to " + to
+}
+
+func sourceStatusWord(s gridv1.SourceStatus) string {
+	switch s {
+	case gridv1.SourceStatus_OK:
+		return "OK"
+	case gridv1.SourceStatus_STALE:
+		return "stale"
+	case gridv1.SourceStatus_UNAVAILABLE:
+		return "unavailable"
+	}
+	return ""
+}
+
+// sourceStatusLabel words a source's change of status as what happened.
+func sourceStatusLabel(to gridv1.SourceStatus) string {
+	switch to {
+	case gridv1.SourceStatus_OK:
+		return "Readable again"
+	case gridv1.SourceStatus_STALE:
+		return "Read failed; serving the last good data"
+	case gridv1.SourceStatus_UNAVAILABLE:
+		return "Unavailable"
+	}
+	return "Not read yet"
 }
 
 func statusLabel(from, to gridv1.EventStatus) string {

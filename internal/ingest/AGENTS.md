@@ -840,6 +840,46 @@ events, the roads domain). That carve-out lives in `internal/gridapi/summary.go`
 with the other two. CWWP2 publishes a week of windows, 200+ in the incident
 box, and planned roadwork is a calendar, not a hazard.
 
+## Chain requirements as events (`chain_control.go`)
+
+With `grid.chainControl.record`, `ChainControlNormalizer` (source
+`caltrans-cc`, 5m) stores one event per chain-control stretch, layer
+`CHAIN_CONTROL`. The map layer stays a live projection; the events are its
+record.
+
+- **One read, two readers.** The poller calls
+  `hazards.Service.ChainRequirements`, which reads the registry the
+  `chain_control` layer reads (same cache) and groups over everything Caltrans
+  reported, so an event has the id, headline, severity and signs of the map
+  feature for the same stretch (`TestChainRequirements_MatchTheMapLayer`). Do
+  not group in the poller.
+- **Its own source id.** The sweep runs per source and `caltrans` belongs to
+  the lane-closure poller ("a source has exactly one poller"). The row is
+  seeded only while the flag is on.
+- **The id is the lifecycle handle** (`cc:hwy4:r2`): stable while a stretch
+  grows, shrinks or a sign flaps, and a level change is a different id by
+  design, so one event resolves and another opens. Known limit: a stretch
+  that splits, merges or gains a neighbour before it on the road renumbers
+  (`cc:hwy88:r2:2`), which reads the same way. Districts 3 and 9 (cc.kml
+  only) infer their stretches and will renumber more; their events carry
+  `inferred`.
+- **Fail-loud, the lane-closure precedent.** A failed registry read is a
+  hard error. A read that cannot vouch for completeness (a district file
+  failed, or an in-scope sign is unrecognized or has no position) is a
+  `PerSource` error: events land, nothing is swept. No areas is
+  `errEmptyScope`. A confirmed-empty read is a success and resolves every
+  stretch, which is the end of the storm.
+- **Place ids are preset from every sign**: `area:<id>` for each hazard area
+  whose bounds contain a sign (what the map layer scopes by), plus the
+  store's `PlacesContaining` per sign. The point alone would attach a stretch
+  only where its low end is.
+- **Stretches only.** Gates and truck or hold levels stay map features.
+- **Not counted in the place summary yet** (`countedElsewhere` in
+  `internal/gridapi/summary.go`): the roads domain counts the live layer.
+- Each sign's `since` is hashed. If a source starts re-stamping it without a
+  status change, that is a revision per poll: zero it in the hash then, with
+  the usual note in the store guide. Not seen in the 2026-11-13 captures.
+
 ## Weather-alert headline: deterministic, never AI
 
 `nws.Alert.ShortHeadline` composes `<Event> — <reason>` from the product name

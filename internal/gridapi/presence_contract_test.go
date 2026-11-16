@@ -176,7 +176,20 @@ func seedPresenceFixtures(t *testing.T, s *Service) {
 		{ID: "pge", Name: "PG&E", PollInterval: 5 * time.Minute},
 		{ID: "burnline", Name: "County burn line", PollInterval: time.Hour},
 		store.GridSourceSeed(),
+		{ID: "caltrans-cc", Name: "Caltrans (chain control)", PollInterval: 5 * time.Minute},
 	}))
+	upsert(t, s.Store, &gridv1.Event{
+		Id: "cc:hwy4:r2", Layer: gridv1.Layer_CHAIN_CONTROL, Category: "r2",
+		Severity: gridv1.Severity_MODERATE, Status: gridv1.EventStatus_ACTIVE,
+		Headline: "Hwy 4 chains required, Poison Springs to Mount Reba Road (R2)",
+		Geometry: pointGeom(38.389, -120.183), Provenance: &gridv1.Provenance{SourceId: "caltrans-cc", SourceName: "Caltrans", FetchedAt: timestamppb.New(base)},
+		Detail: &gridv1.Event_ChainControl{ChainControl: &gridv1.ChainControlDetail{
+			Level: "R2", Highway: "Highway 4",
+			From:  &gridv1.ChainControlPlace{Place: "Poison Springs", Location: &gridv1.LatLng{Lat: 38.389, Lng: -120.183}},
+			To:    &gridv1.ChainControlPlace{Place: "Mount Reba Road"},
+			Signs: []*gridv1.ChainControlSign{{Id: "cc:10-CAL-4-56.3-E-12E", Place: "POISON SPRINGS", Level: "R2", Since: timestamppb.New(base)}},
+		}},
+	})
 	upsert(t, s.Store, &gridv1.Event{
 		Id: "source:caloes", Layer: gridv1.Layer_SOURCE_HEALTH, Category: "unavailable",
 		Severity: gridv1.Severity_INFO, Status: gridv1.EventStatus_ACTIVE, Headline: "Cal OES: unavailable",

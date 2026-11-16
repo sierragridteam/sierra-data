@@ -85,6 +85,35 @@ list of NWS outages as the Grid saw them.
 - History starts when the flag goes on. The first revision's `since` is that
   moment, not when the source entered its status.
 
+### Chain requirements are events: the `CHAIN_CONTROL` layer
+
+Chain controls were a live map layer only, so when a storm ended its sequence
+(R1 at 14:10, R2 at 15:30, lifted at 06:00) was gone.
+
+With `grid.chainControl.record` (off as shipped) each stretch of highway
+under one requirement level is an event: layer `CHAIN_CONTROL`, source
+`caltrans-cc`, id `cc:{route}:{level}` (`cc:hwy4:r2`). They are the same
+stretches, with the same ids, headlines and severity, as the features of
+`/api/v1/places/{place}/map/chain_control.geojson`, which is unchanged.
+
+- `chainControl` carries `level`, `highway`, `direction`, `from`, `to`,
+  `inferred` and every sign in `signs` (each with its own level, time and
+  position). Times are RFC 3339 UTC.
+- Appearing is revision 1. A stretch that grows or shrinks by a checkpoint is
+  a revision. Caltrans lifting it is a `RESOLVED` revision. **A change of
+  level is a different event**: `cc:hwy4:r2` resolves and `cc:hwy4:r3` opens,
+  so `/api/v1/history?layer=CHAIN_CONTROL&place=...` is the storm in order.
+- The event's geometry is a point at the low end, like the map feature. It is
+  attached to every place any of its signs is in, so `?place=` finds a
+  stretch from either end.
+- Stretches only. Pass-closure gates and truck or hold levels stay point
+  features on the map layer.
+- The place summary does not count these events: its roads domain already
+  reports chain controls from the live layer. That exclusion is temporary.
+- A read the Grid cannot vouch for (a district file failed, an unreadable
+  sign) records what it has, marks `caltrans-cc` on `/api/v1/sources`, and
+  resolves nothing.
+
 ### New enum values, declared ahead of use
 
 `Layer` gains `SOURCE_HEALTH`, `CHAIN_CONTROL`, `ROAD_SEGMENT` and `WEATHER`;

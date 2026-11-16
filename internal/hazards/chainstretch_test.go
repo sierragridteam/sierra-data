@@ -435,3 +435,54 @@ func keys(m map[string]any) []string {
 	}
 	return out
 }
+
+// ChainRequirements is the stored events' read of the same registry: for an
+// area it returns exactly the stretches that area's map layer shows, with the
+// same ids and signs, and none of the layer's point features (gates).
+func TestChainRequirements_MatchTheMapLayer(t *testing.T) {
+	s := chainService(kmlDoer{200, loadKML(t, stormKML)}, loadCheckpoints(t, stormCWWP2))
+	features, status, _, _, _, _ := s.BuildLayer(testCtx(), ebbettsArea, LayerChainControl)
+	require.Equal(t, "OK", status)
+	want := map[string]int{}
+	for _, f := range features {
+		if f.Properties.ChainControl.From != nil { // a stretch, not a gate
+			want[f.Properties.ID] = len(f.Properties.ChainControl.Signs)
+		}
+	}
+	require.Len(t, want, 4)
+
+	stretches, degraded, err := s.ChainRequirements(testCtx(), []config.HazardArea{ebbettsArea})
+	require.NoError(t, err)
+	require.NoError(t, degraded)
+	got := map[string]int{}
+	for _, f := range stretches {
+		got[f.Properties.ID] = len(f.Properties.ChainControl.Signs)
+	}
+	assert.Equal(t, want, got)
+
+	// Over every area at once the numbering is the same: ids are assigned
+	// over everything Caltrans reported, not per scope.
+	all, _, err := s.ChainRequirements(testCtx(), []config.HazardArea{everywhere})
+	require.NoError(t, err)
+	ids := map[string]bool{}
+	for _, f := range all {
+		assert.False(t, ids[f.Properties.ID], "duplicate id %s", f.Properties.ID)
+		ids[f.Properties.ID] = true
+	}
+	for id := range want {
+		assert.True(t, ids[id], id)
+	}
+
+	// No areas: nothing is in scope.
+	none, _, err := s.ChainRequirements(testCtx(), nil)
+	require.NoError(t, err)
+	assert.Empty(t, none)
+}
+
+// A failed read is an error, never an empty answer: the caller's sweep would
+// read "no stretches" as every requirement lifted.
+func TestChainRequirements_FailLoud(t *testing.T) {
+	s := NewServiceWithAPIs(&config.Config{}, nil, nil, &caltrans.FeedParser{HTTPClient: kmlDoer{500, ""}}, nil)
+	_, _, err := s.ChainRequirements(testCtx(), []config.HazardArea{everywhere})
+	require.Error(t, err)
+}

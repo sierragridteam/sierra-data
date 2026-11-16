@@ -459,6 +459,13 @@ grid:
   sourceHealth:
     enabled: false
 
+  # Chain requirements as events: one CHAIN_CONTROL event per stretch of
+  # highway under a requirement level (the stretches and ids of the
+  # chain_control map layer), resolved when Caltrans lifts it. Off, chain
+  # controls are a live map layer only and a storm leaves no record.
+  chainControl:
+    record: false
+
   # PG&E power layer. No geography knobs: unlike fire, an outage outside the
   # footprint is not a threat to it, so the layer uses the plain hazards union.
   #
@@ -543,6 +550,13 @@ grid:
       disappearance: "expire"
       expireAfter: "24h"
     chp:
+      pollInterval: "5m"
+      disappearance: "resolve"
+    caltrans-cc:
+      # Chain requirements as events (grid.chainControl.record; not a source
+      # row while that is off). Reads the registry the chain_control map layer
+      # reads, through its cache. resolve: a stretch missing from a complete
+      # read has been lifted.
       pollInterval: "5m"
       disappearance: "resolve"
     caltrans:

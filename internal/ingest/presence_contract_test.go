@@ -22,6 +22,7 @@ import (
 	"github.com/sierragridteam/sierra-data/internal/clients/usgs"
 	"github.com/sierragridteam/sierra-data/internal/config"
 	"github.com/sierragridteam/sierra-data/internal/gridapi"
+	"github.com/sierragridteam/sierra-data/internal/hazards"
 	"github.com/sierragridteam/sierra-data/internal/openapispec"
 	"github.com/sierragridteam/sierra-data/internal/places"
 	"github.com/sierragridteam/sierra-data/internal/store"
@@ -225,6 +226,7 @@ func presencePollers(t *testing.T) map[string]Normalizer {
 		"power":         newPowerNormalizer(power, testNow),
 		"burn status":   newBurnNormalizer(stdCfg(), &fakeCalfireBurn{rows: suspendedRows()}, freshLine("red")),
 		"mesh":          NewNetworkNormalizer(testConfig(), mesh, nil),
+		"chain control": NewChainControlNormalizer(testConfig(), &fakeChainSource{stretches: []hazards.Feature{hwy4()}}, nil),
 	}
 }
 

@@ -1010,3 +1010,43 @@ func TestSummary_ChainControlCountsStretchesNotSigns(t *testing.T) {
 	}
 	t.Fatal("no roads domain")
 }
+
+// A stored chain-control event is the same requirement the roads domain
+// already counts from the live layer, so the hazard rollup leaves it out
+// (countedElsewhere) rather than report one requirement twice. Source-health
+// events are ambient and have no place at all.
+func TestSummary_StoredChainControlIsNotCountedTwice(t *testing.T) {
+	s := newTestService(t)
+	allSourcesOK(t, s.Store)
+	before := getSummaryWith(t, s, condOKBuilder("normal"), "calaveras")
+	require.Equal(t, http.StatusOK, before.Code)
+
+	require.NoError(t, s.Store.SeedSources(context.Background(), []store.SourceSeed{
+		{ID: "caltrans-cc", Name: "Caltrans (chain control)", PollInterval: 5 * time.Minute},
+	}))
+	require.NoError(t, s.Store.RecordAttempt(context.Background(), "caltrans-cc", nil))
+	upsert(t, s.Store, &gridv1.Event{
+		Id: "cc:hwy4:r3", Layer: gridv1.Layer_CHAIN_CONTROL, Severity: gridv1.Severity_SEVERE,
+		Status: gridv1.EventStatus_ACTIVE, Headline: "Hwy 4 chains required on every vehicle (R3)",
+		Geometry: pointGeom(38.06, -120.54), ObservedAt: timestamppb.New(base.Add(time.Hour)),
+		Provenance: &gridv1.Provenance{SourceId: "caltrans-cc"},
+	})
+	after := getSummaryWith(t, s, condOKBuilder("normal"), "calaveras")
+	require.Equal(t, http.StatusOK, after.Code)
+
+	var a, b struct {
+		Mode    string `json:"mode"`
+		Summary struct {
+			TotalActive int `json:"totalActive"`
+		} `json:"summary"`
+	}
+	require.NoError(t, json.Unmarshal(before.Body.Bytes(), &b))
+	require.NoError(t, json.Unmarshal(after.Body.Bytes(), &a))
+	assert.Equal(t, b.Summary.TotalActive, a.Summary.TotalActive)
+	assert.Equal(t, b.Mode, a.Mode, "a SEVERE stored requirement does not raise the mode by itself")
+	assert.NotContains(t, after.Body.String(), "cc:hwy4:r3")
+
+	assert.True(t, ambientLayer(gridv1.Layer_SOURCE_HEALTH))
+	assert.True(t, ambientLayer(gridv1.Layer_BURN_STATUS))
+	assert.False(t, ambientLayer(gridv1.Layer_CHAIN_CONTROL), "a requirement is a hazard; its exclusion is the temporary rule")
+}
