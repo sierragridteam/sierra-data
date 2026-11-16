@@ -702,13 +702,14 @@ const (
 	RelationConfidence_RELATION_CONFIDENCE_UNSPECIFIED RelationConfidence = 0
 	// Coincidence in time and place worth showing as context; no link claimed
 	// (an outage inside a High Wind Warning's area). For mesh nodes: two
-	// repeaters, or two gateways, read by the same monitor.
+	// repeaters read through the same gateway, or two gateways that read the
+	// same repeater.
 	RelationConfidence_RELATION_CONTEXT RelationConfidence = 1
 	// Plausible from time and place alone (a shutoff near a burning fire).
 	RelationConfidence_RELATION_LOW RelationConfidence = 2
 	// Time and place plus a corroborating fact (PG&E lists the cause as fire),
 	// or the nearest fire to an evacuation zone issued soon after it started.
-	// For mesh nodes: a gateway and a node read by the same monitor.
+	// For mesh nodes: a gateway and a node read through it.
 	RelationConfidence_RELATION_MEDIUM RelationConfidence = 3
 	// A source names the other event (Cal OES notes name the fire).
 	RelationConfidence_RELATION_HIGH RelationConfidence = 4
@@ -3062,6 +3063,18 @@ type MeshTelemetry struct {
 	// Presence window: grid.meshcore.relayPresence. See "Two activity clocks" and
 	// "Relay presence" in internal/ingest/AGENTS.md. --)
 	LastRelayedAt *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=last_relayed_at,json=lastRelayedAt,proto3" json:"last_relayed_at,omitempty"`
+	// Public keys (lowercase hex) of the gateway nodes a monitor has read this
+	// node through: a monitor that listens through several radios (the SIERRA
+	// relay's gateways) logs in to a repeater over the mesh from one of them, and
+	// says which. Empty list for a gateway itself, for a node no monitor reads,
+	// and for a monitor that states no gateway. `GET /api/v1/events/{id}/related`
+	// links mesh nodes along these reads.
+	//
+	// (-- The union over every monitor's current report, not part of `admin`:
+	// `admin` is the single freshest reading, so a second monitor reading the
+	// same node would drop the first one's gateways. Carried forward while a
+	// monitor is silent, like `admin`. --)
+	ReadVia       []string `protobuf:"bytes,11,rep,name=read_via,json=readVia,proto3" json:"read_via,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3148,6 +3161,13 @@ func (x *MeshTelemetry) GetLastHeardAt() *timestamppb.Timestamp {
 func (x *MeshTelemetry) GetLastRelayedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.LastRelayedAt
+	}
+	return nil
+}
+
+func (x *MeshTelemetry) GetReadVia() []string {
+	if x != nil {
+		return x.ReadVia
 	}
 	return nil
 }
@@ -5209,15 +5229,15 @@ type PlaceSummary struct {
 	// Overall posture. The rules below are checked in order and the first match
 	// wins.
 	//
-	// - `ACTIVE`: an active evacuation at ORDER, WARNING or SHELTER_IN_PLACE; or
-	//   any active EXTREME event; or an active wildfire at SEVERE or above.
-	// - `WATCH`: any active SEVERE event; or an active evacuation ADVISORY; or
-	//   fire weather `elevated` (Fire Weather Watch) or `red-flag` (Red Flag
-	//   Warning) for a place inside a coverage area; or the evacuation source
-	//   UNAVAILABLE (unknown is never quiet); or any layer feeding the
-	//   summary UNAVAILABLE while an active event is MODERATE or above.
-	// - `QUIET`: otherwise. A MODERATE or lower event on its own leaves the
-	//   place QUIET.
+	//   - `ACTIVE`: an active evacuation at ORDER, WARNING or SHELTER_IN_PLACE; or
+	//     any active EXTREME event; or an active wildfire at SEVERE or above.
+	//   - `WATCH`: any active SEVERE event; or an active evacuation ADVISORY; or
+	//     fire weather `elevated` (Fire Weather Watch) or `red-flag` (Red Flag
+	//     Warning) for a place inside a coverage area; or the evacuation source
+	//     UNAVAILABLE (unknown is never quiet); or any layer feeding the
+	//     summary UNAVAILABLE while an active event is MODERATE or above.
+	//   - `QUIET`: otherwise. A MODERATE or lower event on its own leaves the
+	//     place QUIET.
 	//
 	// Only these inputs can raise it: ACTIVE events on the WILDFIRE,
 	// EVACUATION, WEATHER_ALERT, EARTHQUAKE, ROAD_INCIDENT and POWER layers
@@ -9158,7 +9178,7 @@ const file_grid_proto_rawDesc = "" +
 	"\"repeater\"\xf2\x02\tcompanion\xf2\x02\brepeater\xf2\x02\vroom_server\xf2\x02\x06sensorR\bnodeType\x120\n" +
 	"\x04name\x18\x03 \x01(\tB\x1c\x92A\x19J\x17\"SIERRA Hathaway Pines\"R\x04name\x124\n" +
 	"\ttelemetry\x18\x04 \x01(\v2\x16.grid.v1.MeshTelemetryR\ttelemetry\x12O\n" +
-	"\freachability\x18\x05 \x01(\x0e2\x19.grid.v1.MeshReachabilityB\x10\x92A\rJ\v\"REACHABLE\"R\freachability\"\xfb\x03\n" +
+	"\freachability\x18\x05 \x01(\x0e2\x19.grid.v1.MeshReachabilityB\x10\x92A\rJ\v\"REACHABLE\"R\freachability\"\xe1\x04\n" +
 	"\rMeshTelemetry\x129\n" +
 	"\x03snr\x18\x01 \x01(\v2\x1c.google.protobuf.DoubleValueB\t\x92A\x06J\x0411.8R\x03snr\x129\n" +
 	"\x04rssi\x18\x02 \x01(\v2\x1b.google.protobuf.Int32ValueB\b\x92A\x05J\x03-39R\x04rssi\x12A\n" +
@@ -9168,7 +9188,8 @@ const file_grid_proto_rawDesc = "" +
 	"\x05admin\x18\b \x01(\v2\x1b.grid.v1.MeshAdminTelemetryR\x05admin\x12>\n" +
 	"\rlast_heard_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vlastHeardAt\x12B\n" +
 	"\x0flast_relayed_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\rlastRelayedAtJ\x04\b\x04\x10\x05J\x04\b\a\x10\bR\x04pathR\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\rlastRelayedAt\x12d\n" +
+	"\bread_via\x18\v \x03(\tBI\x92AFJD[\"6f1c0d4a9b7e2c35a8d0f4e1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5\"]R\areadViaJ\x04\b\x04\x10\x05J\x04\b\a\x10\bR\x04pathR\n" +
 	"path_nodes\"\xf6\v\n" +
 	"\x12MeshAdminTelemetry\x12.\n" +
 	"\vreporter_id\x18\x01 \x01(\tB\r\x92A\n" +

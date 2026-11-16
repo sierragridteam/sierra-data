@@ -703,7 +703,7 @@
     },
     "/api/v1/events/{id}/related": {
       "get": {
-        "description": "Events about the same situation, each with the rule that matched, a\nplain reason and a confidence: a fire's evacuation zones (named in the\nCal OES notes, or the nearest fire to a zone issued soon after it\nstarted), outages PG&E attributes to it, shutoffs and road reports near\nit; shutoffs, outages and road reports inside a wind, fire-weather or\nwinter storm product's area while it is in effect. Works from either\nside: an evacuation lists its fire. Relations state what the sources say\nor how events coincide, never a cause the sources do not state.\n\nMesh nodes relate differently, by structure, not by situation: a node's\nrelated events are the other nodes read by the same operator-run monitor\n(`mesh.telemetry.admin.reporterId`), whatever their status. A gateway\n(the companion radio a monitor listens through) lists the repeaters that\nmonitor reads and they list it (`mesh-monitor-gateway`); two repeaters,\nor two gateways, of one monitor list each other (`mesh-monitor-peer`).\nThe claim is only that one monitor reads both: which gateway a repeater\nwas read through is not reported. A node no monitor reads has none, and\na mesh node is never related to a fire, outage or road report. For radio\nlinks between nodes use `GET /api/v1/mesh/links`. Computed\nat read time from the stored events (every status), so rules can change\nwithout a migration. Related events carry no shapes (as\n`geometryFormat=NONE`); fetch one for its geometry.",
+        "description": "Events about the same situation, each with the rule that matched, a\nplain reason and a confidence: a fire's evacuation zones (named in the\nCal OES notes, or the nearest fire to a zone issued soon after it\nstarted), outages PG&E attributes to it, shutoffs and road reports near\nit; shutoffs, outages and road reports inside a wind, fire-weather or\nwinter storm product's area while it is in effect. Works from either\nside: an evacuation lists its fire. Relations state what the sources say\nor how events coincide, never a cause the sources do not state.\n\nMesh nodes relate differently, by structure, not by situation: along the\nreads an operator-run monitor states (`mesh.telemetry.readVia`), whatever\nthe nodes' status. A gateway (a companion radio a monitor listens through)\nlists the repeaters read through it and they list it\n(`mesh-monitor-gateway`); repeaters read through the same gateway, and\ngateways that read the same repeater, list each other\n(`mesh-monitor-peer`). Nothing is followed further, so parts of the mesh\nthat share no gateway and no repeater share no relations, even under one\nmonitor. The nodes of a monitor that states no gateways (it reads them\nall from one place; `mesh.telemetry.admin.reporterId`) are each other's\n`mesh-monitor-peer`. A node no monitor reads has none, and\na mesh node is never related to a fire, outage or road report. For radio\nlinks between nodes use `GET /api/v1/mesh/links`. Computed\nat read time from the stored events (every status), so rules can change\nwithout a migration. Related events carry no shapes (as\n`geometryFormat=NONE`); fetch one for its geometry.",
         "operationId": "GridService_ListRelatedEvents",
         "parameters": [
           {
@@ -7190,6 +7190,16 @@
             "nullable": true,
             "type": "string"
           },
+          "readVia": {
+            "description": "Public keys (lowercase hex) of the gateway nodes a monitor has read this\nnode through: a monitor that listens through several radios (the SIERRA\nrelay's gateways) logs in to a repeater over the mesh from one of them, and\nsays which. Empty list for a gateway itself, for a node no monitor reads,\nand for a monitor that states no gateway. `GET /api/v1/events/{id}/related`\nlinks mesh nodes along these reads.\n",
+            "example": [
+              "6f1c0d4a9b7e2c35a8d0f4e1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "rssi": {
             "description": "Received signal strength of the last advert, in dBm, gateway-reported.\nNullable, like `snr`.",
             "example": -39,
@@ -7212,6 +7222,7 @@
           "lastAdvertAt",
           "lastHeardAt",
           "lastRelayedAt",
+          "readVia",
           "rssi",
           "snr"
         ],
@@ -7685,7 +7696,7 @@
       },
       "v1RelationConfidence": {
         "default": "RELATION_CONFIDENCE_UNSPECIFIED",
-        "description": "RelationConfidence is how strongly a relation is supported.\n\n - RELATION_CONTEXT: Coincidence in time and place worth showing as context; no link claimed\n(an outage inside a High Wind Warning's area). For mesh nodes: two\nrepeaters, or two gateways, read by the same monitor.\n - RELATION_LOW: Plausible from time and place alone (a shutoff near a burning fire).\n - RELATION_MEDIUM: Time and place plus a corroborating fact (PG&E lists the cause as fire),\nor the nearest fire to an evacuation zone issued soon after it started.\nFor mesh nodes: a gateway and a node read by the same monitor.\n - RELATION_HIGH: A source names the other event (Cal OES notes name the fire).",
+        "description": "RelationConfidence is how strongly a relation is supported.\n\n - RELATION_CONTEXT: Coincidence in time and place worth showing as context; no link claimed\n(an outage inside a High Wind Warning's area). For mesh nodes: two\nrepeaters read through the same gateway, or two gateways that read the\nsame repeater.\n - RELATION_LOW: Plausible from time and place alone (a shutoff near a burning fire).\n - RELATION_MEDIUM: Time and place plus a corroborating fact (PG&E lists the cause as fire),\nor the nearest fire to an evacuation zone issued soon after it started.\nFor mesh nodes: a gateway and a node read through it.\n - RELATION_HIGH: A source names the other event (Cal OES notes name the fire).",
         "enum": [
           "RELATION_CONFIDENCE_UNSPECIFIED",
           "RELATION_CONTEXT",

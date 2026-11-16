@@ -61,8 +61,7 @@ func TestListRelatedEvents(t *testing.T) {
 	assert.Equal(t, codes.NotFound, status.Code(err))
 }
 
-// A mesh node's related events are the nodes its monitor reads, with the
-// monitor named from the source registry.
+// A mesh node's related events are the nodes a monitor's reads connect it to.
 func TestListRelatedEventsMeshNodes(t *testing.T) {
 	s := newTestService(t)
 	ctx := context.Background()
@@ -70,10 +69,10 @@ func TestListRelatedEventsMeshNodes(t *testing.T) {
 		{ID: "meshcore", Name: "MeshCore", PollInterval: time.Minute},
 		{ID: "relay", Name: "SIERRA Mesh Relay", Kind: gridv1.SourceKind_REPORTER, PollInterval: time.Minute},
 	}))
-	node := func(key, name, nodeType, reporter string) {
+	node := func(key, name, nodeType, reporter string, via ...string) {
 		d := &gridv1.MeshDetail{PublicKey: key, Name: name, NodeType: nodeType}
 		if reporter != "" {
-			d.Telemetry = &gridv1.MeshTelemetry{Admin: &gridv1.MeshAdminTelemetry{ReporterId: reporter}}
+			d.Telemetry = &gridv1.MeshTelemetry{Admin: &gridv1.MeshAdminTelemetry{ReporterId: reporter}, ReadVia: via}
 		}
 		upsert(t, s.Store, &gridv1.Event{
 			Id: "meshcore:" + key, Layer: gridv1.Layer_MESH, Category: "node", Headline: name,
@@ -85,7 +84,9 @@ func TestListRelatedEventsMeshNodes(t *testing.T) {
 		})
 	}
 	node("aa01", "Eagle Gateway", "companion", "relay")
-	node("bb01", "Eagle HQ", "repeater", "relay")
+	node("bb01", "Eagle HQ", "repeater", "relay", "aa01")
+	node("aa02", "Pinebrook Gateway", "companion", "relay")
+	node("bb02", "Pinebrook Rptr", "repeater", "relay", "aa02")
 	node("dd01", "Somebody's node", "repeater", "")
 	g := NewGridServer(s)
 
@@ -96,7 +97,7 @@ func TestListRelatedEventsMeshNodes(t *testing.T) {
 	assert.Equal(t, "meshcore:bb01", r.GetEvent().GetId())
 	assert.Equal(t, "mesh-monitor-gateway", r.GetRule())
 	assert.Equal(t, gridv1.RelationConfidence_RELATION_MEDIUM, r.GetConfidence())
-	assert.Equal(t, "Read by SIERRA Mesh Relay, which listens through this gateway", r.GetReason())
+	assert.Equal(t, "Read through this gateway", r.GetReason())
 	assert.Empty(t, r.GetEvent().GetGeometry().GetGeojson(), "related events carry no shapes")
 	assert.Equal(t, "relay", r.GetEvent().GetMesh().GetTelemetry().GetAdmin().GetReporterId(), "the related node keeps its reading")
 
@@ -104,7 +105,7 @@ func TestListRelatedEventsMeshNodes(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, back.GetRelated(), 1)
 	assert.Equal(t, "meshcore:aa01", back.GetRelated()[0].GetEvent().GetId())
-	assert.Equal(t, "A gateway of SIERRA Mesh Relay, which reads this node", back.GetRelated()[0].GetReason())
+	assert.Equal(t, "A gateway this node is read through", back.GetRelated()[0].GetReason())
 
 	none, err := g.ListRelatedEvents(rpcBG(), &gridv1.ListRelatedEventsRequest{Id: "meshcore:dd01"})
 	require.NoError(t, err)

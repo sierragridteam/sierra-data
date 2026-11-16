@@ -878,6 +878,19 @@ whose adverts never reach a broker. The `relay` reporter has `enumerates:
 true`, so the repeaters it lists are admitted without a location (shadow
 repeaters, no geometry) or outside the geofence; see internal/ingest/AGENTS.md.
 
+**Which gateway read which repeater** rides in the same report: each
+repeater's `read_via` lists the pinned keys of the gateway radios that read
+it (the last one, plus any within 7 days; saved with the reading in the
+relay's poll state), and only radios the report also lists as nodes, so an
+excluded gateway's radio is never named. The Grid stores it as
+`mesh.telemetry.readVia` (hash-excluded, the union over monitors, carried
+while a monitor is silent), and `internal/related/mesh.go` relates mesh
+nodes along those reads only: a gateway and its repeaters, repeaters of one
+gateway, gateways of one repeater. Never "same monitor": the relay's
+gateways sit in parts of the mesh that cannot hear each other (Pinebrook,
+Eagle), and those must stay disjoint. Only a monitor that states no gateways
+(alanpi) falls back to "its nodes are peers".
+
 ## Deploys: readers and the writer lease
 
 Every Grid process serves every read from boot (`gridApp.Serve`:

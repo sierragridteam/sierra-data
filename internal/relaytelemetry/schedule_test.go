@@ -342,3 +342,67 @@ func TestGridAlive(t *testing.T) {
 	_, err := p.gridAlive(context.Background(), "broken", 3*time.Hour)
 	assert.Error(t, err, "an error is not 'dead': the caller doesn't hibernate on it")
 }
+
+// pinnedGateways are gateways with pinned radios: name -> pubkey.
+type pinnedGateways map[string]string
+
+func (g pinnedGateways) Gateways() ([]*meshrelay.GatewayRecord, error) {
+	var out []*meshrelay.GatewayRecord
+	for _, n := range []string{"a", "b", "c"} {
+		if pk, ok := g[n]; ok {
+			out = append(out, &meshrelay.GatewayRecord{Name: n, PinnedPubkey: pk})
+		}
+	}
+	return out, nil
+}
+
+// A repeater's report names the gateway radios that have read it: the ones
+// this report also lists as nodes, across a failover and a restart, until a
+// radio hasn't read it for readViaWindow.
+func TestReportNamesTheGatewaysARepeaterWasReadThrough(t *testing.T) {
+	radioA, radioB := strings.Repeat("1", 64), strings.Repeat("2", 64)
+	gws := pinnedGateways{"a": radioA, "b": radioB}
+	h := newSched(t, []string{"a", "b"}, map[string][]error{"a": {nil, noReply}, "b": {nil}}, meshrelay.RepeaterPollState{})
+	newPoller := func() *Poller {
+		p := New(Config{GridURL: "http://grid.invalid", IngestToken: "x", Now: func() time.Time { return h.now }}, nil, gws, h.reps)
+		p.alive = func(context.Context, string, time.Duration) (bool, error) { return true, nil }
+		// Radio A is a published gateway node; radio B is not (excluded).
+		p.nodes[radioA] = &nodeState{pubkey: radioA, lastAttempt: t0}
+		return p
+	}
+	via := func(p *Poller) []string {
+		for _, e := range p.Report().Repeaters {
+			if e.ID == h.reps.cred.Pubkey {
+				return e.ReadVia
+			}
+		}
+		t.Fatal("repeater not reported")
+		return nil
+	}
+	p := newPoller()
+	tick := func(d time.Duration) { h.now = t0.Add(d); p.RepeaterTick(h.ctx) }
+
+	tick(0)
+	assert.Equal(t, []string{radioA}, via(p))
+
+	// Next cycle: A gets no answer, B reads it. Both have read it now, but B's
+	// radio is not in the report, so it is not named.
+	for _, d := range []time.Duration{0, 30, 90, 210} {
+		tick(30*time.Minute + d*time.Second)
+	}
+	require.Equal(t, "b", h.reps.state.Primary)
+	assert.Equal(t, []string{radioA}, via(p))
+	p.nodes[radioB] = &nodeState{pubkey: radioB, lastAttempt: t0}
+	assert.Equal(t, []string{radioA, radioB}, via(p))
+
+	// A restart keeps them.
+	h.reps.cred.LastAttemptAt, h.reps.cred.LastOKAt = ptr(h.now), ptr(h.now)
+	p = newPoller()
+	p.nodes[radioB] = &nodeState{pubkey: radioB, lastAttempt: t0}
+	tick(40 * time.Minute)
+	assert.Equal(t, []string{radioA, radioB}, via(p))
+
+	// Read only through B for longer than the window: A drops out.
+	tick(readViaWindow + time.Hour)
+	assert.Equal(t, []string{radioB}, via(p))
+}

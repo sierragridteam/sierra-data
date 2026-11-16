@@ -827,6 +827,12 @@ func (n *NetworkNormalizer) buildEvent(m *mergedNode, now time.Time, prior Prior
 			detail.Telemetry.Admin = stored.GetTelemetry().GetAdmin()
 		}
 	}
+	// The gateways a node was read through come from one monitor's reports
+	// (the relay's). While any monitor is silent, another's report says nothing
+	// about them, so the stored ones ride forward the same way.
+	if monitorSilent && len(detail.Telemetry.GetReadVia()) == 0 {
+		detail.Telemetry.ReadVia = stored.GetTelemetry().GetReadVia()
+	}
 	ev.Detail = &gridv1.Event_Mesh{Mesh: detail}
 	return ev
 }
@@ -919,6 +925,16 @@ func meshTelemetry(mqtt *meshcore.NodeState, reports []pushingest.MeshNodeReport
 	if best != nil {
 		t.Admin = best.Telemetry
 	}
+	// Every monitor's gateways, not only the freshest reading's: a second
+	// monitor reading the node must not hide the ones the first states.
+	for _, r := range reports {
+		for _, gw := range r.ReadVia {
+			if !slices.Contains(t.ReadVia, gw) {
+				t.ReadVia = append(t.ReadVia, gw)
+			}
+		}
+	}
+	sort.Strings(t.ReadVia)
 	return t
 }
 

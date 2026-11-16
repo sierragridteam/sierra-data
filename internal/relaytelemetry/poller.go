@@ -122,8 +122,10 @@ type Poller struct {
 	repeaters map[string]*nodeState // shared repeaters, by pubkey
 
 	// Shared-repeater schedule, owned by the RepeaterTick goroutine.
-	jobs  map[string]*repeaterJob
-	alive func(ctx context.Context, pubkey string, window time.Duration) (bool, error)
+	jobs map[string]*repeaterJob
+	// pinned is each gateway's pinned radio, as of the last RepeaterTick.
+	pinned map[string]string
+	alive  func(ctx context.Context, pubkey string, window time.Duration) (bool, error)
 }
 
 type nodeState struct {
@@ -143,6 +145,9 @@ type nodeState struct {
 	// via is the gateway last tried for a gateway node, for the log; okVia
 	// the one that last read it.
 	via, okVia string
+	// Shared repeaters: the gateway radios (pinned pubkeys) that have read it,
+	// sorted (repeaterJob.via).
+	readVia []string
 }
 
 // New returns a Poller. reps, when not nil, adds the relay's shared

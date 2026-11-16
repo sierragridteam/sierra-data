@@ -3,6 +3,7 @@ package pushingest
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -65,6 +66,10 @@ type MeshNodeReport struct {
 	// a third representation in between bought nothing but two copies of every
 	// field. Treat it as immutable once buffered — the normalizer only reads it.
 	Telemetry *gridv1.MeshAdminTelemetry
+
+	// ReadVia is the gateway nodes (lowercased hex keys or prefixes) the
+	// monitor says it has read this node through. Empty when it states none.
+	ReadVia []string
 }
 
 // MeshSnapshot is what the normalizer reads each tick.
@@ -151,6 +156,11 @@ type meshRepeaterIn struct {
 	// contract because rejecting a field the reporter already sends would be
 	// gratuitous, and it is useful in logs.
 	Online *bool `json:"online"`
+
+	// ReadVia names the monitor's own radios (gateway nodes, by public key or
+	// prefix) it has read this node through. Optional: a monitor with one
+	// vantage point has nothing to say here.
+	ReadVia []string `json:"read_via"`
 }
 
 // ingestMesh parses, validates and buffers one mesh.repeater report. It returns
@@ -206,6 +216,13 @@ func (r *Registry) ingestMesh(_ context.Context, rep *reporter, body []byte, max
 		// with zeroed counters, asserting that it has sent and received nothing.
 		if !nr.LastSuccess.IsZero() && hasAnyMetric(in) {
 			nr.Telemetry = adminProto(in, nr)
+		}
+		via, bad := readVia(in.ReadVia, id)
+		nr.ReadVia = via
+		if bad > 0 {
+			warnings = append(warnings, fmt.Sprintf(
+				"repeaters[%d]: %d read_via entries are not node ids, name the node itself, or exceed the limit of %d; ignored",
+				i, bad, maxReadVia))
 		}
 		set[id] = nr
 	}
@@ -336,6 +353,28 @@ func int32Value(v *int32) *wrapperspb.Int32Value {
 		return nil
 	}
 	return wrapperspb.Int32(*v)
+}
+
+// maxReadVia bounds the gateways one node's report may name.
+const maxReadVia = 16
+
+// readVia normalizes a node's read_via list: lowercased, deduplicated, sorted,
+// valid node ids only, never the node itself. bad counts the entries dropped.
+func readVia(in []string, self string) (out []string, bad int) {
+	seen := map[string]bool{}
+	for _, v := range in {
+		v = strings.ToLower(strings.TrimSpace(v))
+		switch {
+		case seen[v]:
+		case !validNodeID(v) || v == self || len(seen) >= maxReadVia:
+			bad++
+		default:
+			seen[v] = true
+			out = append(out, v)
+		}
+	}
+	sort.Strings(out)
+	return out, bad
 }
 
 // validNodeID accepts an even-length lowercase hex string within the bounds a
