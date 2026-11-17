@@ -457,7 +457,7 @@ grid:
   # this source down?" has an answer. Off, only the current status is kept
   # (/api/v1/sources).
   sourceHealth:
-    enabled: false
+    enabled: true
 
   # Chain requirements as events: one CHAIN_CONTROL event per stretch of
   # highway under a requirement level (the stretches and ids of the

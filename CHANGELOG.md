@@ -21,6 +21,16 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-17 (later still)
+
+### Source health history is on
+
+`grid.sourceHealth.enabled` is on. From this deploy the Grid keeps one
+`SOURCE_HEALTH` event per upstream feed (`source:{id}`), and `/api/v1/sources`
+lists the `grid` row (kind `INTERNAL`) that owns them. See "Source health has
+a history" below for the shape. Each feed's first revision is written at its
+first poll after the deploy, and its `since` is when recording began.
+
 ## 2026-11-17 (later)
 
 ### Revisions have a kind: `CHANGE` or `READING`
