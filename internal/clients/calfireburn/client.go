@@ -95,6 +95,10 @@ const (
 	StatusBurningSuspended Status = "suspended"
 	StatusPermitRequired   Status = "permit-required"
 	StatusNoPermitRequired Status = "no-permit-required"
+	// StatusBurningAllowed is "Burning Allowed": CAL FIRE is not restricting
+	// burning in the county, and the air district's burn-day call decides.
+	// It says nothing about permits, so it is not either permit status.
+	StatusBurningAllowed Status = "burning-allowed"
 )
 
 // CountyStatus is one row of the table.
@@ -189,18 +193,31 @@ func (c *Client) GetBurnStatus(ctx context.Context) (map[string]CountyStatus, er
 
 // parseStatus maps the page's wording onto the Status domain. Unrecognized
 // wording is UNKNOWN, never a permissive default.
+//
+// The two directions are read differently on purpose. A prohibition is
+// matched loosely: any wording that mentions a suspension is a suspension,
+// because guessing "prohibited" wrongly costs a phone call. Anything that
+// lets a burn proceed is matched as the WHOLE cell against the wordings seen
+// on the page, because guessing "allowed" wrongly is the dangerous error:
+// matched by substring, "Burning Not Permitted" contains "permit" and
+// "Burning Not Allowed" contains "burning ... allowed". A new permissive
+// wording therefore reads UNKNOWN until someone adds it here, and the poller
+// reports it (see internal/ingest/burn_status.go).
 func parseStatus(s string) Status {
 	t := strings.ToLower(strings.Join(strings.Fields(s), " "))
-	switch {
-	case strings.Contains(t, "suspend"):
+	t = strings.TrimRight(t, " .*")
+	if strings.Contains(t, "suspend") {
 		return StatusBurningSuspended
-	case strings.Contains(t, "no permit"):
-		return StatusNoPermitRequired
-	case strings.Contains(t, "permit"):
-		return StatusPermitRequired
-	default:
-		return StatusUnknown
 	}
+	switch t {
+	case "no permit required", "no burn permit required":
+		return StatusNoPermitRequired
+	case "permit required", "burn permit required":
+		return StatusPermitRequired
+	case "burning allowed":
+		return StatusBurningAllowed
+	}
+	return StatusUnknown
 }
 
 // effectiveLayouts are the shapes observed on the live page. The leading
@@ -260,7 +277,10 @@ func textOf(n *html.Node) string {
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
 		if n.Type == html.TextNode {
+			// A space between sibling nodes: <span>Burning</span><span>Allowed</span>
+			// is two words. Runs of space collapse below.
 			sb.WriteString(n.Data)
+			sb.WriteByte(' ')
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			walk(c)

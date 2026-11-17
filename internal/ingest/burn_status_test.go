@@ -142,6 +142,7 @@ func TestDerivePermission(t *testing.T) {
 		cfSuspended = gridv1.CalfireBurnStatus_CALFIRE_BURNING_SUSPENDED
 		cfPermit    = gridv1.CalfireBurnStatus_CALFIRE_PERMIT_REQUIRED
 		cfNoPermit  = gridv1.CalfireBurnStatus_CALFIRE_NO_PERMIT_REQUIRED
+		cfAllowed   = gridv1.CalfireBurnStatus_CALFIRE_BURNING_ALLOWED
 
 		allowed    = gridv1.BurnPermission_BURN_PERMISSION_ALLOWED
 		prohibited = gridv1.BurnPermission_BURN_PERMISSION_PROHIBITED
@@ -155,6 +156,12 @@ func TestDerivePermission(t *testing.T) {
 	}{
 		{"both permit", yesDay, cfPermit, allowed},
 		{"both permit, no permit needed", yesDay, cfNoPermit, allowed},
+		// "Burning Allowed": CAL FIRE is not restricting, so the air
+		// district's call decides, in both directions and when it is missing.
+		{"CAL FIRE allows, burn day", yesDay, cfAllowed, allowed},
+		{"CAL FIRE allows, no-burn day", noDay, cfAllowed, prohibited},
+		{"CAL FIRE allows, burn line unread", unknownDay, cfAllowed, unknown},
+		{"CAL FIRE allows, marginal day", marginal, cfAllowed, unknown},
 		{"suspension overrides a burn day", yesDay, cfSuspended, prohibited},
 		{"no-burn day overrides a CAL FIRE permit", noDay, cfPermit, prohibited},
 		{"both prohibit", noDay, cfSuspended, prohibited},
@@ -459,6 +466,9 @@ func TestBurnHeadlineLeadsWithTheAnswer(t *testing.T) {
 		{no, suspended, "Burning suspended by CAL FIRE"},
 		{yes, suspended, "Burning suspended by CAL FIRE"},
 		{orange, permit, "Burn day above 3,500 ft only"},
+		{yes, gridv1.CalfireBurnStatus_CALFIRE_BURNING_ALLOWED, "Burn day"},
+		{no, gridv1.CalfireBurnStatus_CALFIRE_BURNING_ALLOWED, "No-burn day"},
+		{orange, gridv1.CalfireBurnStatus_CALFIRE_BURNING_ALLOWED, "Burn day above 3,500 ft only"},
 		{orange, suspended, "Burning suspended by CAL FIRE"},
 		// An unread facet is never a green light, and never a narrower one.
 		{orange, gridv1.CalfireBurnStatus_CALFIRE_BURN_STATUS_UNKNOWN, "Burn status unknown"},
@@ -717,4 +727,69 @@ func TestBurnPoll_ForceWritesEveryEvent(t *testing.T) {
 	res, err := n.Poll(context.Background(), &scriptedPrior{})
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"burn:calaveras-county", "burn:tuolumne-county"}, res.ForceWrite)
+}
+
+// CAL FIRE's "Burning Allowed" reaches the event as its own status, never as
+// either permit status: it says nothing about permits.
+func TestCalfireBurningAllowedIsItsOwnStatus(t *testing.T) {
+	assert.Equal(t, gridv1.CalfireBurnStatus_CALFIRE_BURNING_ALLOWED, calfireStatusProto(calfireburn.StatusBurningAllowed))
+}
+
+// CAL FIRE's page answering with wording we cannot read, or without a county
+// we track, is not the page being down. The stored status must NOT ride
+// forward: the page may be saying the opposite of what is stored. The facet
+// reads unknown and the source says why, with the wording. Before this rule
+// "Burning Allowed" sat unread for ten days behind a carried "permit
+// required" while the source read OK; with a permissive value stored, the
+// same quiet carry would keep saying burning is allowed after CAL FIRE
+// stopped saying so.
+func TestBurnPoll_UnreadCalfireRowIsNotCarriedForward(t *testing.T) {
+	allowed := func() map[string]calfireburn.CountyStatus {
+		return map[string]calfireburn.CountyStatus{
+			"calaveras": {County: "Calaveras", Status: calfireburn.StatusBurningAllowed, RawStatus: "Burning Allowed", Area: "All SRA"},
+			"tuolumne":  {County: "Tuolumne", Status: calfireburn.StatusBurningAllowed, RawStatus: "Burning Allowed", Area: "All SRA"},
+		}
+	}
+	cf := &fakeCalfireBurn{rows: allowed()}
+	n := newBurnNormalizer(stdCfg(), cf, freshLine("green"))
+	first, err := n.Poll(testCtx(), &fakePrior{})
+	require.NoError(t, err)
+	require.Nil(t, first.PerSource[calfireBurnSourceID])
+	cal := first.Events[0]
+	require.Equal(t, "burn:calaveras-county", cal.GetId())
+	require.Equal(t, gridv1.BurnPermission_BURN_PERMISSION_ALLOWED, cal.GetBurnStatus().GetPermission())
+	prior := &scriptedPrior{events: first.Events}
+
+	// CAL FIRE rewords Calaveras to something we do not know.
+	rows := allowed()
+	rows["calaveras"] = calfireburn.CountyStatus{County: "Calaveras", Status: calfireburn.StatusUnknown, RawStatus: "Burning Not Allowed", Area: "All SRA"}
+	cf.rows = rows
+	res, err := n.Poll(testCtx(), prior)
+	require.NoError(t, err)
+	d := res.Events[0].GetBurnStatus()
+	assert.Equal(t, gridv1.CalfireBurnStatus_CALFIRE_BURN_STATUS_UNKNOWN, d.GetCalfireStatus(), "not carried forward")
+	assert.Equal(t, gridv1.BurnPermission_BURN_PERMISSION_UNKNOWN, d.GetPermission(), "never a green light on an unread authority")
+	assert.Equal(t, "Burn status unknown", res.Events[0].GetHeadline())
+	require.Error(t, res.PerSource[calfireBurnSourceID])
+	assert.Contains(t, res.PerSource[calfireBurnSourceID].Error(), `unrecognized status "Burning Not Allowed"`)
+	// The county that was read is unaffected.
+	assert.Equal(t, gridv1.CalfireBurnStatus_CALFIRE_BURNING_ALLOWED, res.Events[1].GetBurnStatus().GetCalfireStatus())
+
+	// The county's row gone from an otherwise good table: the same.
+	rows = allowed()
+	delete(rows, "calaveras")
+	cf.rows = rows
+	res, err = n.Poll(testCtx(), prior)
+	require.NoError(t, err)
+	assert.Equal(t, gridv1.CalfireBurnStatus_CALFIRE_BURN_STATUS_UNKNOWN, res.Events[0].GetBurnStatus().GetCalfireStatus())
+	require.Error(t, res.PerSource[calfireBurnSourceID])
+	assert.Contains(t, res.PerSource[calfireBurnSourceID].Error(), "not in CAL FIRE's table")
+
+	// The page itself failing is the one case that carries: its being down is
+	// no evidence the status changed.
+	cf.rows, cf.err = nil, errors.New("HTTP 403")
+	res, err = n.Poll(testCtx(), prior)
+	require.NoError(t, err)
+	assert.Equal(t, gridv1.CalfireBurnStatus_CALFIRE_BURNING_ALLOWED, res.Events[0].GetBurnStatus().GetCalfireStatus())
+	require.Error(t, res.PerSource[calfireBurnSourceID])
 }

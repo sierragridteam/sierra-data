@@ -597,6 +597,10 @@ const (
 	CalfireBurnStatus_CALFIRE_PERMIT_REQUIRED CalfireBurnStatus = 2
 	// Off-season: no permit needed.
 	CalfireBurnStatus_CALFIRE_NO_PERMIT_REQUIRED CalfireBurnStatus = 3
+	// CAL FIRE's page says "Burning Allowed": it is not restricting burning in
+	// the county, and the decision falls to the air district's burn-day call
+	// (`burnDay`). Says nothing about permits.
+	CalfireBurnStatus_CALFIRE_BURNING_ALLOWED CalfireBurnStatus = 4
 )
 
 // Enum value maps for CalfireBurnStatus.
@@ -606,12 +610,14 @@ var (
 		1: "CALFIRE_BURNING_SUSPENDED",
 		2: "CALFIRE_PERMIT_REQUIRED",
 		3: "CALFIRE_NO_PERMIT_REQUIRED",
+		4: "CALFIRE_BURNING_ALLOWED",
 	}
 	CalfireBurnStatus_value = map[string]int32{
 		"CALFIRE_BURN_STATUS_UNKNOWN": 0,
 		"CALFIRE_BURNING_SUSPENDED":   1,
 		"CALFIRE_PERMIT_REQUIRED":     2,
 		"CALFIRE_NO_PERMIT_REQUIRED":  3,
+		"CALFIRE_BURNING_ALLOWED":     4,
 	}
 )
 
@@ -5250,15 +5256,15 @@ type PlaceSummary struct {
 	// Overall posture. The rules below are checked in order and the first match
 	// wins.
 	//
-	//   - `ACTIVE`: an active evacuation at ORDER, WARNING or SHELTER_IN_PLACE; or
-	//     any active EXTREME event; or an active wildfire at SEVERE or above.
-	//   - `WATCH`: any active SEVERE event; or an active evacuation ADVISORY; or
-	//     fire weather `elevated` (Fire Weather Watch) or `red-flag` (Red Flag
-	//     Warning) for a place inside a coverage area; or the evacuation source
-	//     UNAVAILABLE (unknown is never quiet); or any layer feeding the
-	//     summary UNAVAILABLE while an active event is MODERATE or above.
-	//   - `QUIET`: otherwise. A MODERATE or lower event on its own leaves the
-	//     place QUIET.
+	// - `ACTIVE`: an active evacuation at ORDER, WARNING or SHELTER_IN_PLACE; or
+	//   any active EXTREME event; or an active wildfire at SEVERE or above.
+	// - `WATCH`: any active SEVERE event; or an active evacuation ADVISORY; or
+	//   fire weather `elevated` (Fire Weather Watch) or `red-flag` (Red Flag
+	//   Warning) for a place inside a coverage area; or the evacuation source
+	//   UNAVAILABLE (unknown is never quiet); or any layer feeding the
+	//   summary UNAVAILABLE while an active event is MODERATE or above.
+	// - `QUIET`: otherwise. A MODERATE or lower event on its own leaves the
+	//   place QUIET.
 	//
 	// Only these inputs can raise it: ACTIVE events on the WILDFIRE,
 	// EVACUATION, WEATHER_ALERT, EARTHQUAKE, ROAD_INCIDENT and POWER layers
@@ -9769,12 +9775,13 @@ const file_grid_proto_rawDesc = "" +
 	"\x10BURN_DAY_UNKNOWN\x10\x00\x12\x10\n" +
 	"\fBURN_DAY_YES\x10\x01\x12\x0f\n" +
 	"\vBURN_DAY_NO\x10\x02\x12\x15\n" +
-	"\x11BURN_DAY_MARGINAL\x10\x03*\x90\x01\n" +
+	"\x11BURN_DAY_MARGINAL\x10\x03*\xad\x01\n" +
 	"\x11CalfireBurnStatus\x12\x1f\n" +
 	"\x1bCALFIRE_BURN_STATUS_UNKNOWN\x10\x00\x12\x1d\n" +
 	"\x19CALFIRE_BURNING_SUSPENDED\x10\x01\x12\x1b\n" +
 	"\x17CALFIRE_PERMIT_REQUIRED\x10\x02\x12\x1e\n" +
-	"\x1aCALFIRE_NO_PERMIT_REQUIRED\x10\x03*j\n" +
+	"\x1aCALFIRE_NO_PERMIT_REQUIRED\x10\x03\x12\x1b\n" +
+	"\x17CALFIRE_BURNING_ALLOWED\x10\x04*j\n" +
 	"\x0eBurnPermission\x12\x1b\n" +
 	"\x17BURN_PERMISSION_UNKNOWN\x10\x00\x12\x1b\n" +
 	"\x17BURN_PERMISSION_ALLOWED\x10\x01\x12\x1e\n" +

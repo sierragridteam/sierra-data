@@ -411,7 +411,16 @@ Caltrans KML feeds did exactly that in 2026), behind a fingerprinting WAF a thir
 party updates. That is why it is the **secondary** source: the burn line carries
 the answer that changes often, and a 403 leaves the burn-day facet untouched.
 
-Two parsing rules that must not be relaxed:
+Three parsing rules that must not be relaxed:
+
+- **A status that lets a burn proceed is matched as the whole cell**
+  ("Permit Required", "No Permit Required", "Burning Allowed"), never by
+  substring: "Burning Not Permitted" contains "permit". Only a suspension is
+  matched loosely, because that is the safe direction. A new wording reads
+  UNKNOWN and the poller reports it; add it to `parseStatus` with a test.
+  "Burning Allowed" (seen from 2026-11-06) means CAL FIRE is not restricting
+  burning and the air district's burn-day call decides. It says nothing about
+  permits and is its own status.
 
 - **An empty table is an ERROR, never an empty map.** CAL FIRE lists every
   county, so zero rows means the markup moved. Returning an empty map would tell

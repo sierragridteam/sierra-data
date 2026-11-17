@@ -122,8 +122,24 @@ func TestParseStatus(t *testing.T) {
 		"burning suspended":  StatusBurningSuspended,
 		"Permit Required":    StatusPermitRequired,
 		"No Permit Required": StatusNoPermitRequired,
-		"Something New":      StatusUnknown, // unknown wording is never permissive
-		"":                   StatusUnknown,
+		"Burning Allowed":    StatusBurningAllowed,
+		" burning  allowed ": StatusBurningAllowed,
+		"Burning Allowed.":   StatusBurningAllowed,
+		"Burning Allowed*":   StatusBurningAllowed,
+		// Anything that lets a burn proceed is the whole cell or nothing. These
+		// read UNKNOWN, and the poller reports an unrecognized wording rather
+		// than carry the last answer forward.
+		"Burning Not Allowed":                StatusUnknown,
+		"Burning Not Permitted":              StatusUnknown,
+		"No Burning Permitted":               StatusUnknown,
+		"No Permits Issued":                  StatusUnknown,
+		"Burning Allowed With A Permit":      StatusUnknown,
+		"View Ventura County Fire's Website": StatusUnknown,
+		// A prohibition is matched loosely: the safe direction.
+		"Burning Allowed Until Suspended": StatusBurningSuspended,
+		"Burn Permits Suspended":          StatusBurningSuspended,
+		"Something New":                   StatusUnknown, // unknown wording is never permissive
+		"":                                StatusUnknown,
 	}
 	for in, want := range cases {
 		assert.Equal(t, want, parseStatus(in), "parseStatus(%q)", in)

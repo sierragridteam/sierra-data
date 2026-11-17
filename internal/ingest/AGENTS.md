@@ -1020,7 +1020,14 @@ exists to answer. That is also why:
 
 **One facet carries forward, the other must not.** On a CAL FIRE failure the
 stored suspension is carried forward from `Prior`: that page being down is no
-evidence the suspension lifted, and it changes twice a year. The burn-day facet
+evidence the suspension lifted, and it changes twice a year. **Only a failed
+fetch carries.** A page that answers with wording `calfireburn.parseStatus`
+does not know, or without a tracked county's row, reads UNKNOWN for that
+county and degrades `calfire-burn` with the wording in `lastError`
+(`calfireUnread`). Until 2026-11-17 that case was carried too, with the source
+OK: CAL FIRE's "Burning Allowed" sat unread for ten days behind a stale
+"permit required". Carrying a permissive value through a reword is the
+dangerous direction. The burn-day facet
 is deliberately NOT carried forward — it is a statement about TODAY, and
 yesterday's answer is exactly what the freshness gate exists to reject. Carrying
 it would reintroduce the freeze through the back door.
