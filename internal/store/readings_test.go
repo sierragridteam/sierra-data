@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	gridv1 "github.com/sierragridteam/sierra-data/api/grid/v1"
@@ -55,6 +56,26 @@ func burnEvent(tick time.Time, calls map[string]burnCall) *gridv1.Event {
 	}
 }
 
+// upsertBurn upserts a burn event as its poller does: with the layer's
+// reading test (a line's call later than the stored call of the same line).
+// The store itself has no idea what a reading is.
+func upsertBurn(ctx context.Context, s *Store, ev *gridv1.Event) (UpsertResult, error) {
+	return s.UpsertEventReading(ctx, ev, func(stored *gridv1.Event) bool {
+		have := map[string]*gridv1.BurnObservation{}
+		for _, l := range stored.GetBurnStatus().GetBurnLines() {
+			have[l.GetId()] = l.GetObservation()
+		}
+		for _, l := range ev.GetBurnStatus().GetBurnLines() {
+			old, known := have[l.GetId()]
+			if at := l.GetObservation().GetObservedAt(); at != nil && known &&
+				(old.GetObservedAt() == nil || at.AsTime().After(old.GetObservedAt().AsTime())) {
+				return true
+			}
+		}
+		return false
+	})
+}
+
 func revisionKinds(t *testing.T, s *Store, id string) []int {
 	t.Helper()
 	rows, err := s.db.Query(`SELECT kind FROM event_revisions WHERE event_id = $1 ORDER BY revision`, id)
@@ -82,7 +103,7 @@ func TestReadingRevisionPerCall(t *testing.T) {
 	no := gridv1.BurnDay_BURN_DAY_NO
 
 	day1 := baseTime
-	res, err := s.UpsertEvent(ctx, burnEvent(day1, map[string]burnCall{"calaveras-apcd": {day1, no, "October 9th is not a burn day"}}))
+	res, err := upsertBurn(ctx, s, burnEvent(day1, map[string]burnCall{"calaveras-apcd": {day1, no, "October 9th is not a burn day"}}))
 	require.NoError(t, err)
 	assert.Equal(t, UpsertResult{Changed: true, Revision: 1}, res)
 	var hash1 string
@@ -91,7 +112,7 @@ func TestReadingRevisionPerCall(t *testing.T) {
 	day2 := day1.Add(24 * time.Hour)
 	tick := day2.Add(20 * time.Minute)
 	call2 := map[string]burnCall{"calaveras-apcd": {day2, no, "October 10th is not a burn day"}}
-	res, err = s.UpsertEvent(ctx, burnEvent(tick, call2))
+	res, err = upsertBurn(ctx, s, burnEvent(tick, call2))
 	require.NoError(t, err)
 	assert.Equal(t, UpsertResult{Changed: false, Reading: true, Revision: 2}, res)
 
@@ -114,7 +135,7 @@ func TestReadingRevisionPerCall(t *testing.T) {
 	// FIRE's stamp unchanged nothing to refresh either.
 	rec.take()
 	again := burnEvent(tick, call2)
-	res, err = s.UpsertEvent(ctx, again)
+	res, err = upsertBurn(ctx, s, again)
 	require.NoError(t, err)
 	assert.Equal(t, UpsertResult{Changed: false, Revision: 2}, res)
 	assert.Len(t, rec.take(), 4, "re-offered call: begin, fence, lookup, commit")
@@ -122,7 +143,7 @@ func TestReadingRevisionPerCall(t *testing.T) {
 	// An hour on, only the tick-time stamps moved: refreshed in place, and
 	// the event's observed_at stays with its latest revision.
 	later := burnEvent(tick.Add(time.Hour), call2)
-	res, err = s.UpsertEvent(ctx, later)
+	res, err = upsertBurn(ctx, s, later)
 	require.NoError(t, err)
 	assert.Equal(t, UpsertResult{Changed: false, Revision: 2}, res)
 	got, err = s.GetEvent(ctx, burnID)
@@ -148,18 +169,18 @@ func TestReadingPerLine(t *testing.T) {
 	no := gridv1.BurnDay_BURN_DAY_NO
 
 	d1 := baseTime
-	_, err := s.UpsertEvent(ctx, burnEvent(d1, map[string]burnCall{
+	_, err := upsertBurn(ctx, s, burnEvent(d1, map[string]burnCall{
 		"calaveras-apcd": {d1, no, "a day 1"}, "second-line": {d1, no, "b day 1"}}))
 	require.NoError(t, err)
 
 	d2 := d1.Add(24 * time.Hour)
 	// Line a is called at 09:00; line b's call is still yesterday's.
-	res, err := s.UpsertEvent(ctx, burnEvent(d2.Add(10*time.Minute), map[string]burnCall{
+	res, err := upsertBurn(ctx, s, burnEvent(d2.Add(10*time.Minute), map[string]burnCall{
 		"calaveras-apcd": {d2, no, "a day 2"}, "second-line": {d1, no, "b day 1"}}))
 	require.NoError(t, err)
 	assert.True(t, res.Reading)
 	// Line b is called an hour later, EARLIER than nothing but later than its own last call.
-	res, err = s.UpsertEvent(ctx, burnEvent(d2.Add(70*time.Minute), map[string]burnCall{
+	res, err = upsertBurn(ctx, s, burnEvent(d2.Add(70*time.Minute), map[string]burnCall{
 		"calaveras-apcd": {d2, no, "a day 2"}, "second-line": {d2.Add(-30 * time.Minute), no, "b day 2"}}))
 	require.NoError(t, err)
 	assert.True(t, res.Reading, "line b's call is older than line a's, and still a new reading of line b")
@@ -178,13 +199,13 @@ func TestReadingThenChange(t *testing.T) {
 	seedSource(t, s, "burnline")
 
 	d1 := baseTime
-	_, err := s.UpsertEvent(ctx, burnEvent(d1, map[string]burnCall{"calaveras-apcd": {d1, gridv1.BurnDay_BURN_DAY_NO, "no"}}))
+	_, err := upsertBurn(ctx, s, burnEvent(d1, map[string]burnCall{"calaveras-apcd": {d1, gridv1.BurnDay_BURN_DAY_NO, "no"}}))
 	require.NoError(t, err)
 	d2 := d1.Add(24 * time.Hour)
-	_, err = s.UpsertEvent(ctx, burnEvent(d2, map[string]burnCall{"calaveras-apcd": {d2, gridv1.BurnDay_BURN_DAY_NO, "still no"}}))
+	_, err = upsertBurn(ctx, s, burnEvent(d2, map[string]burnCall{"calaveras-apcd": {d2, gridv1.BurnDay_BURN_DAY_NO, "still no"}}))
 	require.NoError(t, err)
 	d3 := d2.Add(24 * time.Hour)
-	res, err := s.UpsertEvent(ctx, burnEvent(d3, map[string]burnCall{"calaveras-apcd": {d3, gridv1.BurnDay_BURN_DAY_YES, "burn day"}}))
+	res, err := upsertBurn(ctx, s, burnEvent(d3, map[string]burnCall{"calaveras-apcd": {d3, gridv1.BurnDay_BURN_DAY_YES, "burn day"}}))
 	require.NoError(t, err)
 	assert.Equal(t, UpsertResult{Changed: true, Revision: 3}, res)
 	assert.Equal(t, []int{1, 2, 1}, revisionKinds(t, s, burnID))
@@ -256,10 +277,10 @@ func TestReadingsOffIsTheRefreshPath(t *testing.T) {
 	seedSource(t, s, "burnline")
 	no := gridv1.BurnDay_BURN_DAY_NO
 	d1 := baseTime
-	_, err := s.UpsertEvent(ctx, burnEvent(d1, map[string]burnCall{"calaveras-apcd": {d1, no, "day 1"}}))
+	_, err := upsertBurn(ctx, s, burnEvent(d1, map[string]burnCall{"calaveras-apcd": {d1, no, "day 1"}}))
 	require.NoError(t, err)
 	d2 := d1.Add(24 * time.Hour)
-	res, err := s.UpsertEvent(ctx, burnEvent(d2, map[string]burnCall{"calaveras-apcd": {d2, no, "day 2"}}))
+	res, err := upsertBurn(ctx, s, burnEvent(d2, map[string]burnCall{"calaveras-apcd": {d2, no, "day 2"}}))
 	require.NoError(t, err)
 	assert.Equal(t, UpsertResult{Changed: false, Revision: 1}, res)
 	assert.Equal(t, []int{1}, revisionKinds(t, s, burnID))
@@ -278,17 +299,26 @@ func TestReadingHasNoSearchRowAndBackfillEnds(t *testing.T) {
 	seedSource(t, s, "burnline")
 	no := gridv1.BurnDay_BURN_DAY_NO
 	d1 := baseTime
-	_, err := s.UpsertEvent(ctx, burnEvent(d1, map[string]burnCall{"calaveras-apcd": {d1, no, "day 1"}}))
+	_, err := upsertBurn(ctx, s, burnEvent(d1, map[string]burnCall{"calaveras-apcd": {d1, no, "day 1"}}))
 	require.NoError(t, err)
 	for i := 1; i <= 3; i++ {
 		at := d1.Add(time.Duration(i) * 24 * time.Hour)
-		res, err := s.UpsertEvent(ctx, burnEvent(at, map[string]burnCall{"calaveras-apcd": {at, no, "again"}}))
+		res, err := upsertBurn(ctx, s, burnEvent(at, map[string]burnCall{"calaveras-apcd": {at, no, "again"}}))
 		require.NoError(t, err)
 		require.True(t, res.Reading)
 	}
 	var n int
 	require.NoError(t, s.db.QueryRow(`SELECT COUNT(*) FROM event_revision_search WHERE event_id = $1`, burnID).Scan(&n))
 	assert.Equal(t, 1, n, "only the change has a search row")
+
+	// The current search row follows the event's revision, so the term-start
+	// walk has nothing to rebuild (and no reason to move the search version).
+	var stamped, current int64
+	require.NoError(t, s.db.QueryRow(`SELECT s.revision, e.revision FROM event_search s JOIN events e ON e.id = s.event_id WHERE e.id = $1`, burnID).Scan(&stamped, &current))
+	assert.Equal(t, current, stamped)
+	walk, err := s.BackfillEventSearch(ctx, "", 100)
+	require.NoError(t, err)
+	assert.Zero(t, walk.Written, "a reading leaves no stale search row behind")
 
 	res, err := s.BackfillRevisionSearch(ctx, "", 0, 2)
 	require.NoError(t, err)
@@ -303,6 +333,16 @@ func TestReadingHasNoSearchRowAndBackfillEnds(t *testing.T) {
 	hits, err := s.SearchHistory(ctx, HistoryQuery{Search: &q})
 	require.NoError(t, err)
 	assert.Equal(t, 1, hits.Total)
+
+	// Collapsed per event, the last revision at which the text matched runs
+	// on through the readings after the change: the text is the same at each.
+	// Reported as the change alone, an event ending in readings always looked
+	// as if its text had stopped matching.
+	byEvent, err := s.SearchHistoryByEvent(ctx, HistoryQuery{Search: &q})
+	require.NoError(t, err)
+	require.Len(t, byEvent.Items, 1)
+	assert.EqualValues(t, 4, byEvent.Items[0].LastRevision, "revision 1 matched and revisions 2-4 are readings of it")
+	assert.Equal(t, 1, byEvent.Items[0].Matching)
 }
 
 // A revision row written without kind (the previous release's writer during a
@@ -321,4 +361,59 @@ func TestRevisionWithoutKindIsAChange(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, revs, 2)
 	assert.Equal(t, gridv1.RevisionKind_CHANGE, revs[0].GetKind())
+}
+
+// The readings count survives the previous release's writer. That writer
+// rebuilds the blob from the poller's event on a change, so the blob loses
+// the field while the column keeps it; a reading written afterwards must
+// count from the column, or every earlier reading is lost from the count.
+func TestReadingsCountSurvivesAnOlderWriter(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t, WithReadings(true))
+	seedSource(t, s, "burnline")
+	no := gridv1.BurnDay_BURN_DAY_NO
+	d := baseTime
+	_, err := upsertBurn(ctx, s, burnEvent(d, map[string]burnCall{"calaveras-apcd": {d, no, "day 0"}}))
+	require.NoError(t, err)
+	for i := 1; i <= 3; i++ {
+		at := d.Add(time.Duration(i) * 24 * time.Hour)
+		_, err := upsertBurn(ctx, s, burnEvent(at, map[string]burnCall{"calaveras-apcd": {at, no, "again"}}))
+		require.NoError(t, err)
+	}
+	// The older writer's change: a blob without the field, the column untouched.
+	got, err := s.GetEvent(ctx, burnID)
+	require.NoError(t, err)
+	got.Readings = 0
+	blob, err := proto.Marshal(got)
+	require.NoError(t, err)
+	_, err = s.db.Exec(`UPDATE events SET proto = $1 WHERE id = $2`, blob, burnID)
+	require.NoError(t, err)
+
+	at := d.Add(5 * 24 * time.Hour)
+	res, err := upsertBurn(ctx, s, burnEvent(at, map[string]burnCall{"calaveras-apcd": {at, no, "after the rollback"}}))
+	require.NoError(t, err)
+	require.True(t, res.Reading)
+	got, err = s.GetEvent(ctx, burnID)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(4), got.GetReadings())
+	totals, err := s.Totals(ctx, "")
+	require.NoError(t, err)
+	assert.EqualValues(t, 4, totals.Readings)
+}
+
+// Without a reading test (every layer but the ones whose poller supplies
+// one), a hash-equal upsert is the refresh path even with readings on.
+func TestNoReadingWithoutTheLayersTest(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t, WithReadings(true))
+	seedSource(t, s, "burnline")
+	no := gridv1.BurnDay_BURN_DAY_NO
+	d := baseTime
+	_, err := s.UpsertEvent(ctx, burnEvent(d, map[string]burnCall{"calaveras-apcd": {d, no, "day 0"}}))
+	require.NoError(t, err)
+	at := d.Add(24 * time.Hour)
+	res, err := s.UpsertEvent(ctx, burnEvent(at, map[string]burnCall{"calaveras-apcd": {at, no, "day 1"}}))
+	require.NoError(t, err)
+	assert.False(t, res.Reading)
+	assert.Equal(t, []int{1}, revisionKinds(t, s, burnID))
 }

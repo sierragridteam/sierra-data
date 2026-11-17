@@ -1089,7 +1089,16 @@ func (s *Store) SearchHistoryByEvent(ctx context.Context, q HistoryQuery) (Histo
 
 		var args sqlArgs
 		var sb strings.Builder
-		sb.WriteString(`SELECT r.revision, r.kind, r.observed_at, r.ingested_at, r.proto, g.event_id, g.last_rev, g.last_at, g.n FROM (` +
+		// last_rev runs on through the readings that follow the last matching
+		// change: a reading leaves the text as it was (it has no search row
+		// of its own for that reason), so the text still matched at each of
+		// them. Without this an event whose latest revision is a reading
+		// always looked as if its text had stopped matching.
+		sb.WriteString(`SELECT r.revision, r.kind, r.observed_at, r.ingested_at, r.proto, g.event_id,
+			COALESCE((SELECT MIN(c.revision) - 1 FROM event_revisions c
+			          WHERE c.event_id = g.event_id AND c.revision > g.last_rev AND c.kind = 1),
+			         (SELECT e2.revision FROM events e2 WHERE e2.id = g.event_id), g.last_rev),
+			g.last_at, g.n FROM (` +
 			`SELECT s.event_id, MIN(s.revision) AS first_rev, MAX(s.revision) AS last_rev, MAX(s.observed_at) AS last_at, COUNT(*) AS n` +
 			historySearchFrom + historyFilterSQL(q, &args) + ` GROUP BY s.event_id`)
 		if q.PageToken != "" {

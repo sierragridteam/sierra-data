@@ -115,21 +115,35 @@ equals what the next poll's `ContentHash` yields.
 
 `event_revisions.kind` (migration 0006) is 1 `CHANGE` or 2 `READING`, and
 `events.readings` / `Event.readings` count an event's readings. A change is
-what a revision has always been. A reading is a hash-equal upsert whose
-reading advanced (`readingAdvanced`, one rule per layer; today burn status: a
-line's call is later than the stored call of the same line). It is written by
-`writeReading`, only with `WithReadings` (`grid.readings.enabled`):
+what a revision has always been. A reading is a hash-equal upsert for which
+the event's POLLER says a reading advanced. **The store holds no layer's idea
+of a reading**: the poller passes a test (`ReadingAdvanced`, through
+`PollResult.Readings` and `UpsertEventReading`), asked only when the hashes
+are equal, with the stored event. Today one poller supplies one: burn status
+(`burnCallAdvanced`: a line's call is later than the stored call of the same
+line). `writeReading` runs only with `WithReadings`
+(`grid.readings.enabled`) and a test:
 
-- The stored blob takes the incoming detail and `observed_at`; `revision` and
-  `readings` increment; `content_hash` stays; a snapshot row is inserted with
+- The stored blob takes the incoming detail (equal hashes: it differs only
+  where the hash does not look) and `observed_at`; `revision` and `readings`
+  increment; `content_hash` stays; a snapshot row is inserted with
   `kind = 2`; the lite copy is rewritten; the `revisions` version is bumped.
-- No search rows (`event_search`, `event_revision_search`): a reading's
-  content is outside the search text. `BackfillRevisionSearch` skips kind 2,
-  or its walk would never end.
+- **`readings` is counted from the column**, never from the stored blob. The
+  previous release's writer rebuilds the blob from the poller's event and
+  drops the field; counting from the blob after a rollback and roll-forward
+  lost every earlier reading (`TestReadingsCountSurvivesAnOlderWriter`).
+  Readers that need "are there readings" ask the rows, not the blob's count
+  (the timeline does).
+- No new search rows: a reading's content is outside the search text.
+  `BackfillRevisionSearch` skips kind 2, or its walk would never end. The
+  current `event_search` row's `revision` stamp is moved with the event, so
+  the term-start walk does not rebuild it. In collapsed history search the
+  last matching revision runs on through the readings that follow the last
+  matching change (the text is the same at each).
 - `event_places` is not touched. The refresh path reconciles places on the
-  next hash-equal poll.
-- The comparison is per line, never the latest call across lines, and an
-  equal call time is not an advance: the burn poller re-offers the same call
+  next hash-equal poll, so a READING snapshot can carry a place set one tick
+  old.
+- An equal reading is not an advance: the burn poller re-offers the same call
   every hour and that must write nothing.
 - A read-modify-write on the stored blob, safe only under the single writer.
 

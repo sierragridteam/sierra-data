@@ -33,7 +33,7 @@ func readingsService(t *testing.T) *GridServer {
 		if answer == gridv1.BurnDay_BURN_DAY_YES {
 			perm = gridv1.BurnPermission_BURN_PERMISSION_ALLOWED
 		}
-		_, err := st.UpsertEvent(ctx, &gridv1.Event{
+		ev := &gridv1.Event{
 			Id: "burn:calaveras-county", Layer: gridv1.Layer_BURN_STATUS, Severity: gridv1.Severity_INFO,
 			Status: gridv1.EventStatus_ACTIVE, Headline: "Calaveras County burn status",
 			Provenance: &gridv1.Provenance{SourceId: "burnline", SourceName: "County burn line", FetchedAt: timestamppb.New(at)},
@@ -45,6 +45,11 @@ func readingsService(t *testing.T) *GridServer {
 					Observation: &gridv1.BurnObservation{Message: msg, Confidence: 95, ObservedAt: timestamppb.New(at)},
 				}},
 			}},
+		}
+		// As the burn poller does: a later call of the line is a reading.
+		_, err := st.UpsertEventReading(ctx, ev, func(stored *gridv1.Event) bool {
+			old := stored.GetBurnStatus().GetBurnLines()[0].GetObservation().GetObservedAt()
+			return old == nil || at.After(old.AsTime())
 		})
 		require.NoError(t, err)
 	}

@@ -133,6 +133,15 @@ type PollResult struct {
 	// not every tick: each id is a transaction, and on a network filesystem each
 	// commit invalidates every reader's page cache.
 	ForceWrite []string
+	// Readings is for a poller whose events take readings: for an event id,
+	// the test that says whether THIS event carries a reading newer than the
+	// stored one (store.ReadingAdvanced; it is asked only when the two are
+	// hash-equal). When it reports true and readings are on, the store keeps
+	// the reading as a READING revision instead of writing it over the last
+	// one. The ids must also be in ForceWrite, or a hash-equal event never
+	// reaches the store. One producer today: burn status, one reading per
+	// call to a burn line.
+	Readings map[string]store.ReadingAdvanced
 }
 
 // MeshKeyRename names a node whose public key became known in full, so its

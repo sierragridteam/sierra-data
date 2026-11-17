@@ -119,7 +119,7 @@ func (s *Store) recordSourceHealth(ctx context.Context, tx *sql.Tx, st sourceHea
 	if want == gridv1.SourceStatus_OK {
 		rec.err = ""
 	}
-	if _, err := s.upsertEventTx(ctx, tx, sourceHealthEvent(rec)); err != nil {
+	if _, err := s.upsertEventTx(ctx, tx, sourceHealthEvent(rec), nil); err != nil {
 		fail(err)
 		return
 	}

@@ -84,7 +84,10 @@ func (g *GridServer) GetEventTimeline(ctx context.Context, req *gridv1.GetEventT
 		}
 	}
 	t := buildTimeline(ev, revs, first, truncated)
-	if ev.GetReadings() > 0 {
+	{
+		// Always asked, never gated on the event's own readings count: the
+		// previous release's writer drops that field from the blob, and the
+		// rows are the truth. An indexed read that is empty for most events.
 		// Not fatal: the changes above do not depend on the readings.
 		page, err := g.svc.Store.EventHistoryPage(ctx, req.GetId(), timelineReadingCap, "", gridv1.RevisionKind_READING)
 		if err != nil {

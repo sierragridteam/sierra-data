@@ -150,12 +150,27 @@ func (s *Store) NeedsUpdate(ctx context.Context, ev *gridv1.Event) (bool, error)
 // ingested_at is stamped here; callers own observed_at (nil falls back to
 // now for the NOT NULL index column only).
 func (s *Store) UpsertEvent(ctx context.Context, ev *gridv1.Event) (UpsertResult, error) {
+	return s.UpsertEventReading(ctx, ev, nil)
+}
+
+// ReadingAdvanced is a poller's answer to "does this event carry a reading
+// newer than the stored one?". It is called only when the two are hash-equal,
+// so they differ only in hash-excluded fields, and stored is the event as the
+// store holds it. The store knows nothing about what a reading is in any
+// layer: the poller that produces readings supplies the test.
+type ReadingAdvanced func(stored *gridv1.Event) bool
+
+// UpsertEventReading is UpsertEvent for an event whose poller records
+// readings. With WithReadings on, a hash-equal upsert for which advanced
+// reports true writes a READING revision (writeReading) instead of taking
+// the refresh path. A nil advanced, or the option off, is UpsertEvent.
+func (s *Store) UpsertEventReading(ctx context.Context, ev *gridv1.Event, advanced ReadingAdvanced) (UpsertResult, error) {
 	if ev.GetId() == "" {
 		return UpsertResult{}, fmt.Errorf("store: upsert event with empty id")
 	}
 	var res UpsertResult
 	err := s.inTx(ctx, func(tx *sql.Tx) (err error) {
-		res, err = s.upsertEventTx(ctx, tx, ev)
+		res, err = s.upsertEventTx(ctx, tx, ev, advanced)
 		return err
 	})
 	if err != nil {
@@ -167,7 +182,7 @@ func (s *Store) UpsertEvent(ctx context.Context, ev *gridv1.Event) (UpsertResult
 // upsertEventTx is UpsertEvent inside a write transaction the caller holds,
 // for a write that must commit with something else (a source's status and
 // its SOURCE_HEALTH revision, RecordAttempt).
-func (s *Store) upsertEventTx(ctx context.Context, tx *sql.Tx, ev *gridv1.Event) (UpsertResult, error) {
+func (s *Store) upsertEventTx(ctx context.Context, tx *sql.Tx, ev *gridv1.Event, advanced ReadingAdvanced) (UpsertResult, error) {
 	// Hash the event exactly as passed — before any store-side mutation — so
 	// the stored hash always matches what the next poll's ContentHash yields.
 	hash := ContentHash(ev)
@@ -195,8 +210,8 @@ func (s *Store) upsertEventTx(ctx context.Context, tx *sql.Tx, ev *gridv1.Event)
 			return fmt.Errorf("store: upsert lookup %s: %w", ev.GetId(), err)
 		case oldHash == hash:
 			res = UpsertResult{Changed: false, Revision: oldRev}
-			if s.readings {
-				wrote, err := writeReading(tx, ev, &pre)
+			if s.readings && advanced != nil {
+				wrote, err := writeReading(ctx, tx, ev, &pre, oldReadings, advanced)
 				if err != nil {
 					return err
 				}
@@ -1115,60 +1130,34 @@ func burnVolatile(b *gridv1.BurnStatusDetail) *gridv1.BurnStatusDetail {
 	return v
 }
 
-// readingAdvanced reports whether in carries a reading newer than the one
-// stored holds, for the layers that record readings. The two events are
-// hash-equal, so they differ only in hash-excluded fields.
-//
-// Burn status: some line's call is later than the stored call of the same
-// line, or the stored line has none. Per line, never the latest across lines:
-// a county with two lines called an hour apart records both. The burn poller
-// re-offers the same call every tick, and an equal call time is not an
-// advance, which is what keeps this to one revision per call.
-func readingAdvanced(in, stored *gridv1.Event) bool {
-	ib, sb := in.GetBurnStatus(), stored.GetBurnStatus()
-	if ib == nil || sb == nil {
-		return false
-	}
-	have := make(map[string]*gridv1.BurnObservation, len(sb.GetBurnLines()))
-	for _, l := range sb.GetBurnLines() {
-		have[l.GetId()] = l.GetObservation()
-	}
-	for _, l := range ib.GetBurnLines() {
-		obs := l.GetObservation()
-		if obs.GetObservedAt() == nil {
-			continue
-		}
-		old, known := have[l.GetId()]
-		if !known {
-			continue // a new line is hashed content, not a reading
-		}
-		if old.GetObservedAt() == nil || obs.GetObservedAt().AsTime().After(old.GetObservedAt().AsTime()) {
-			return true
-		}
-	}
-	return false
-}
-
 // writeReading writes a READING revision for a hash-equal event whose
-// reading advanced, and reports whether it did. The stored event takes the
-// incoming detail (it differs only in hash-excluded fields: the hashes are
-// equal), observed_at and fetched_at; revision and readings increment; the
-// content hash, the place set and the search rows stay (a reading's content
-// is outside the search text, and place ids are not part of a reading: the
-// refresh path still reconciles them on the next hash-equal poll).
+// reading advanced (the poller's test), and reports whether it did. The
+// stored event takes the incoming detail (it differs only in hash-excluded
+// fields: the hashes are equal), observed_at and fetched_at; revision and
+// readings increment; the content hash, the place set and the search text
+// stay (a reading's content is outside the search text, and place ids are not
+// part of a reading: the refresh path still reconciles them on the next
+// hash-equal poll).
+//
+// The readings count comes from the COLUMN (oldReadings), never the stored
+// blob: the previous release's writer rebuilds the blob from the poller's
+// event and drops the field, and counting from that after a rollback and
+// roll-forward lost every reading written before it.
 //
 // A read-modify-write on the stored blob, safe only under the single writer
 // (inTx holds the store mutex and the lease fence).
-func writeReading(tx *sql.Tx, ev *gridv1.Event, pre *storedForRefresh) (bool, error) {
+func writeReading(ctx context.Context, tx *sql.Tx, ev *gridv1.Event, pre *storedForRefresh, oldReadings uint32, advanced ReadingAdvanced) (bool, error) {
 	stored := &gridv1.Event{}
 	if err := proto.Unmarshal(pre.blob, stored); err != nil {
 		return false, fmt.Errorf("store: unmarshal event %s for reading: %w", ev.GetId(), err)
 	}
-	if !readingAdvanced(ev, stored) {
+	if !advanced(stored) {
 		return false, nil
 	}
 	now := time.Now()
-	stored.Detail = &gridv1.Event_BurnStatus{BurnStatus: ev.GetBurnStatus()}
+	// Whatever the layer, the detail is the incoming one: equal hashes mean
+	// it differs from the stored detail only where the hash does not look.
+	stored.Detail = proto.Clone(ev).(*gridv1.Event).Detail
 	if ev.GetObservedAt() != nil {
 		stored.ObservedAt = ev.GetObservedAt()
 	}
@@ -1176,7 +1165,7 @@ func writeReading(tx *sql.Tx, ev *gridv1.Event, pre *storedForRefresh) (bool, er
 		stored.Provenance.FetchedAt = ev.GetProvenance().GetFetchedAt()
 	}
 	stored.Revision++
-	stored.Readings++
+	stored.Readings = oldReadings + 1
 	stored.IngestedAt = timestamppb.New(now)
 	blob, err := proto.Marshal(stored)
 	if err != nil {
@@ -1186,13 +1175,21 @@ func writeReading(tx *sql.Tx, ev *gridv1.Event, pre *storedForRefresh) (bool, er
 	if stored.GetObservedAt() != nil {
 		observedAt = stored.GetObservedAt().AsTime().Unix()
 	}
-	if _, err := tx.Exec(`UPDATE events SET proto = $1, observed_at = $2, ingested_at = $3,
+	if _, err := tx.ExecContext(ctx, `UPDATE events SET proto = $1, observed_at = $2, ingested_at = $3,
 		revision = $4, readings = $5, last_seen_at = $3 WHERE id = $6`,
 		blob, observedAt, now.Unix(), stored.GetRevision(), stored.GetReadings(), ev.GetId()); err != nil {
 		return false, fmt.Errorf("store: update event %s for reading: %w", ev.GetId(), err)
 	}
 	if err := insertRevision(tx, ev.GetId(), stored.GetRevision(), gridv1.RevisionKind_READING, observedAt, now.Unix(), blob); err != nil {
 		return false, err
+	}
+	// The current search row is stamped with the revision it was built from,
+	// and the term-start walk rebuilds any row whose stamp is behind its
+	// event. The text has not changed, so move the stamp (revision is not an
+	// indexed column: no GIN write) instead of leaving a row the walk would
+	// rebuild, bumping the search version for nothing.
+	if _, err := tx.ExecContext(ctx, `UPDATE event_search SET revision = $1 WHERE event_id = $2`, stored.GetRevision(), ev.GetId()); err != nil {
+		return false, fmt.Errorf("store: restamp search row %s for reading: %w", ev.GetId(), err)
 	}
 	return true, putLite(tx, stored)
 }

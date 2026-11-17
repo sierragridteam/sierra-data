@@ -230,10 +230,45 @@ func (n *BurnStatusNormalizer) Poll(ctx context.Context, prior Prior) (*PollResu
 	// event on its first observation forever. Two events an hour, so no
 	// coalescing; the store's refresh path is a no-op when nothing changed.
 	force := make([]string, 0, len(events))
+	readings := make(map[string]store.ReadingAdvanced, len(events))
 	for _, ev := range events {
 		force = append(force, ev.GetId())
+		readings[ev.GetId()] = burnCallAdvanced(ev)
 	}
-	return &PollResult{Events: events, PerSource: perSource, ForceWrite: force}, nil
+	return &PollResult{Events: events, PerSource: perSource, ForceWrite: force, Readings: readings}, nil
+}
+
+// burnCallAdvanced is the burn layer's reading test: does in carry a call
+// the stored event has not seen? A call to a burn line that repeats the
+// answer is a reading (its message, transcript and confidence are content
+// worth keeping, and none of it is hashed).
+//
+// Per line, never the latest call across lines: a county with two lines
+// called an hour apart records both. This poller re-offers the same call on
+// every hourly tick, and an equal call time is not an advance, which is what
+// keeps it to one revision per call. A line the stored event does not have
+// is hashed content (a change), not a reading.
+func burnCallAdvanced(in *gridv1.Event) store.ReadingAdvanced {
+	return func(stored *gridv1.Event) bool {
+		have := make(map[string]*gridv1.BurnObservation)
+		for _, l := range stored.GetBurnStatus().GetBurnLines() {
+			have[l.GetId()] = l.GetObservation()
+		}
+		for _, l := range in.GetBurnStatus().GetBurnLines() {
+			obs := l.GetObservation()
+			if obs.GetObservedAt() == nil {
+				continue
+			}
+			old, known := have[l.GetId()]
+			if !known {
+				continue
+			}
+			if old.GetObservedAt() == nil || obs.GetObservedAt().AsTime().After(old.GetObservedAt().AsTime()) {
+				return true
+			}
+		}
+		return false
+	}
 }
 
 // calfireUnread names the tracked counties a successful CAL FIRE fetch gave no
