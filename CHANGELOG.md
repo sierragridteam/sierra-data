@@ -21,6 +21,34 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-17
+
+### BREAKING for clients with closed enums: `calfireStatus` can be `CALFIRE_BURNING_ALLOWED`
+
+Since 2026-11-06 CAL FIRE's burn page has said "Burning Allowed" for some
+counties (Calaveras and Tuolumne among them), a wording the Grid did not
+read. The county's CAL FIRE facet kept its earlier `CALFIRE_PERMIT_REQUIRED`,
+carried forward, with a `calfireObservedAt` that stopped moving, while the
+`calfire-burn` source read `OK`.
+
+The Grid now reads it as `CALFIRE_BURNING_ALLOWED`: CAL FIRE is not
+restricting burning in the county, and the air district's burn-day call
+decides. `permission` is `ALLOWED` on a burn day and `PROHIBITED` on a
+no-burn day, as with the permit statuses. It says nothing about whether a
+permit is needed.
+
+Also changed: when CAL FIRE's page answers with wording the Grid cannot read
+for a county, or without that county, `calfireStatus` is
+`CALFIRE_BURN_STATUS_UNKNOWN` (so `permission` is `UNKNOWN`) and the
+`calfire-burn` source reads `STALE`/`UNAVAILABLE` with the wording in
+`lastError`. The earlier status used to be carried forward silently; it is
+now carried only while the page itself cannot be fetched.
+
+Migration: a client that validates `calfireStatus` against a fixed list must
+know the new value first (TypeScript SDK 0.5.0 or later accepts values it
+does not know). Treat it as "CAL FIRE does not prohibit burning", never as
+"no permit required".
+
 ## 2026-11-16
 
 ### BREAKING: Related mesh nodes follow the gateway that read them, not the whole monitor

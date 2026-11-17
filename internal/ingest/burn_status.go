@@ -203,6 +203,15 @@ func (n *BurnStatusNormalizer) Poll(ctx context.Context, prior Prior) (*PollResu
 		return nil, calfireErr
 	}
 
+	// The page answered, but not readably for a county we track: a source
+	// failure, visible on /api/v1/sources with the wording, not a quiet
+	// carry-forward. The other counties' rows are still used.
+	if calfireErr == nil {
+		if unread := calfireUnread(counties, calfireRows); unread != nil {
+			perSource[calfireBurnSourceID] = unread
+		}
+	}
+
 	now := n.now().UTC()
 	events := make([]*gridv1.Event, 0, len(counties))
 	for _, c := range counties {
@@ -225,6 +234,27 @@ func (n *BurnStatusNormalizer) Poll(ctx context.Context, prior Prior) (*PollResu
 		force = append(force, ev.GetId())
 	}
 	return &PollResult{Events: events, PerSource: perSource, ForceWrite: force}, nil
+}
+
+// calfireUnread names the tracked counties a successful CAL FIRE fetch gave no
+// readable status for: missing from the table, or carrying wording
+// calfireburn.parseStatus does not know. nil when every county was read.
+func calfireUnread(counties []config.BurnCounty, rows map[string]calfireburn.CountyStatus) error {
+	var problems []string
+	for _, c := range counties {
+		row, ok := rows[countyKey(c)]
+		switch {
+		case !ok:
+			problems = append(problems, fmt.Sprintf("%s: not in CAL FIRE's table", c.Place))
+		case row.Status == calfireburn.StatusUnknown:
+			problems = append(problems, fmt.Sprintf("%s: unrecognized status %q", c.Place, row.RawStatus))
+		}
+	}
+	if len(problems) == 0 {
+		return nil
+	}
+	sort.Strings(problems)
+	return fmt.Errorf("calfire burn status: %s", strings.Join(problems, "; "))
 }
 
 // reporterHealth maps each burn.line reporter's state onto its source row. A
@@ -285,10 +315,15 @@ func (n *BurnStatusNormalizer) buildEvent(
 ) (*gridv1.Event, error) {
 	detail := &gridv1.BurnStatusDetail{}
 
-	// CAL FIRE facet. Absent from a SUCCESSFUL fetch is meaningful (the table
-	// lists every county), so it stays UNKNOWN rather than inventing a value.
+	// CAL FIRE facet. A row we can read is taken. A county missing from a
+	// successful fetch, or a row whose wording we do not recognise, is NOT
+	// the page being down: the facet reads UNKNOWN and the poller degrades
+	// the source naming the wording (calfireUnread), so it is fixed in days.
+	// Until 2026-11-17 both fell into the carry-forward below with the source
+	// reading OK, which is how "Burning Allowed" went unread for ten days
+	// behind a stale "permit required".
 	if calfireRows != nil {
-		if row, ok := calfireRows[countyKey(c)]; ok {
+		if row, ok := calfireRows[countyKey(c)]; ok && row.Status != calfireburn.StatusUnknown {
 			detail.CalfireStatus = calfireStatusProto(row.Status)
 			detail.CalfireArea = row.Area
 			detail.CalfireEffective = tsProto(row.Effective)
@@ -323,7 +358,11 @@ func (n *BurnStatusNormalizer) buildEvent(
 	// yesterday's-answer is exactly the failure the freshness gate exists to
 	// catch. Durability for it lives in the staging row, which keeps a real
 	// timestamp the gate can judge.
-	if detail.CalfireStatus == gridv1.CalfireBurnStatus_CALFIRE_BURN_STATUS_UNKNOWN {
+	//
+	// Only when the FETCH failed (calfireRows nil). A page that answered and
+	// says something we cannot read is evidence the status may have changed,
+	// which is the opposite of the reason to carry.
+	if calfireRows == nil && detail.CalfireStatus == gridv1.CalfireBurnStatus_CALFIRE_BURN_STATUS_UNKNOWN {
 		if p := prior.ByID(burnEventID(c)); p != nil {
 			if pd := p.GetBurnStatus(); pd != nil && pd.GetCalfireStatus() != gridv1.CalfireBurnStatus_CALFIRE_BURN_STATUS_UNKNOWN {
 				detail.CalfireStatus = pd.GetCalfireStatus()
@@ -475,6 +514,8 @@ func calfireStatusProto(s calfireburn.Status) gridv1.CalfireBurnStatus {
 		return gridv1.CalfireBurnStatus_CALFIRE_PERMIT_REQUIRED
 	case calfireburn.StatusNoPermitRequired:
 		return gridv1.CalfireBurnStatus_CALFIRE_NO_PERMIT_REQUIRED
+	case calfireburn.StatusBurningAllowed:
+		return gridv1.CalfireBurnStatus_CALFIRE_BURNING_ALLOWED
 	default:
 		return gridv1.CalfireBurnStatus_CALFIRE_BURN_STATUS_UNKNOWN
 	}
@@ -493,7 +534,8 @@ func derivePermission(day gridv1.BurnDay, calfire gridv1.CalfireBurnStatus) grid
 		return gridv1.BurnPermission_BURN_PERMISSION_PROHIBITED
 	}
 	calfireOK := calfire == gridv1.CalfireBurnStatus_CALFIRE_PERMIT_REQUIRED ||
-		calfire == gridv1.CalfireBurnStatus_CALFIRE_NO_PERMIT_REQUIRED
+		calfire == gridv1.CalfireBurnStatus_CALFIRE_NO_PERMIT_REQUIRED ||
+		calfire == gridv1.CalfireBurnStatus_CALFIRE_BURNING_ALLOWED
 	if day == gridv1.BurnDay_BURN_DAY_YES && calfireOK {
 		return gridv1.BurnPermission_BURN_PERMISSION_ALLOWED
 	}
@@ -530,7 +572,8 @@ func burnHeadline(d *gridv1.BurnStatusDetail) string {
 	// defines orange as a burn day at 3,500 ft and above.
 	if d.GetBurnDay() == gridv1.BurnDay_BURN_DAY_MARGINAL &&
 		(d.GetCalfireStatus() == gridv1.CalfireBurnStatus_CALFIRE_PERMIT_REQUIRED ||
-			d.GetCalfireStatus() == gridv1.CalfireBurnStatus_CALFIRE_NO_PERMIT_REQUIRED) {
+			d.GetCalfireStatus() == gridv1.CalfireBurnStatus_CALFIRE_NO_PERMIT_REQUIRED ||
+			d.GetCalfireStatus() == gridv1.CalfireBurnStatus_CALFIRE_BURNING_ALLOWED) {
 		return "Burn day above 3,500 ft only"
 	}
 	return "Burn status unknown"

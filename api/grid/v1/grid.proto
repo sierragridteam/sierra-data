@@ -1336,6 +1336,10 @@ enum CalfireBurnStatus {
   CALFIRE_PERMIT_REQUIRED = 2;
   // Off-season: no permit needed.
   CALFIRE_NO_PERMIT_REQUIRED = 3;
+  // CAL FIRE's page says "Burning Allowed": it is not restricting burning in
+  // the county, and the decision falls to the air district's burn-day call
+  // (`burnDay`). Says nothing about permits.
+  CALFIRE_BURNING_ALLOWED = 4;
 }
 
 // BurnPermission is the combined answer, deliberately pessimistic.

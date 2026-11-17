@@ -1405,10 +1405,11 @@
         "CALFIRE_BURN_STATUS_UNKNOWN",
         "CALFIRE_BURNING_SUSPENDED",
         "CALFIRE_PERMIT_REQUIRED",
-        "CALFIRE_NO_PERMIT_REQUIRED"
+        "CALFIRE_NO_PERMIT_REQUIRED",
+        "CALFIRE_BURNING_ALLOWED"
       ],
       "default": "CALFIRE_BURN_STATUS_UNKNOWN",
-      "description": "CalfireBurnStatus is CAL FIRE's permit status for State Responsibility Area\nland in the county.\n\n - CALFIRE_BURN_STATUS_UNKNOWN: Unknown: CAL FIRE's page has not been read.\n - CALFIRE_BURNING_SUSPENDED: Permits suspended: no residential burning.\n - CALFIRE_PERMIT_REQUIRED: Burning allowed with a valid CAL FIRE permit.\n - CALFIRE_NO_PERMIT_REQUIRED: Off-season: no permit needed."
+      "description": "CalfireBurnStatus is CAL FIRE's permit status for State Responsibility Area\nland in the county.\n\n - CALFIRE_BURN_STATUS_UNKNOWN: Unknown: CAL FIRE's page has not been read.\n - CALFIRE_BURNING_SUSPENDED: Permits suspended: no residential burning.\n - CALFIRE_PERMIT_REQUIRED: Burning allowed with a valid CAL FIRE permit.\n - CALFIRE_NO_PERMIT_REQUIRED: Off-season: no permit needed.\n - CALFIRE_BURNING_ALLOWED: CAL FIRE's page says \"Burning Allowed\": it is not restricting burning in\nthe county, and the decision falls to the air district's burn-day call\n(`burnDay`). Says nothing about permits."
     },
     "v1Camera": {
       "type": "object",
