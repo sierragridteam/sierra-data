@@ -23,6 +23,16 @@ the proto-defined `/api/v1` gateway on 2026-07-09.
 
 ## 2026-11-17 (later still)
 
+### Burn-line calls are kept as readings
+
+`grid.readings.enabled` is on. A call to a county burn line that repeats the
+answer is now a revision of kind `READING` on the county's burn event, where
+it used to overwrite the previous call. History returns changes unless asked
+(`?kind=READING`), so default history is unchanged. Two things move: a burn
+event's `revision` increases with each call, and its `observedAt` moves only
+with a revision (it used to follow the hourly check). See "Revisions have a
+kind" below.
+
 ### Chain requirements are recorded
 
 `grid.chainControl.record` is on. Each stretch of highway under a chain

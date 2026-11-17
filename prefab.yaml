@@ -450,7 +450,7 @@ grid:
   # for with ?kind=READING) instead of overwriting the last call. Off, a
   # repeated answer is rewritten in place and its history is lost.
   readings:
-    enabled: false
+    enabled: true
 
   # Source health as events: one long-lived SOURCE_HEALTH event per upstream
   # feed (`source:<id>`), revised when the feed's status changes, so "when was
