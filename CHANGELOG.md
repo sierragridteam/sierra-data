@@ -23,6 +23,15 @@ the proto-defined `/api/v1` gateway on 2026-07-09.
 
 ## 2026-11-17 (later still)
 
+### Chain requirements are recorded
+
+`grid.chainControl.record` is on. Each stretch of highway under a chain
+requirement that has a sign inside a coverage area is a `CHAIN_CONTROL` event
+(source `caltrans-cc`, listed on `/api/v1/sources`), with the id of its
+feature on the `chain_control` map layer. See "Chain requirements are events"
+below. The place summary does not count them; its roads domain still reports
+chain controls from the live layer.
+
 ### Source health history is on
 
 `grid.sourceHealth.enabled` is on. From this deploy the Grid keeps one
