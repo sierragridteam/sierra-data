@@ -86,8 +86,8 @@ const (
 	// sequence. Written only when the Grid has chain-control recording on.
 	Layer_CHAIN_CONTROL Layer = 17
 	// One event per monitored road (`road:{road id}`, source `roads`), revised
-	// when its status, its congestion level or a seasonal closure past its end
-	// changes: its history is when the road closed and reopened. No geometry
+	// when its status or a seasonal closure past its end changes: its history
+	// is when the road closed and reopened. No geometry
 	// (the shape is the `road_segment` map layer). The travel-time series is
 	// `GET /api/v1/events/{id}/samples`. Written only when the Grid has
 	// road-segment recording on.
@@ -3967,9 +3967,14 @@ func (x *BurnStatusDetail) GetCalfireObservedAt() *timestamppb.Timestamp {
 
 // RoadSegmentDetail is one monitored road's state (layer ROAD_SEGMENT, event
 // id `road:{road id}`, the id of its feature on the `road_segment` map
-// layer). The event holds the state and is revised when it changes; the
-// numbers that move at every refresh (travel time, delay) are samples:
+// layer). The event holds the state and is revised when it changes: the
+// road's status, and the seasonal closures past its ends. What moves at
+// every refresh (travel time, delay, congestion level) is in the samples:
 // `GET /api/v1/events/{id}/samples`.
+//
+// A change that eases the road (reopened, a closure lifted) is recorded once
+// a second refresh, about 15 minutes later, agrees; a change that restricts
+// it is recorded at once. `observedAt` is the refresh the state was read at.
 type RoadSegmentDetail struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The monitored segment id (`road.roadId` on the map layer).
@@ -3979,10 +3984,6 @@ type RoadSegmentDetail struct {
 	Section string `protobuf:"bytes,3,opt,name=section,proto3" json:"section,omitempty"`
 	// `OPEN`, `RESTRICTED`, `CLOSED` or `MAINTENANCE`, as on the map layer.
 	Status string `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-	// `CLEAR`, `LIGHT`, `MODERATE`, `HEAVY` or `SEVERE`. Empty string until a
-	// travel time has been read. When a refresh has no travel time, the last
-	// known level is kept rather than written as a change.
-	Congestion string `protobuf:"bytes,5,opt,name=congestion,proto3" json:"congestion,omitempty"`
 	// Named seasonal closures in effect past one of the segment's ends (the
 	// Ebbetts Pass winter closure past Bear Valley). They do not change
 	// `status`: the segment itself is open up to its end. Empty when none.
@@ -4045,13 +4046,6 @@ func (x *RoadSegmentDetail) GetSection() string {
 func (x *RoadSegmentDetail) GetStatus() string {
 	if x != nil {
 		return x.Status
-	}
-	return ""
-}
-
-func (x *RoadSegmentDetail) GetCongestion() string {
-	if x != nil {
-		return x.Congestion
 	}
 	return ""
 }
@@ -10223,16 +10217,14 @@ const file_grid_proto_rawDesc = "" +
 	"\fcalfire_area\x18\x05 \x01(\tB\x0e\x92A\vJ\t\"All SRA\"R\vcalfireArea\x127\n" +
 	"\n" +
 	"burn_lines\x18\x06 \x03(\v2\x18.grid.v1.BurnLineReadingR\tburnLines\x12J\n" +
-	"\x13calfire_observed_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x11calfireObservedAt\"\xac\x02\n" +
+	"\x13calfire_observed_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x11calfireObservedAt\"\x90\x02\n" +
 	"\x11RoadSegmentDetail\x126\n" +
 	"\aroad_id\x18\x01 \x01(\tB\x1d\x92A\x1aJ\x18\"hwy4-arnold-bearvalley\"R\x06roadId\x12 \n" +
 	"\x04name\x18\x02 \x01(\tB\f\x92A\tJ\a\"Hwy 4\"R\x04name\x126\n" +
 	"\asection\x18\x03 \x01(\tB\x1c\x92A\x19J\x17\"Arnold to Bear Valley\"R\asection\x12#\n" +
-	"\x06status\x18\x04 \x01(\tB\v\x92A\bJ\x06\"OPEN\"R\x06status\x12,\n" +
-	"\n" +
-	"congestion\x18\x05 \x01(\tB\f\x92A\tJ\a\"CLEAR\"R\n" +
-	"congestion\x122\n" +
-	"\x06beyond\x18\x06 \x03(\v2\x1a.grid.v1.RoadSegmentBeyondR\x06beyond\"w\n" +
+	"\x06status\x18\x04 \x01(\tB\v\x92A\bJ\x06\"OPEN\"R\x06status\x122\n" +
+	"\x06beyond\x18\x06 \x03(\v2\x1a.grid.v1.RoadSegmentBeyondR\x06beyondJ\x04\b\x05\x10\x06R\n" +
+	"congestion\"w\n" +
 	"\x11RoadSegmentBeyond\x126\n" +
 	"\x04name\x18\x01 \x01(\tB\"\x92A\x1fJ\x1d\"Ebbetts Pass winter closure\"R\x04name\x12\x12\n" +
 	"\x04side\x18\x02 \x01(\tR\x04side\x12\x16\n" +

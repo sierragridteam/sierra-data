@@ -138,13 +138,15 @@ With `grid.roadSegments.record` (off as shipped) each monitored road is one
 long-lived event: layer `ROAD_SEGMENT`, source `roads`, id `road:{road id}`
 (the id of its feature on the `road_segment` map layer).
 
-- `roadSegment` carries `roadId`, `name`, `section`, `status`, `congestion`
-  and `beyond` (named seasonal closures in effect past the segment's end,
-  such as the Ebbetts Pass winter closure).
-- A revision is a change of one of those: the road closed, reopened, traffic
-  went from clear to heavy, the winter closure took effect. A refresh with a
-  new travel time writes nothing. A refresh with no travel time keeps the
-  last congestion level.
+- `roadSegment` carries `roadId`, `name`, `section`, `status` and `beyond`
+  (named seasonal closures in effect past the segment's end, such as the
+  Ebbetts Pass winter closure).
+- A revision is a change of status or of those closures: the road closed,
+  reopened, the winter closure took effect. Travel time, delay and congestion
+  level are samples and never revise the event.
+- A change that eases the road (reopened, a closure lifted) is recorded once
+  a second refresh, about 15 minutes later, agrees. A closure or restriction
+  is recorded at once. `observedAt` is the refresh the state was read at.
 - The event is always `ACTIVE`; closed is its state, in `roadSegment.status`
   and `category`, with `severity` as on the map layer.
 - No geometry. The shape is the map layer's. The event is attached to its own

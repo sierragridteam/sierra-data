@@ -13,10 +13,14 @@ import (
 	api "github.com/sierragridteam/sierra-data/api/v1"
 	"github.com/sierragridteam/sierra-data/internal/config"
 	"github.com/sierragridteam/sierra-data/internal/store"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// fakeRoadLister is the roads service's current set. at is the refresh it
+// came from (zero: now).
 type fakeRoadLister struct {
 	roads []*api.Road
+	at    time.Time
 	err   error
 }
 
@@ -24,7 +28,11 @@ func (f *fakeRoadLister) ListRoads(context.Context, *api.ListRoadsRequest) (*api
 	if f.err != nil {
 		return nil, f.err
 	}
-	return &api.ListRoadsResponse{Roads: f.roads}, nil
+	at := f.at
+	if at.IsZero() {
+		at = time.Now()
+	}
+	return &api.ListRoadsResponse{Roads: f.roads, LastUpdated: timestamppb.New(at)}, nil
 }
 
 func roadSegmentConfig() *config.Config {
@@ -44,16 +52,19 @@ func road(id string, status api.RoadStatus, congestion api.CongestionLevel, minu
 }
 
 func TestRoadSegmentNormalizer_Event(t *testing.T) {
-	lister := &fakeRoadLister{roads: []*api.Road{
+	refreshed := time.Now().Add(-4 * time.Minute).Truncate(time.Second).UTC()
+	lister := &fakeRoadLister{at: refreshed, roads: []*api.Road{
 		road("hwy4-arnold-bearvalley", api.RoadStatus_OPEN, api.CongestionLevel_CLEAR, 38),
 		road("hwy49-angels-sonora", api.RoadStatus_CLOSED, api.CongestionLevel_CLEAR, 25),
 	}}
 	lister.roads[0].Beyond = []*api.RoadBeyond{{Status: api.RoadStatus_CLOSED, Side: "END", Name: "Ebbetts Pass winter closure", Description: "text that varies"}}
 	n := NewRoadSegmentNormalizer(roadSegmentConfig(), lister, func(_ context.Context, lat, _ float64) ([]string, error) {
+		// Each end is in a county, in a town, and within another road's
+		// corridor buffer (roads meet in towns).
 		if lat > 38.4 {
-			return []string{"county:alpine-county"}, nil
+			return []string{"county:alpine-county", "corridor:hwy4-arnold-bearvalley"}, nil
 		}
-		return []string{"county:calaveras-county"}, nil
+		return []string{"county:calaveras-county", "town:arnold", "corridor:hwy4-murphys-arnold", "corridor:hwy4-arnold-bearvalley"}, nil
 	})
 	res, err := n.Poll(testCtx(), &fakePrior{})
 	require.NoError(t, err)
@@ -68,10 +79,11 @@ func TestRoadSegmentNormalizer_Event(t *testing.T) {
 	assert.Equal(t, "open", hwy4.GetCategory())
 	assert.Equal(t, "Hwy 4 Arnold to Bear Valley: open; Ebbetts Pass winter closure in effect", hwy4.GetHeadline())
 	assert.Nil(t, hwy4.GetGeometry(), "no geometry: a chord between the ends is not the road")
-	assert.Equal(t, []string{"corridor:hwy4-arnold-bearvalley", "county:alpine-county", "county:calaveras-county"}, hwy4.GetPlaceIds())
+	assert.Equal(t, refreshed, hwy4.GetObservedAt().AsTime(), "observed at the refresh, not at this poll")
+	assert.Equal(t, []string{"corridor:hwy4-arnold-bearvalley", "county:alpine-county", "county:calaveras-county", "town:arnold"}, hwy4.GetPlaceIds(),
+		"its own corridor, never a neighbour's")
 	d := hwy4.GetRoadSegment()
 	assert.Equal(t, "OPEN", d.GetStatus())
-	assert.Equal(t, "CLEAR", d.GetCongestion())
 	require.Len(t, d.GetBeyond(), 1)
 	assert.Equal(t, "Ebbetts Pass winter closure", d.GetBeyond()[0].GetName())
 	assert.Equal(t, "CLOSED", d.GetBeyond()[0].GetStatus())
@@ -80,37 +92,114 @@ func TestRoadSegmentNormalizer_Event(t *testing.T) {
 	assert.Equal(t, gridv1.Severity_SEVERE, closed.GetSeverity())
 	assert.Equal(t, "Hwy 49 Angels Camp to Sonora: closed", closed.GetHeadline())
 
-	// A new travel time and a reworded explanation are not a change of state.
+	// Travel time, congestion and a reworded explanation are samples and
+	// prose, not state: traffic going from clear to heavy writes nothing.
 	lister.roads[0].DurationMinutes, lister.roads[0].DelayMinutes = 55, 17
+	lister.roads[0].CongestionLevel = api.CongestionLevel_HEAVY
 	lister.roads[0].StatusExplanation = "reworded"
 	again, err := n.Poll(testCtx(), &fakePrior{})
 	require.NoError(t, err)
 	assert.Equal(t, store.ContentHash(hwy4), store.ContentHash(again.Events[0]))
+	assert.Equal(t, gridv1.Severity_INFO, again.Events[0].GetSeverity())
 
-	// A closure is.
+	// A closure is, at once.
 	lister.roads[0].Status = api.RoadStatus_CLOSED
-	changed, err := n.Poll(testCtx(), &fakePrior{})
+	changed, err := n.Poll(testCtx(), &scriptedPrior{events: res.Events})
 	require.NoError(t, err)
-	assert.NotEqual(t, store.ContentHash(hwy4), store.ContentHash(changed.Events[0]))
+	assert.Equal(t, "CLOSED", changed.Events[0].GetRoadSegment().GetStatus())
 }
 
-// A refresh with no travel time (Google Routes down) leaves the congestion
-// level unspecified. That is a gap in the samples: the event keeps its last
-// known level instead of writing a change and another when it comes back.
-func TestRoadSegmentNormalizer_KeepsCongestionAcrossAGap(t *testing.T) {
+// A change that eases a road waits for a second refresh. The roads service
+// reads a failed upstream fetch as "nothing reported", which is OPEN with no
+// seasonal closure: one refresh of good news after bad is what that looks
+// like, and written down it is a reopening that never happened.
+func TestRoadSegmentNormalizer_EasingWaitsForASecondRefresh(t *testing.T) {
 	cfg := roadSegmentConfig()
 	cfg.Roads.MonitoredRoads = cfg.Roads.MonitoredRoads[:1]
-	lister := &fakeRoadLister{roads: []*api.Road{road("hwy4-arnold-bearvalley", api.RoadStatus_OPEN, api.CongestionLevel_HEAVY, 70)}}
+	t0 := time.Now().Add(-40 * time.Minute).Truncate(time.Second)
+	winter := []*api.RoadBeyond{{Status: api.RoadStatus_CLOSED, Side: "END", Name: "Ebbetts Pass winter closure"}}
+	closedRoad := func() *api.Road {
+		r := road("hwy4-arnold-bearvalley", api.RoadStatus_CLOSED, api.CongestionLevel_CLEAR, 0)
+		r.Beyond = winter
+		return r
+	}
+	lister := &fakeRoadLister{at: t0, roads: []*api.Road{closedRoad()}}
 	n := NewRoadSegmentNormalizer(cfg, lister, nil)
 	first, err := n.Poll(testCtx(), &fakePrior{})
 	require.NoError(t, err)
-	require.Equal(t, gridv1.Severity_MODERATE, first.Events[0].GetSeverity())
+	prior := &scriptedPrior{events: first.Events}
+	state := func(res *PollResult) (string, int) {
+		d := res.Events[0].GetRoadSegment()
+		return d.GetStatus(), len(d.GetBeyond())
+	}
 
-	lister.roads[0].CongestionLevel, lister.roads[0].DurationMinutes = api.CongestionLevel_CONGESTION_LEVEL_UNSPECIFIED, 0
-	gap, err := n.Poll(testCtx(), &scriptedPrior{events: first.Events})
+	// One refresh says open, no winter closure (a failed conditions fetch).
+	lister.at, lister.roads = t0.Add(15*time.Minute), []*api.Road{road("hwy4-arnold-bearvalley", api.RoadStatus_OPEN, api.CongestionLevel_CLEAR, 30)}
+	res, err := n.Poll(testCtx(), prior)
 	require.NoError(t, err)
-	assert.Equal(t, "HEAVY", gap.Events[0].GetRoadSegment().GetCongestion())
-	assert.Equal(t, store.ContentHash(first.Events[0]), store.ContentHash(gap.Events[0]))
+	status, beyond := state(res)
+	assert.Equal(t, "CLOSED", status, "held")
+	assert.Equal(t, 1, beyond)
+	assert.Equal(t, store.ContentHash(first.Events[0]), store.ContentHash(res.Events[0]))
+	// The same refresh offered again (the poller ticks faster than the roads
+	// refresh) is not a second opinion.
+	res, err = n.Poll(testCtx(), prior)
+	require.NoError(t, err)
+	status, _ = state(res)
+	assert.Equal(t, "CLOSED", status)
+
+	// The next refresh is back to closed: nothing was ever written.
+	lister.at, lister.roads = t0.Add(30*time.Minute), []*api.Road{closedRoad()}
+	res, err = n.Poll(testCtx(), prior)
+	require.NoError(t, err)
+	assert.Equal(t, store.ContentHash(first.Events[0]), store.ContentHash(res.Events[0]))
+
+	// A real reopening: two refreshes agree, and the second records it.
+	open := road("hwy4-arnold-bearvalley", api.RoadStatus_OPEN, api.CongestionLevel_CLEAR, 30)
+	open.Beyond = winter
+	lister.at, lister.roads = t0.Add(45*time.Minute), []*api.Road{open}
+	res, err = n.Poll(testCtx(), prior)
+	require.NoError(t, err)
+	status, _ = state(res)
+	assert.Equal(t, "CLOSED", status, "first sight")
+	lister.at = t0.Add(60 * time.Minute)
+	res, err = n.Poll(testCtx(), prior)
+	require.NoError(t, err)
+	status, beyond = state(res)
+	assert.Equal(t, "OPEN", status, "confirmed")
+	assert.Equal(t, 1, beyond)
+
+	// Restricting is never held, even when something else eases with it.
+	prior = &scriptedPrior{events: res.Events}
+	lister.at, lister.roads = t0.Add(75*time.Minute), []*api.Road{road("hwy4-arnold-bearvalley", api.RoadStatus_CLOSED, api.CongestionLevel_CLEAR, 0)}
+	res, err = n.Poll(testCtx(), prior)
+	require.NoError(t, err)
+	status, beyond = state(res)
+	assert.Equal(t, "CLOSED", status, "closed at once")
+	assert.Equal(t, 0, beyond)
+}
+
+// The roads service goes on serving its last set while its refresh fails. A
+// set older than twice the refresh interval is not a reading of the roads
+// now: the events keep their state and the source says why.
+func TestRoadSegmentNormalizer_StaleSetIsNotAReading(t *testing.T) {
+	cfg := roadSegmentConfig()
+	cfg.Roads.MonitoredRoads = cfg.Roads.MonitoredRoads[:1]
+	cfg.Roads.RefreshInterval = 15 * time.Minute
+	lister := &fakeRoadLister{roads: []*api.Road{road("hwy4-arnold-bearvalley", api.RoadStatus_OPEN, api.CongestionLevel_CLEAR, 38)}}
+	n := NewRoadSegmentNormalizer(cfg, lister, nil)
+	first, err := n.Poll(testCtx(), &fakePrior{})
+	require.NoError(t, err)
+	require.Empty(t, first.PerSource)
+
+	lister.at = time.Now().Add(-80 * time.Minute)
+	lister.roads[0].Status = api.RoadStatus_CLOSED
+	res, err := n.Poll(testCtx(), &scriptedPrior{events: first.Events})
+	require.NoError(t, err)
+	require.Error(t, res.PerSource[RoadSegmentSourceID])
+	assert.Contains(t, res.PerSource[RoadSegmentSourceID].Error(), "last refreshed")
+	require.Len(t, res.Events, 1, "still listed, so nothing is swept either way")
+	assert.Equal(t, "OPEN", res.Events[0].GetRoadSegment().GetStatus(), "an old set changes nothing")
 }
 
 func TestRoadSegmentNormalizer_FailLoud(t *testing.T) {
@@ -155,9 +244,14 @@ func TestRoadSegmentLifecycle(t *testing.T) {
 	sched.tick(ctx, spec, ps)
 	assert.Equal(t, uint32(1), eventRevision(t, st, id))
 
-	lister.roads[0].Status = api.RoadStatus_CLOSED
+	t0 := time.Now().Add(-40 * time.Minute)
+	lister.at, lister.roads[0].Status = t0, api.RoadStatus_CLOSED
 	sched.tick(ctx, spec, ps)
-	lister.roads[0].Status = api.RoadStatus_OPEN
+	// Reopening takes two refreshes that agree.
+	lister.at, lister.roads[0].Status = t0.Add(15*time.Minute), api.RoadStatus_OPEN
+	sched.tick(ctx, spec, ps)
+	assert.Equal(t, uint32(2), eventRevision(t, st, id), "one refresh saying open is not yet a reopening")
+	lister.at = t0.Add(30 * time.Minute)
 	sched.tick(ctx, spec, ps)
 
 	revs, _, err := st.EventHistory(ctx, id, 10, "")

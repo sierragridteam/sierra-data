@@ -66,7 +66,7 @@ func TestGetEventSamples(t *testing.T) {
 		Id: "road:" + road, Layer: gridv1.Layer_ROAD_SEGMENT, Category: "open",
 		Severity: gridv1.Severity_INFO, Status: gridv1.EventStatus_ACTIVE, Headline: "Hwy 4: open",
 		Provenance: &gridv1.Provenance{SourceId: "roads", SourceName: "Road conditions", FetchedAt: timestamppb.New(base)},
-		Detail:     &gridv1.Event_RoadSegment{RoadSegment: &gridv1.RoadSegmentDetail{RoadId: road, Name: "Hwy 4", Status: "OPEN", Congestion: "CLEAR"}},
+		Detail:     &gridv1.Event_RoadSegment{RoadSegment: &gridv1.RoadSegmentDetail{RoadId: road, Name: "Hwy 4", Status: "OPEN"}},
 	})
 	g := NewGridServer(s)
 

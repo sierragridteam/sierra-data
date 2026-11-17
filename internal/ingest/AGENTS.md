@@ -907,21 +907,31 @@ holds the state, a table holds the series.** The road sampler
 (`runRoadSampling`) still writes `road_samples` every refresh, and
 `GET /api/v1/events/{id}/samples` serves them through the event.
 
-- **Hashed: status, congestion level, the seasonal closures past its ends.**
-  Travel time and delay are samples and never on the event.
+- **Hashed: status and the seasonal closures past its ends.** Travel time,
+  delay and congestion level are samples and never on the event. Congestion
+  was on it at first; in a week of production samples 11 of Hwy 49's 14
+  changes were traffic crossing the clear/light line, burying two closures.
 - **Deterministic only.** The roads service's `status_explanation` is
   model-written and reworded between refreshes; on the event it would mint a
   revision each time.
-- **A refresh without a travel time is a gap, not a change**: the congestion
-  level is carried from `Prior`, for the severity too.
-- **No geometry**; places are preset (the road's corridor, the places at
-  either end).
+- **Easing waits for a second refresh.** The roads service does not say when
+  its inputs failed: a failed CHP or road-conditions fetch reads as "nothing
+  reported", which is OPEN and no seasonal closure. So a change that only
+  eases (a lower status, a closure gone) is recorded when a second refresh
+  agrees (`pending`, poller-local); a change that restricts anything is
+  recorded at once. Production samples had a restricted Hwy 49 reading open
+  for exactly one refresh on 2026-11-12. The proper fix is the roads service
+  reporting its inputs' health; until then this is the guard.
+- **A stale set is not a reading.** `ListRoads` serves its last set while
+  its refresh fails. Older than twice `roads.refreshInterval`, the events
+  keep their state and `roads` is a `PerSource` failure. `observed_at` is
+  the set's refresh time.
+- **No geometry**; places are preset: the road's own corridor, and the
+  areas, counties and towns at either end. Never another road's corridor:
+  roads meet in towns, and the corridor buffer reaches across.
 - **Fail-loud.** The roads service failing is a hard error; a monitored road
-  it has no status for is a `PerSource` error; no monitored roads is
-  `errEmptyScope`.
-- Congestion can sit on a band edge and flap. If a road's history fills with
-  CLEAR/LIGHT pairs, add a hold (the mesh reachability shape), do not drop
-  the field.
+  it has no status for is a `PerSource` error and keeps its stored event; no
+  monitored roads is `errEmptyScope`.
 
 ## Weather-alert headline: deterministic, never AI
 

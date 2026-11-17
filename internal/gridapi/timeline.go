@@ -369,7 +369,6 @@ func revisionChanges(a, b *gridv1.Event) []*gridv1.TimelineEntry {
 	case gridv1.Layer_ROAD_SEGMENT:
 		ra, rb := a.GetRoadSegment(), b.GetRoadSegment()
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "roadStatus", roadStatusLabel(ra.GetStatus(), rb.GetStatus()), enumWord(ra.GetStatus()), enumWord(rb.GetStatus()))
-		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "congestion", "Traffic "+strings.ToLower(nonEmptyOr(rb.GetCongestion(), "unknown")), enumWord(ra.GetCongestion()), enumWord(rb.GetCongestion()))
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "beyond", nonEmptyOr(beyondNames(rb), "Seasonal closure lifted"), beyondNames(ra), beyondNames(rb))
 	case gridv1.Layer_CHAIN_CONTROL:
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "extent", "Now "+chainExtent(b.GetChainControl()), chainExtent(a.GetChainControl()), chainExtent(b.GetChainControl()))
