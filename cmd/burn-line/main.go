@@ -21,8 +21,8 @@
 //	burn-line -endpoint https://data.sierragridteam.org/api/v1/ingest/burn.line
 //	burn-line -line calaveras-apcd      # just one line
 //	burn-line -dry-run                  # call and extract, print, do not push
-//	burn-line -not-before 06:30 ...     # scheduled mode: skip lines already
-//	                                    # read this morning; before 06:30
+//	burn-line -not-before 06:00 ...     # scheduled mode: skip lines already
+//	                                    # read this morning; before 06:00
 //	                                    # Pacific, dial nothing
 //
 // Credentials come from the environment:
