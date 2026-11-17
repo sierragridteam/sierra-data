@@ -230,6 +230,8 @@ func calfireText(c gridv1.CalfireBurnStatus) string {
 		return "permit required"
 	case gridv1.CalfireBurnStatus_CALFIRE_NO_PERMIT_REQUIRED:
 		return "no permit required"
+	case gridv1.CalfireBurnStatus_CALFIRE_BURNING_ALLOWED:
+		return "burning allowed"
 	}
 	return ""
 }
