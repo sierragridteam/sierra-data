@@ -516,9 +516,9 @@ survives as a legacy alias):
   429 everything after the first). A phone call costs
   money and must happen once a day; a scheduled workflow has those semantics, a
   restarting server does not. The cron fires **hourly** because GitHub runs
-  schedules 3–8h late; `-not-before=06:30` makes each run dial only lines with
-  no reading since 6:30am Pacific (checked against the public API), so the first
-  run after 6:30 reads the day and the rest no-op. A failing line (usually
+  schedules 3–8h late; `-not-before=06:00` makes each run dial only lines with
+  no reading since 6am Pacific (checked against the public API), so the first
+  run after 6:00 reads the day and the rest no-op. A failing line (usually
   "busy") is retried in-run, then by the next hourly run. **In practice GitHub
   started only ~2 of the ~15 hourly runs a day** (2026-11-01..03), so the morning
   read lands ~9–11am Pacific, not 7. The dependable fix is an external cron

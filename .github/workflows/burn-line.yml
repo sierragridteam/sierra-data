@@ -29,11 +29,11 @@ on:
     # "23 14" (7:23am PDT) at 17:20-22:10 UTC every day of 2026-10-12..29 —
     # 3 to 8 hours late, i.e. after noon, so the day's reading showed as
     # yesterday's for half the day. The tool's -not-before makes the extra runs
-    # free: before 06:30 Pacific it dials nothing, and after it, it dials only
-    # the lines with no reading since 06:30 today (it asks the public API), so
-    # whichever run lands first after 06:30 reads the day and the rest no-op.
+    # free: before 06:00 Pacific it dials nothing, and after it, it dials only
+    # the lines with no reading since 06:00 today (it asks the public API), so
+    # whichever run lands first after 06:00 reads the day and the rest no-op.
     # The window starts at 2am PT so a run delayed by a few hours still lands
-    # near 6:30am. Off the hour because GitHub delays :00 schedules the most.
+    # near 6am. Off the hour because GitHub delays :00 schedules the most.
     - cron: "23 9-23 * * *"
   workflow_dispatch:
     inputs:
@@ -43,6 +43,10 @@ on:
         default: false
       line:
         description: "Dial only this line id (default: every enabled line)"
+        type: string
+        required: false
+      not_before:
+        description: "Pacific HH:MM. Dial nothing before it and skip lines already read since it today (what an external scheduler passes; empty always dials)"
         type: string
         required: false
 
@@ -85,8 +89,10 @@ jobs:
       # stop the others — and it exits non-zero if ANY failed after its retries,
       # so a single bad line is visible without losing the good ones.
       #
-      # Only scheduled runs pass -not-before. A manual run always dials, so it
-      # stays the way to force a fresh read.
+      # Scheduled runs pass -not-before=06:00. A manual run always dials, so it
+      # stays the way to force a fresh read, unless it is given not_before:
+      # that is how a scheduler outside GitHub starts the morning read on time
+      # and may fire more than once without paying for a second call.
       - name: Read burn lines and push
         env:
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
@@ -100,4 +106,4 @@ jobs:
             -endpoint="${{ vars.GRID_INGEST_ENDPOINT }}" \
             ${{ inputs.line && format('-line={0}', inputs.line) || '' }} \
             ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '-dry-run' || '' }} \
-            ${{ github.event_name == 'schedule' && '-not-before=06:30' || '' }}
+            ${{ github.event_name == 'schedule' && '-not-before=06:00' || (inputs.not_before && format('-not-before={0}', inputs.not_before) || '') }}
