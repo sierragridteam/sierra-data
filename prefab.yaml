@@ -464,7 +464,7 @@ grid:
   # chain_control map layer), resolved when Caltrans lifts it. Off, chain
   # controls are a live map layer only and a storm leaves no record.
   chainControl:
-    record: false
+    record: true
 
   # Monitored roads as events: one ROAD_SEGMENT event per roads.monitoredRoads
   # entry (`road:<id>`), revised when it closes, reopens or its congestion
