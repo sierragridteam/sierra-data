@@ -737,6 +737,68 @@ func (BurnPermission) EnumDescriptor() ([]byte, []int) {
 	return file_grid_proto_rawDescGZIP(), []int{9}
 }
 
+// EventNature says what kind of thing an event is. It follows from the layer.
+type EventNature int32
+
+const (
+	// Never returned.
+	EventNature_EVENT_NATURE_UNSPECIFIED EventNature = 0
+	// Something that begins and ends: a wildfire, an evacuation, a weather
+	// alert, an earthquake, a road incident or closure window, a power outage,
+	// a chain requirement. `status` is its lifecycle: ACTIVE or SCHEDULED
+	// while it is on, RESOLVED or EXPIRED when it is over.
+	EventNature_OCCURRENCE EventNature = 1
+	// The standing state of something the Grid keeps track of: a mesh node, a
+	// county's burn status, an upstream feed's health, a monitored road. The
+	// event lasts as long as the thing does and is ACTIVE throughout; what is
+	// going on is in its detail (a road that is CLOSED is an ACTIVE event whose
+	// `roadSegment.status` is CLOSED), and its revisions are when that
+	// changed. Not something happening: leave these out of counts of events,
+	// and expect `severity` INFO for most of them.
+	EventNature_STATE EventNature = 2
+)
+
+// Enum value maps for EventNature.
+var (
+	EventNature_name = map[int32]string{
+		0: "EVENT_NATURE_UNSPECIFIED",
+		1: "OCCURRENCE",
+		2: "STATE",
+	}
+	EventNature_value = map[string]int32{
+		"EVENT_NATURE_UNSPECIFIED": 0,
+		"OCCURRENCE":               1,
+		"STATE":                    2,
+	}
+)
+
+func (x EventNature) Enum() *EventNature {
+	p := new(EventNature)
+	*p = x
+	return p
+}
+
+func (x EventNature) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (EventNature) Descriptor() protoreflect.EnumDescriptor {
+	return file_grid_proto_enumTypes[10].Descriptor()
+}
+
+func (EventNature) Type() protoreflect.EnumType {
+	return &file_grid_proto_enumTypes[10]
+}
+
+func (x EventNature) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use EventNature.Descriptor instead.
+func (EventNature) EnumDescriptor() ([]byte, []int) {
+	return file_grid_proto_rawDescGZIP(), []int{10}
+}
+
 // RevisionKind says why a revision was written.
 type RevisionKind int32
 
@@ -777,11 +839,11 @@ func (x RevisionKind) String() string {
 }
 
 func (RevisionKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_grid_proto_enumTypes[10].Descriptor()
+	return file_grid_proto_enumTypes[11].Descriptor()
 }
 
 func (RevisionKind) Type() protoreflect.EnumType {
-	return &file_grid_proto_enumTypes[10]
+	return &file_grid_proto_enumTypes[11]
 }
 
 func (x RevisionKind) Number() protoreflect.EnumNumber {
@@ -790,7 +852,7 @@ func (x RevisionKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use RevisionKind.Descriptor instead.
 func (RevisionKind) EnumDescriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{10}
+	return file_grid_proto_rawDescGZIP(), []int{11}
 }
 
 // RelationConfidence is how strongly a relation is supported.
@@ -842,11 +904,11 @@ func (x RelationConfidence) String() string {
 }
 
 func (RelationConfidence) Descriptor() protoreflect.EnumDescriptor {
-	return file_grid_proto_enumTypes[11].Descriptor()
+	return file_grid_proto_enumTypes[12].Descriptor()
 }
 
 func (RelationConfidence) Type() protoreflect.EnumType {
-	return &file_grid_proto_enumTypes[11]
+	return &file_grid_proto_enumTypes[12]
 }
 
 func (x RelationConfidence) Number() protoreflect.EnumNumber {
@@ -855,7 +917,7 @@ func (x RelationConfidence) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use RelationConfidence.Descriptor instead.
 func (RelationConfidence) EnumDescriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{11}
+	return file_grid_proto_rawDescGZIP(), []int{12}
 }
 
 // TimelineClock says whose time an entry is.
@@ -894,11 +956,11 @@ func (x TimelineClock) String() string {
 }
 
 func (TimelineClock) Descriptor() protoreflect.EnumDescriptor {
-	return file_grid_proto_enumTypes[12].Descriptor()
+	return file_grid_proto_enumTypes[13].Descriptor()
 }
 
 func (TimelineClock) Type() protoreflect.EnumType {
-	return &file_grid_proto_enumTypes[12]
+	return &file_grid_proto_enumTypes[13]
 }
 
 func (x TimelineClock) Number() protoreflect.EnumNumber {
@@ -907,7 +969,7 @@ func (x TimelineClock) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use TimelineClock.Descriptor instead.
 func (TimelineClock) EnumDescriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{12}
+	return file_grid_proto_rawDescGZIP(), []int{13}
 }
 
 // TimelineKind is what an entry marks.
@@ -1006,11 +1068,11 @@ func (x TimelineKind) String() string {
 }
 
 func (TimelineKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_grid_proto_enumTypes[13].Descriptor()
+	return file_grid_proto_enumTypes[14].Descriptor()
 }
 
 func (TimelineKind) Type() protoreflect.EnumType {
-	return &file_grid_proto_enumTypes[13]
+	return &file_grid_proto_enumTypes[14]
 }
 
 func (x TimelineKind) Number() protoreflect.EnumNumber {
@@ -1019,7 +1081,7 @@ func (x TimelineKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use TimelineKind.Descriptor instead.
 func (TimelineKind) EnumDescriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{13}
+	return file_grid_proto_rawDescGZIP(), []int{14}
 }
 
 // SearchKind is what a finder hit is.
@@ -1074,11 +1136,11 @@ func (x SearchKind) String() string {
 }
 
 func (SearchKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_grid_proto_enumTypes[14].Descriptor()
+	return file_grid_proto_enumTypes[15].Descriptor()
 }
 
 func (SearchKind) Type() protoreflect.EnumType {
-	return &file_grid_proto_enumTypes[14]
+	return &file_grid_proto_enumTypes[15]
 }
 
 func (x SearchKind) Number() protoreflect.EnumNumber {
@@ -1087,7 +1149,7 @@ func (x SearchKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SearchKind.Descriptor instead.
 func (SearchKind) EnumDescriptor() ([]byte, []int) {
-	return file_grid_proto_rawDescGZIP(), []int{14}
+	return file_grid_proto_rawDescGZIP(), []int{15}
 }
 
 // Event is one item from one upstream source: a hazard, or a piece of ambient
@@ -1206,7 +1268,17 @@ type Event struct {
 	//	*Event_SourceHealth
 	//	*Event_ChainControl
 	//	*Event_RoadSegment
-	Detail        isEvent_Detail `protobuf_oneof:"detail"`
+	Detail isEvent_Detail `protobuf_oneof:"detail"`
+	// What kind of thing this event is, which follows from its `layer`:
+	// something that happens (OCCURRENCE) or the standing state of something
+	// the Grid tracks (STATE). Read this instead of keeping a list of layers:
+	// a count of "events happening" is a count of OCCURRENCE events, and a
+	// layer added later says which it is. Set on every event the API returns.
+	//
+	// (-- Derived from the layer when a response is written
+	// (gridapi.NatureInterceptor), never stored: zeroed in store.ContentHash
+	// so an event carried back into the store cannot differ by it. --)
+	Nature        EventNature `protobuf:"varint,36,opt,name=nature,proto3,enum=grid.v1.EventNature" json:"nature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1494,6 +1566,13 @@ func (x *Event) GetRoadSegment() *RoadSegmentDetail {
 		}
 	}
 	return nil
+}
+
+func (x *Event) GetNature() EventNature {
+	if x != nil {
+		return x.Nature
+	}
+	return EventNature_EVENT_NATURE_UNSPECIFIED
 }
 
 type isEvent_Detail interface {
@@ -9947,7 +10026,7 @@ var File_grid_proto protoreflect.FileDescriptor
 const file_grid_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"grid.proto\x12\agrid.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\x1a.protoc-gen-openapiv2/options/annotations.proto\"\xeb\x0e\n" +
+	"grid.proto\x12\agrid.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\x1a.protoc-gen-openapiv2/options/annotations.proto\"\xac\x0f\n" +
 	"\x05Event\x12'\n" +
 	"\x02id\x18\x01 \x01(\tB\x17\x92A\x14J\x12\"chp:261106ST0341\"R\x02id\x12:\n" +
 	"\x05layer\x18\x02 \x01(\x0e2\x0e.grid.v1.LayerB\x14\x92A\x11J\x0f\"ROAD_INCIDENT\"R\x05layer\x12+\n" +
@@ -9993,7 +10072,8 @@ const file_grid_proto_rawDesc = "" +
 	"burnStatus\x12B\n" +
 	"\rsource_health\x18! \x01(\v2\x1b.grid.v1.SourceHealthDetailH\x00R\fsourceHealth\x12B\n" +
 	"\rchain_control\x18\" \x01(\v2\x1b.grid.v1.ChainControlDetailH\x00R\fchainControl\x12?\n" +
-	"\froad_segment\x18# \x01(\v2\x1a.grid.v1.RoadSegmentDetailH\x00R\vroadSegmentB\b\n" +
+	"\froad_segment\x18# \x01(\v2\x1a.grid.v1.RoadSegmentDetailH\x00R\vroadSegment\x12?\n" +
+	"\x06nature\x18$ \x01(\x0e2\x14.grid.v1.EventNatureB\x11\x92A\x0eJ\f\"OCCURRENCE\"R\x06natureB\b\n" +
 	"\x06detailJ\x04\b\x1c\x10\x1f\"\x99\x02\n" +
 	"\bGeometry\x12i\n" +
 	"\ageojson\x18\x01 \x01(\fBO\x92ALJJ\"eyJ0eXBlIjoiUG9pbnQiLCJjb29yZGluYXRlcyI6Wy0xMjAuMzYxMDgsMzguMjQyMzldfQ==\"R\ageojson\x12.\n" +
@@ -10776,6 +10856,11 @@ const file_grid_proto_rawDesc = "" +
 	"\x17BURN_PERMISSION_UNKNOWN\x10\x00\x12\x1b\n" +
 	"\x17BURN_PERMISSION_ALLOWED\x10\x01\x12\x1e\n" +
 	"\x1aBURN_PERMISSION_PROHIBITED\x10\x02*F\n" +
+	"\vEventNature\x12\x1c\n" +
+	"\x18EVENT_NATURE_UNSPECIFIED\x10\x00\x12\x0e\n" +
+	"\n" +
+	"OCCURRENCE\x10\x01\x12\t\n" +
+	"\x05STATE\x10\x02*F\n" +
 	"\fRevisionKind\x12\x1d\n" +
 	"\x19REVISION_KIND_UNSPECIFIED\x10\x00\x12\n" +
 	"\n" +
@@ -11025,7 +11110,7 @@ func file_grid_proto_rawDescGZIP() []byte {
 	return file_grid_proto_rawDescData
 }
 
-var file_grid_proto_enumTypes = make([]protoimpl.EnumInfo, 15)
+var file_grid_proto_enumTypes = make([]protoimpl.EnumInfo, 16)
 var file_grid_proto_msgTypes = make([]protoimpl.MessageInfo, 96)
 var file_grid_proto_goTypes = []any{
 	(Layer)(0),                       // 0: grid.v1.Layer
@@ -11038,352 +11123,354 @@ var file_grid_proto_goTypes = []any{
 	(BurnDay)(0),                     // 7: grid.v1.BurnDay
 	(CalfireBurnStatus)(0),           // 8: grid.v1.CalfireBurnStatus
 	(BurnPermission)(0),              // 9: grid.v1.BurnPermission
-	(RevisionKind)(0),                // 10: grid.v1.RevisionKind
-	(RelationConfidence)(0),          // 11: grid.v1.RelationConfidence
-	(TimelineClock)(0),               // 12: grid.v1.TimelineClock
-	(TimelineKind)(0),                // 13: grid.v1.TimelineKind
-	(SearchKind)(0),                  // 14: grid.v1.SearchKind
-	(*Event)(nil),                    // 15: grid.v1.Event
-	(*Geometry)(nil),                 // 16: grid.v1.Geometry
-	(*BoundingBox)(nil),              // 17: grid.v1.BoundingBox
-	(*LatLng)(nil),                   // 18: grid.v1.LatLng
-	(*Provenance)(nil),               // 19: grid.v1.Provenance
-	(*Enhancement)(nil),              // 20: grid.v1.Enhancement
-	(*Source)(nil),                   // 21: grid.v1.Source
-	(*Place)(nil),                    // 22: grid.v1.Place
-	(*WildfireDetail)(nil),           // 23: grid.v1.WildfireDetail
-	(*EvacuationDetail)(nil),         // 24: grid.v1.EvacuationDetail
-	(*WeatherAlertDetail)(nil),       // 25: grid.v1.WeatherAlertDetail
-	(*FireWeatherDetail)(nil),        // 26: grid.v1.FireWeatherDetail
-	(*EarthquakeDetail)(nil),         // 27: grid.v1.EarthquakeDetail
-	(*RoadIncidentDetail)(nil),       // 28: grid.v1.RoadIncidentDetail
-	(*IncidentLogEntry)(nil),         // 29: grid.v1.IncidentLogEntry
-	(*LaneClosureDetail)(nil),        // 30: grid.v1.LaneClosureDetail
-	(*MeshDetail)(nil),               // 31: grid.v1.MeshDetail
-	(*MeshTelemetry)(nil),            // 32: grid.v1.MeshTelemetry
-	(*MeshAdminTelemetry)(nil),       // 33: grid.v1.MeshAdminTelemetry
-	(*PowerDetail)(nil),              // 34: grid.v1.PowerDetail
-	(*BurnStatusDetail)(nil),         // 35: grid.v1.BurnStatusDetail
-	(*RoadSegmentDetail)(nil),        // 36: grid.v1.RoadSegmentDetail
-	(*RoadSegmentBeyond)(nil),        // 37: grid.v1.RoadSegmentBeyond
-	(*ChainControlDetail)(nil),       // 38: grid.v1.ChainControlDetail
-	(*ChainControlPlace)(nil),        // 39: grid.v1.ChainControlPlace
-	(*ChainControlSign)(nil),         // 40: grid.v1.ChainControlSign
-	(*SourceHealthDetail)(nil),       // 41: grid.v1.SourceHealthDetail
-	(*BurnLineReading)(nil),          // 42: grid.v1.BurnLineReading
-	(*BurnObservation)(nil),          // 43: grid.v1.BurnObservation
-	(*EventList)(nil),                // 44: grid.v1.EventList
-	(*EventCount)(nil),               // 45: grid.v1.EventCount
-	(*SearchMatch)(nil),              // 46: grid.v1.SearchMatch
-	(*SearchMatchPart)(nil),          // 47: grid.v1.SearchMatchPart
-	(*SearchInfo)(nil),               // 48: grid.v1.SearchInfo
-	(*EventRevision)(nil),            // 49: grid.v1.EventRevision
-	(*EventRevisionList)(nil),        // 50: grid.v1.EventRevisionList
-	(*EventHistoryMatch)(nil),        // 51: grid.v1.EventHistoryMatch
-	(*PlaceList)(nil),                // 52: grid.v1.PlaceList
-	(*SourceList)(nil),               // 53: grid.v1.SourceList
-	(*GetRoadHistoryRequest)(nil),    // 54: grid.v1.GetRoadHistoryRequest
-	(*GetEventSamplesRequest)(nil),   // 55: grid.v1.GetEventSamplesRequest
-	(*EventSamples)(nil),             // 56: grid.v1.EventSamples
-	(*RoadSample)(nil),               // 57: grid.v1.RoadSample
-	(*RoadHistory)(nil),              // 58: grid.v1.RoadHistory
-	(*GetMeshTelemetryRequest)(nil),  // 59: grid.v1.GetMeshTelemetryRequest
-	(*MeshTelemetryArchive)(nil),     // 60: grid.v1.MeshTelemetryArchive
-	(*MeshTelemetryCoverage)(nil),    // 61: grid.v1.MeshTelemetryCoverage
-	(*MeshTelemetrySample)(nil),      // 62: grid.v1.MeshTelemetrySample
-	(*GetPlaceSummaryRequest)(nil),   // 63: grid.v1.GetPlaceSummaryRequest
-	(*PlaceSummary)(nil),             // 64: grid.v1.PlaceSummary
-	(*SummaryStats)(nil),             // 65: grid.v1.SummaryStats
-	(*SummaryTopEvent)(nil),          // 66: grid.v1.SummaryTopEvent
-	(*SummaryDomain)(nil),            // 67: grid.v1.SummaryDomain
-	(*SummaryDomainHeadline)(nil),    // 68: grid.v1.SummaryDomainHeadline
-	(*SummarySourceHealth)(nil),      // 69: grid.v1.SummarySourceHealth
-	(*ListEventsRequest)(nil),        // 70: grid.v1.ListEventsRequest
-	(*GetEventRequest)(nil),          // 71: grid.v1.GetEventRequest
-	(*ListRelatedEventsRequest)(nil), // 72: grid.v1.ListRelatedEventsRequest
-	(*RelatedEventList)(nil),         // 73: grid.v1.RelatedEventList
-	(*RelatedEvent)(nil),             // 74: grid.v1.RelatedEvent
-	(*GetEventTimelineRequest)(nil),  // 75: grid.v1.GetEventTimelineRequest
-	(*EventTimeline)(nil),            // 76: grid.v1.EventTimeline
-	(*TimelineEntry)(nil),            // 77: grid.v1.TimelineEntry
-	(*GetEventHistoryRequest)(nil),   // 78: grid.v1.GetEventHistoryRequest
-	(*ListHistoryRequest)(nil),       // 79: grid.v1.ListHistoryRequest
-	(*SearchRequest)(nil),            // 80: grid.v1.SearchRequest
-	(*SearchResults)(nil),            // 81: grid.v1.SearchResults
-	(*SearchKindTotal)(nil),          // 82: grid.v1.SearchKindTotal
-	(*SearchHit)(nil),                // 83: grid.v1.SearchHit
-	(*SearchHitEvent)(nil),           // 84: grid.v1.SearchHitEvent
-	(*ListPlacesRequest)(nil),        // 85: grid.v1.ListPlacesRequest
-	(*GetPlaceRequest)(nil),          // 86: grid.v1.GetPlaceRequest
-	(*ResolvePlaceRequest)(nil),      // 87: grid.v1.ResolvePlaceRequest
-	(*ResolveQuery)(nil),             // 88: grid.v1.ResolveQuery
-	(*ResolvePlaceResponse)(nil),     // 89: grid.v1.ResolvePlaceResponse
-	(*ListScannersRequest)(nil),      // 90: grid.v1.ListScannersRequest
-	(*Scanner)(nil),                  // 91: grid.v1.Scanner
-	(*ScannerList)(nil),              // 92: grid.v1.ScannerList
-	(*ListCamerasRequest)(nil),       // 93: grid.v1.ListCamerasRequest
-	(*Camera)(nil),                   // 94: grid.v1.Camera
-	(*CameraList)(nil),               // 95: grid.v1.CameraList
-	(*GetConditionsRequest)(nil),     // 96: grid.v1.GetConditionsRequest
-	(*WeatherConditions)(nil),        // 97: grid.v1.WeatherConditions
-	(*FireWeatherConditions)(nil),    // 98: grid.v1.FireWeatherConditions
-	(*ForecastPeriod)(nil),           // 99: grid.v1.ForecastPeriod
-	(*DailyForecastPeriod)(nil),      // 100: grid.v1.DailyForecastPeriod
-	(*WeatherLocation)(nil),          // 101: grid.v1.WeatherLocation
-	(*WeatherForecast)(nil),          // 102: grid.v1.WeatherForecast
-	(*Conditions)(nil),               // 103: grid.v1.Conditions
-	(*ListSourcesRequest)(nil),       // 104: grid.v1.ListSourcesRequest
-	(*GetStatsRequest)(nil),          // 105: grid.v1.GetStatsRequest
-	(*Stats)(nil),                    // 106: grid.v1.Stats
-	(*LayerStats)(nil),               // 107: grid.v1.LayerStats
-	nil,                              // 108: grid.v1.RoadIncidentDetail.MetadataEntry
-	nil,                              // 109: grid.v1.EventList.MatchesEntry
-	nil,                              // 110: grid.v1.SummaryStats.SeverityCountsEntry
-	(*timestamppb.Timestamp)(nil),    // 111: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),          // 112: google.protobuf.Struct
-	(*wrapperspb.DoubleValue)(nil),   // 113: google.protobuf.DoubleValue
-	(*wrapperspb.Int32Value)(nil),    // 114: google.protobuf.Int32Value
-	(*wrapperspb.UInt32Value)(nil),   // 115: google.protobuf.UInt32Value
-	(*wrapperspb.Int64Value)(nil),    // 116: google.protobuf.Int64Value
+	(EventNature)(0),                 // 10: grid.v1.EventNature
+	(RevisionKind)(0),                // 11: grid.v1.RevisionKind
+	(RelationConfidence)(0),          // 12: grid.v1.RelationConfidence
+	(TimelineClock)(0),               // 13: grid.v1.TimelineClock
+	(TimelineKind)(0),                // 14: grid.v1.TimelineKind
+	(SearchKind)(0),                  // 15: grid.v1.SearchKind
+	(*Event)(nil),                    // 16: grid.v1.Event
+	(*Geometry)(nil),                 // 17: grid.v1.Geometry
+	(*BoundingBox)(nil),              // 18: grid.v1.BoundingBox
+	(*LatLng)(nil),                   // 19: grid.v1.LatLng
+	(*Provenance)(nil),               // 20: grid.v1.Provenance
+	(*Enhancement)(nil),              // 21: grid.v1.Enhancement
+	(*Source)(nil),                   // 22: grid.v1.Source
+	(*Place)(nil),                    // 23: grid.v1.Place
+	(*WildfireDetail)(nil),           // 24: grid.v1.WildfireDetail
+	(*EvacuationDetail)(nil),         // 25: grid.v1.EvacuationDetail
+	(*WeatherAlertDetail)(nil),       // 26: grid.v1.WeatherAlertDetail
+	(*FireWeatherDetail)(nil),        // 27: grid.v1.FireWeatherDetail
+	(*EarthquakeDetail)(nil),         // 28: grid.v1.EarthquakeDetail
+	(*RoadIncidentDetail)(nil),       // 29: grid.v1.RoadIncidentDetail
+	(*IncidentLogEntry)(nil),         // 30: grid.v1.IncidentLogEntry
+	(*LaneClosureDetail)(nil),        // 31: grid.v1.LaneClosureDetail
+	(*MeshDetail)(nil),               // 32: grid.v1.MeshDetail
+	(*MeshTelemetry)(nil),            // 33: grid.v1.MeshTelemetry
+	(*MeshAdminTelemetry)(nil),       // 34: grid.v1.MeshAdminTelemetry
+	(*PowerDetail)(nil),              // 35: grid.v1.PowerDetail
+	(*BurnStatusDetail)(nil),         // 36: grid.v1.BurnStatusDetail
+	(*RoadSegmentDetail)(nil),        // 37: grid.v1.RoadSegmentDetail
+	(*RoadSegmentBeyond)(nil),        // 38: grid.v1.RoadSegmentBeyond
+	(*ChainControlDetail)(nil),       // 39: grid.v1.ChainControlDetail
+	(*ChainControlPlace)(nil),        // 40: grid.v1.ChainControlPlace
+	(*ChainControlSign)(nil),         // 41: grid.v1.ChainControlSign
+	(*SourceHealthDetail)(nil),       // 42: grid.v1.SourceHealthDetail
+	(*BurnLineReading)(nil),          // 43: grid.v1.BurnLineReading
+	(*BurnObservation)(nil),          // 44: grid.v1.BurnObservation
+	(*EventList)(nil),                // 45: grid.v1.EventList
+	(*EventCount)(nil),               // 46: grid.v1.EventCount
+	(*SearchMatch)(nil),              // 47: grid.v1.SearchMatch
+	(*SearchMatchPart)(nil),          // 48: grid.v1.SearchMatchPart
+	(*SearchInfo)(nil),               // 49: grid.v1.SearchInfo
+	(*EventRevision)(nil),            // 50: grid.v1.EventRevision
+	(*EventRevisionList)(nil),        // 51: grid.v1.EventRevisionList
+	(*EventHistoryMatch)(nil),        // 52: grid.v1.EventHistoryMatch
+	(*PlaceList)(nil),                // 53: grid.v1.PlaceList
+	(*SourceList)(nil),               // 54: grid.v1.SourceList
+	(*GetRoadHistoryRequest)(nil),    // 55: grid.v1.GetRoadHistoryRequest
+	(*GetEventSamplesRequest)(nil),   // 56: grid.v1.GetEventSamplesRequest
+	(*EventSamples)(nil),             // 57: grid.v1.EventSamples
+	(*RoadSample)(nil),               // 58: grid.v1.RoadSample
+	(*RoadHistory)(nil),              // 59: grid.v1.RoadHistory
+	(*GetMeshTelemetryRequest)(nil),  // 60: grid.v1.GetMeshTelemetryRequest
+	(*MeshTelemetryArchive)(nil),     // 61: grid.v1.MeshTelemetryArchive
+	(*MeshTelemetryCoverage)(nil),    // 62: grid.v1.MeshTelemetryCoverage
+	(*MeshTelemetrySample)(nil),      // 63: grid.v1.MeshTelemetrySample
+	(*GetPlaceSummaryRequest)(nil),   // 64: grid.v1.GetPlaceSummaryRequest
+	(*PlaceSummary)(nil),             // 65: grid.v1.PlaceSummary
+	(*SummaryStats)(nil),             // 66: grid.v1.SummaryStats
+	(*SummaryTopEvent)(nil),          // 67: grid.v1.SummaryTopEvent
+	(*SummaryDomain)(nil),            // 68: grid.v1.SummaryDomain
+	(*SummaryDomainHeadline)(nil),    // 69: grid.v1.SummaryDomainHeadline
+	(*SummarySourceHealth)(nil),      // 70: grid.v1.SummarySourceHealth
+	(*ListEventsRequest)(nil),        // 71: grid.v1.ListEventsRequest
+	(*GetEventRequest)(nil),          // 72: grid.v1.GetEventRequest
+	(*ListRelatedEventsRequest)(nil), // 73: grid.v1.ListRelatedEventsRequest
+	(*RelatedEventList)(nil),         // 74: grid.v1.RelatedEventList
+	(*RelatedEvent)(nil),             // 75: grid.v1.RelatedEvent
+	(*GetEventTimelineRequest)(nil),  // 76: grid.v1.GetEventTimelineRequest
+	(*EventTimeline)(nil),            // 77: grid.v1.EventTimeline
+	(*TimelineEntry)(nil),            // 78: grid.v1.TimelineEntry
+	(*GetEventHistoryRequest)(nil),   // 79: grid.v1.GetEventHistoryRequest
+	(*ListHistoryRequest)(nil),       // 80: grid.v1.ListHistoryRequest
+	(*SearchRequest)(nil),            // 81: grid.v1.SearchRequest
+	(*SearchResults)(nil),            // 82: grid.v1.SearchResults
+	(*SearchKindTotal)(nil),          // 83: grid.v1.SearchKindTotal
+	(*SearchHit)(nil),                // 84: grid.v1.SearchHit
+	(*SearchHitEvent)(nil),           // 85: grid.v1.SearchHitEvent
+	(*ListPlacesRequest)(nil),        // 86: grid.v1.ListPlacesRequest
+	(*GetPlaceRequest)(nil),          // 87: grid.v1.GetPlaceRequest
+	(*ResolvePlaceRequest)(nil),      // 88: grid.v1.ResolvePlaceRequest
+	(*ResolveQuery)(nil),             // 89: grid.v1.ResolveQuery
+	(*ResolvePlaceResponse)(nil),     // 90: grid.v1.ResolvePlaceResponse
+	(*ListScannersRequest)(nil),      // 91: grid.v1.ListScannersRequest
+	(*Scanner)(nil),                  // 92: grid.v1.Scanner
+	(*ScannerList)(nil),              // 93: grid.v1.ScannerList
+	(*ListCamerasRequest)(nil),       // 94: grid.v1.ListCamerasRequest
+	(*Camera)(nil),                   // 95: grid.v1.Camera
+	(*CameraList)(nil),               // 96: grid.v1.CameraList
+	(*GetConditionsRequest)(nil),     // 97: grid.v1.GetConditionsRequest
+	(*WeatherConditions)(nil),        // 98: grid.v1.WeatherConditions
+	(*FireWeatherConditions)(nil),    // 99: grid.v1.FireWeatherConditions
+	(*ForecastPeriod)(nil),           // 100: grid.v1.ForecastPeriod
+	(*DailyForecastPeriod)(nil),      // 101: grid.v1.DailyForecastPeriod
+	(*WeatherLocation)(nil),          // 102: grid.v1.WeatherLocation
+	(*WeatherForecast)(nil),          // 103: grid.v1.WeatherForecast
+	(*Conditions)(nil),               // 104: grid.v1.Conditions
+	(*ListSourcesRequest)(nil),       // 105: grid.v1.ListSourcesRequest
+	(*GetStatsRequest)(nil),          // 106: grid.v1.GetStatsRequest
+	(*Stats)(nil),                    // 107: grid.v1.Stats
+	(*LayerStats)(nil),               // 108: grid.v1.LayerStats
+	nil,                              // 109: grid.v1.RoadIncidentDetail.MetadataEntry
+	nil,                              // 110: grid.v1.EventList.MatchesEntry
+	nil,                              // 111: grid.v1.SummaryStats.SeverityCountsEntry
+	(*timestamppb.Timestamp)(nil),    // 112: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),          // 113: google.protobuf.Struct
+	(*wrapperspb.DoubleValue)(nil),   // 114: google.protobuf.DoubleValue
+	(*wrapperspb.Int32Value)(nil),    // 115: google.protobuf.Int32Value
+	(*wrapperspb.UInt32Value)(nil),   // 116: google.protobuf.UInt32Value
+	(*wrapperspb.Int64Value)(nil),    // 117: google.protobuf.Int64Value
 }
 var file_grid_proto_depIdxs = []int32{
 	0,   // 0: grid.v1.Event.layer:type_name -> grid.v1.Layer
 	1,   // 1: grid.v1.Event.severity:type_name -> grid.v1.Severity
 	2,   // 2: grid.v1.Event.status:type_name -> grid.v1.EventStatus
-	16,  // 3: grid.v1.Event.geometry:type_name -> grid.v1.Geometry
-	19,  // 4: grid.v1.Event.provenance:type_name -> grid.v1.Provenance
-	111, // 5: grid.v1.Event.effective:type_name -> google.protobuf.Timestamp
-	111, // 6: grid.v1.Event.expires:type_name -> google.protobuf.Timestamp
-	111, // 7: grid.v1.Event.observed_at:type_name -> google.protobuf.Timestamp
-	111, // 8: grid.v1.Event.ingested_at:type_name -> google.protobuf.Timestamp
-	20,  // 9: grid.v1.Event.enhancement:type_name -> grid.v1.Enhancement
-	23,  // 10: grid.v1.Event.wildfire:type_name -> grid.v1.WildfireDetail
-	24,  // 11: grid.v1.Event.evacuation:type_name -> grid.v1.EvacuationDetail
-	25,  // 12: grid.v1.Event.weather_alert:type_name -> grid.v1.WeatherAlertDetail
-	26,  // 13: grid.v1.Event.fire_weather:type_name -> grid.v1.FireWeatherDetail
-	27,  // 14: grid.v1.Event.earthquake:type_name -> grid.v1.EarthquakeDetail
-	28,  // 15: grid.v1.Event.road_incident:type_name -> grid.v1.RoadIncidentDetail
-	31,  // 16: grid.v1.Event.mesh:type_name -> grid.v1.MeshDetail
-	34,  // 17: grid.v1.Event.power:type_name -> grid.v1.PowerDetail
-	35,  // 18: grid.v1.Event.burn_status:type_name -> grid.v1.BurnStatusDetail
-	41,  // 19: grid.v1.Event.source_health:type_name -> grid.v1.SourceHealthDetail
-	38,  // 20: grid.v1.Event.chain_control:type_name -> grid.v1.ChainControlDetail
-	36,  // 21: grid.v1.Event.road_segment:type_name -> grid.v1.RoadSegmentDetail
-	17,  // 22: grid.v1.Geometry.bbox:type_name -> grid.v1.BoundingBox
-	18,  // 23: grid.v1.Geometry.centroid:type_name -> grid.v1.LatLng
-	112, // 24: grid.v1.Geometry.object:type_name -> google.protobuf.Struct
-	111, // 25: grid.v1.Provenance.fetched_at:type_name -> google.protobuf.Timestamp
-	111, // 26: grid.v1.Enhancement.enhanced_at:type_name -> google.protobuf.Timestamp
-	3,   // 27: grid.v1.Source.kind:type_name -> grid.v1.SourceKind
-	111, // 28: grid.v1.Source.last_success_at:type_name -> google.protobuf.Timestamp
-	111, // 29: grid.v1.Source.last_attempt_at:type_name -> google.protobuf.Timestamp
-	4,   // 30: grid.v1.Source.status:type_name -> grid.v1.SourceStatus
-	5,   // 31: grid.v1.Place.kind:type_name -> grid.v1.PlaceKind
-	16,  // 32: grid.v1.Place.geometry:type_name -> grid.v1.Geometry
-	108, // 33: grid.v1.RoadIncidentDetail.metadata:type_name -> grid.v1.RoadIncidentDetail.MetadataEntry
-	30,  // 34: grid.v1.RoadIncidentDetail.closure:type_name -> grid.v1.LaneClosureDetail
-	29,  // 35: grid.v1.RoadIncidentDetail.log:type_name -> grid.v1.IncidentLogEntry
-	111, // 36: grid.v1.IncidentLogEntry.at:type_name -> google.protobuf.Timestamp
-	111, // 37: grid.v1.LaneClosureDetail.planned_start:type_name -> google.protobuf.Timestamp
-	111, // 38: grid.v1.LaneClosureDetail.planned_end:type_name -> google.protobuf.Timestamp
-	111, // 39: grid.v1.LaneClosureDetail.set_up_at:type_name -> google.protobuf.Timestamp
-	18,  // 40: grid.v1.LaneClosureDetail.begin:type_name -> grid.v1.LatLng
-	18,  // 41: grid.v1.LaneClosureDetail.end:type_name -> grid.v1.LatLng
-	32,  // 42: grid.v1.MeshDetail.telemetry:type_name -> grid.v1.MeshTelemetry
-	6,   // 43: grid.v1.MeshDetail.reachability:type_name -> grid.v1.MeshReachability
-	113, // 44: grid.v1.MeshTelemetry.snr:type_name -> google.protobuf.DoubleValue
-	114, // 45: grid.v1.MeshTelemetry.rssi:type_name -> google.protobuf.Int32Value
-	115, // 46: grid.v1.MeshTelemetry.hop_count:type_name -> google.protobuf.UInt32Value
-	111, // 47: grid.v1.MeshTelemetry.last_advert_at:type_name -> google.protobuf.Timestamp
-	33,  // 48: grid.v1.MeshTelemetry.admin:type_name -> grid.v1.MeshAdminTelemetry
-	111, // 49: grid.v1.MeshTelemetry.last_heard_at:type_name -> google.protobuf.Timestamp
-	111, // 50: grid.v1.MeshTelemetry.last_relayed_at:type_name -> google.protobuf.Timestamp
-	111, // 51: grid.v1.MeshAdminTelemetry.reported_at:type_name -> google.protobuf.Timestamp
-	111, // 52: grid.v1.MeshAdminTelemetry.last_success_at:type_name -> google.protobuf.Timestamp
-	111, // 53: grid.v1.MeshAdminTelemetry.last_attempt_at:type_name -> google.protobuf.Timestamp
-	113, // 54: grid.v1.MeshAdminTelemetry.battery_volts:type_name -> google.protobuf.DoubleValue
-	113, // 55: grid.v1.MeshAdminTelemetry.battery_percent:type_name -> google.protobuf.DoubleValue
-	113, // 56: grid.v1.MeshAdminTelemetry.temperature_c:type_name -> google.protobuf.DoubleValue
-	113, // 57: grid.v1.MeshAdminTelemetry.humidity:type_name -> google.protobuf.DoubleValue
-	113, // 58: grid.v1.MeshAdminTelemetry.pressure:type_name -> google.protobuf.DoubleValue
-	114, // 59: grid.v1.MeshAdminTelemetry.noise_floor_dbm:type_name -> google.protobuf.Int32Value
-	113, // 60: grid.v1.MeshAdminTelemetry.last_snr_db:type_name -> google.protobuf.DoubleValue
-	114, // 61: grid.v1.MeshAdminTelemetry.last_rssi_dbm:type_name -> google.protobuf.Int32Value
-	114, // 62: grid.v1.MeshAdminTelemetry.tx_queue_len:type_name -> google.protobuf.Int32Value
-	111, // 63: grid.v1.PowerDetail.estimated_restoration:type_name -> google.protobuf.Timestamp
-	111, // 64: grid.v1.PowerDetail.de_energization_start:type_name -> google.protobuf.Timestamp
-	111, // 65: grid.v1.PowerDetail.de_energization_end:type_name -> google.protobuf.Timestamp
-	111, // 66: grid.v1.PowerDetail.all_clear:type_name -> google.protobuf.Timestamp
-	7,   // 67: grid.v1.BurnStatusDetail.burn_day:type_name -> grid.v1.BurnDay
-	8,   // 68: grid.v1.BurnStatusDetail.calfire_status:type_name -> grid.v1.CalfireBurnStatus
-	9,   // 69: grid.v1.BurnStatusDetail.permission:type_name -> grid.v1.BurnPermission
-	111, // 70: grid.v1.BurnStatusDetail.calfire_effective:type_name -> google.protobuf.Timestamp
-	42,  // 71: grid.v1.BurnStatusDetail.burn_lines:type_name -> grid.v1.BurnLineReading
-	111, // 72: grid.v1.BurnStatusDetail.calfire_observed_at:type_name -> google.protobuf.Timestamp
-	37,  // 73: grid.v1.RoadSegmentDetail.beyond:type_name -> grid.v1.RoadSegmentBeyond
-	39,  // 74: grid.v1.ChainControlDetail.from:type_name -> grid.v1.ChainControlPlace
-	39,  // 75: grid.v1.ChainControlDetail.to:type_name -> grid.v1.ChainControlPlace
-	40,  // 76: grid.v1.ChainControlDetail.signs:type_name -> grid.v1.ChainControlSign
-	18,  // 77: grid.v1.ChainControlPlace.location:type_name -> grid.v1.LatLng
-	111, // 78: grid.v1.ChainControlSign.since:type_name -> google.protobuf.Timestamp
-	18,  // 79: grid.v1.ChainControlSign.location:type_name -> grid.v1.LatLng
-	4,   // 80: grid.v1.SourceHealthDetail.status:type_name -> grid.v1.SourceStatus
-	111, // 81: grid.v1.SourceHealthDetail.since:type_name -> google.protobuf.Timestamp
-	111, // 82: grid.v1.SourceHealthDetail.last_success_at:type_name -> google.protobuf.Timestamp
-	7,   // 83: grid.v1.BurnLineReading.burn_day:type_name -> grid.v1.BurnDay
-	43,  // 84: grid.v1.BurnLineReading.observation:type_name -> grid.v1.BurnObservation
-	111, // 85: grid.v1.BurnObservation.observed_at:type_name -> google.protobuf.Timestamp
-	15,  // 86: grid.v1.EventList.events:type_name -> grid.v1.Event
-	114, // 87: grid.v1.EventList.total_matches:type_name -> google.protobuf.Int32Value
-	45,  // 88: grid.v1.EventList.counts:type_name -> grid.v1.EventCount
-	109, // 89: grid.v1.EventList.matches:type_name -> grid.v1.EventList.MatchesEntry
-	48,  // 90: grid.v1.EventList.search:type_name -> grid.v1.SearchInfo
-	0,   // 91: grid.v1.EventCount.layer:type_name -> grid.v1.Layer
-	47,  // 92: grid.v1.SearchMatch.parts:type_name -> grid.v1.SearchMatchPart
-	111, // 93: grid.v1.SearchInfo.since:type_name -> google.protobuf.Timestamp
-	111, // 94: grid.v1.EventRevision.observed_at:type_name -> google.protobuf.Timestamp
-	111, // 95: grid.v1.EventRevision.ingested_at:type_name -> google.protobuf.Timestamp
-	15,  // 96: grid.v1.EventRevision.event:type_name -> grid.v1.Event
-	46,  // 97: grid.v1.EventRevision.match:type_name -> grid.v1.SearchMatch
-	10,  // 98: grid.v1.EventRevision.kind:type_name -> grid.v1.RevisionKind
-	49,  // 99: grid.v1.EventRevisionList.revisions:type_name -> grid.v1.EventRevision
-	114, // 100: grid.v1.EventRevisionList.total_matches:type_name -> google.protobuf.Int32Value
-	51,  // 101: grid.v1.EventRevisionList.collapsed:type_name -> grid.v1.EventHistoryMatch
-	48,  // 102: grid.v1.EventRevisionList.search:type_name -> grid.v1.SearchInfo
-	49,  // 103: grid.v1.EventHistoryMatch.first:type_name -> grid.v1.EventRevision
-	111, // 104: grid.v1.EventHistoryMatch.last_observed_at:type_name -> google.protobuf.Timestamp
-	22,  // 105: grid.v1.PlaceList.places:type_name -> grid.v1.Place
-	21,  // 106: grid.v1.SourceList.sources:type_name -> grid.v1.Source
-	111, // 107: grid.v1.GetRoadHistoryRequest.from:type_name -> google.protobuf.Timestamp
-	111, // 108: grid.v1.GetRoadHistoryRequest.to:type_name -> google.protobuf.Timestamp
-	111, // 109: grid.v1.GetEventSamplesRequest.from:type_name -> google.protobuf.Timestamp
-	111, // 110: grid.v1.GetEventSamplesRequest.to:type_name -> google.protobuf.Timestamp
-	0,   // 111: grid.v1.EventSamples.layer:type_name -> grid.v1.Layer
-	111, // 112: grid.v1.EventSamples.from:type_name -> google.protobuf.Timestamp
-	111, // 113: grid.v1.EventSamples.to:type_name -> google.protobuf.Timestamp
-	57,  // 114: grid.v1.EventSamples.road:type_name -> grid.v1.RoadSample
-	111, // 115: grid.v1.RoadSample.at:type_name -> google.protobuf.Timestamp
-	114, // 116: grid.v1.RoadSample.duration_minutes:type_name -> google.protobuf.Int32Value
-	114, // 117: grid.v1.RoadSample.delay_minutes:type_name -> google.protobuf.Int32Value
-	111, // 118: grid.v1.RoadHistory.from:type_name -> google.protobuf.Timestamp
-	111, // 119: grid.v1.RoadHistory.to:type_name -> google.protobuf.Timestamp
-	57,  // 120: grid.v1.RoadHistory.samples:type_name -> grid.v1.RoadSample
-	111, // 121: grid.v1.GetMeshTelemetryRequest.from:type_name -> google.protobuf.Timestamp
-	111, // 122: grid.v1.GetMeshTelemetryRequest.to:type_name -> google.protobuf.Timestamp
-	111, // 123: grid.v1.MeshTelemetryArchive.from:type_name -> google.protobuf.Timestamp
-	111, // 124: grid.v1.MeshTelemetryArchive.to:type_name -> google.protobuf.Timestamp
-	61,  // 125: grid.v1.MeshTelemetryArchive.coverage:type_name -> grid.v1.MeshTelemetryCoverage
-	116, // 126: grid.v1.MeshTelemetryArchive.cadence_seconds:type_name -> google.protobuf.Int64Value
-	111, // 127: grid.v1.MeshTelemetryArchive.reboots:type_name -> google.protobuf.Timestamp
-	62,  // 128: grid.v1.MeshTelemetryArchive.samples:type_name -> grid.v1.MeshTelemetrySample
-	111, // 129: grid.v1.MeshTelemetryCoverage.from:type_name -> google.protobuf.Timestamp
-	111, // 130: grid.v1.MeshTelemetryCoverage.to:type_name -> google.protobuf.Timestamp
-	33,  // 131: grid.v1.MeshTelemetrySample.reading:type_name -> grid.v1.MeshAdminTelemetry
-	111, // 132: grid.v1.MeshTelemetrySample.received_at:type_name -> google.protobuf.Timestamp
-	111, // 133: grid.v1.PlaceSummary.generated_at:type_name -> google.protobuf.Timestamp
-	65,  // 134: grid.v1.PlaceSummary.summary:type_name -> grid.v1.SummaryStats
-	67,  // 135: grid.v1.PlaceSummary.domains:type_name -> grid.v1.SummaryDomain
-	69,  // 136: grid.v1.PlaceSummary.sources:type_name -> grid.v1.SummarySourceHealth
-	110, // 137: grid.v1.SummaryStats.severity_counts:type_name -> grid.v1.SummaryStats.SeverityCountsEntry
-	114, // 138: grid.v1.SummaryStats.active_evacuations:type_name -> google.protobuf.Int32Value
-	66,  // 139: grid.v1.SummaryStats.top_events:type_name -> grid.v1.SummaryTopEvent
-	68,  // 140: grid.v1.SummaryDomain.headlines:type_name -> grid.v1.SummaryDomainHeadline
-	111, // 141: grid.v1.SummarySourceHealth.last_success_at:type_name -> google.protobuf.Timestamp
-	74,  // 142: grid.v1.RelatedEventList.related:type_name -> grid.v1.RelatedEvent
-	15,  // 143: grid.v1.RelatedEvent.event:type_name -> grid.v1.Event
-	11,  // 144: grid.v1.RelatedEvent.confidence:type_name -> grid.v1.RelationConfidence
-	77,  // 145: grid.v1.EventTimeline.entries:type_name -> grid.v1.TimelineEntry
-	111, // 146: grid.v1.TimelineEntry.at:type_name -> google.protobuf.Timestamp
-	13,  // 147: grid.v1.TimelineEntry.kind:type_name -> grid.v1.TimelineKind
-	12,  // 148: grid.v1.TimelineEntry.clock:type_name -> grid.v1.TimelineClock
-	83,  // 149: grid.v1.SearchResults.hits:type_name -> grid.v1.SearchHit
-	82,  // 150: grid.v1.SearchResults.totals:type_name -> grid.v1.SearchKindTotal
-	14,  // 151: grid.v1.SearchResults.unavailable:type_name -> grid.v1.SearchKind
-	48,  // 152: grid.v1.SearchResults.search:type_name -> grid.v1.SearchInfo
-	14,  // 153: grid.v1.SearchKindTotal.kind:type_name -> grid.v1.SearchKind
-	14,  // 154: grid.v1.SearchHit.kind:type_name -> grid.v1.SearchKind
-	46,  // 155: grid.v1.SearchHit.match:type_name -> grid.v1.SearchMatch
-	84,  // 156: grid.v1.SearchHit.event:type_name -> grid.v1.SearchHitEvent
-	0,   // 157: grid.v1.SearchHitEvent.layer:type_name -> grid.v1.Layer
-	2,   // 158: grid.v1.SearchHitEvent.status:type_name -> grid.v1.EventStatus
-	1,   // 159: grid.v1.SearchHitEvent.severity:type_name -> grid.v1.Severity
-	111, // 160: grid.v1.SearchHitEvent.observed_at:type_name -> google.protobuf.Timestamp
-	88,  // 161: grid.v1.ResolvePlaceResponse.query:type_name -> grid.v1.ResolveQuery
-	22,  // 162: grid.v1.ResolvePlaceResponse.places:type_name -> grid.v1.Place
-	91,  // 163: grid.v1.ScannerList.scanners:type_name -> grid.v1.Scanner
-	18,  // 164: grid.v1.Camera.location:type_name -> grid.v1.LatLng
-	94,  // 165: grid.v1.CameraList.cameras:type_name -> grid.v1.Camera
-	111, // 166: grid.v1.CameraList.last_source_update:type_name -> google.protobuf.Timestamp
-	111, // 167: grid.v1.WeatherConditions.observed_at:type_name -> google.protobuf.Timestamp
-	111, // 168: grid.v1.ForecastPeriod.time:type_name -> google.protobuf.Timestamp
-	114, // 169: grid.v1.ForecastPeriod.precipitation_probability_percent:type_name -> google.protobuf.Int32Value
-	113, // 170: grid.v1.ForecastPeriod.precipitation_mm:type_name -> google.protobuf.DoubleValue
-	113, // 171: grid.v1.ForecastPeriod.snowfall_mm:type_name -> google.protobuf.DoubleValue
-	114, // 172: grid.v1.ForecastPeriod.snow_level_meters:type_name -> google.protobuf.Int32Value
-	114, // 173: grid.v1.ForecastPeriod.sky_cover_percent:type_name -> google.protobuf.Int32Value
-	111, // 174: grid.v1.DailyForecastPeriod.start:type_name -> google.protobuf.Timestamp
-	111, // 175: grid.v1.DailyForecastPeriod.end:type_name -> google.protobuf.Timestamp
-	114, // 176: grid.v1.DailyForecastPeriod.precipitation_probability_percent:type_name -> google.protobuf.Int32Value
-	114, // 177: grid.v1.WeatherLocation.elevation_meters:type_name -> google.protobuf.Int32Value
-	111, // 178: grid.v1.WeatherForecast.issued_at:type_name -> google.protobuf.Timestamp
-	99,  // 179: grid.v1.WeatherForecast.periods:type_name -> grid.v1.ForecastPeriod
-	111, // 180: grid.v1.WeatherForecast.peak_wind_gust_at:type_name -> google.protobuf.Timestamp
-	114, // 181: grid.v1.WeatherForecast.grid_elevation_meters:type_name -> google.protobuf.Int32Value
-	100, // 182: grid.v1.WeatherForecast.daily:type_name -> grid.v1.DailyForecastPeriod
-	97,  // 183: grid.v1.Conditions.weather:type_name -> grid.v1.WeatherConditions
-	98,  // 184: grid.v1.Conditions.fire_weather:type_name -> grid.v1.FireWeatherConditions
-	111, // 185: grid.v1.Conditions.last_updated:type_name -> google.protobuf.Timestamp
-	102, // 186: grid.v1.Conditions.forecast:type_name -> grid.v1.WeatherForecast
-	101, // 187: grid.v1.Conditions.locations:type_name -> grid.v1.WeatherLocation
-	4,   // 188: grid.v1.Conditions.weather_status:type_name -> grid.v1.SourceStatus
-	111, // 189: grid.v1.Stats.since:type_name -> google.protobuf.Timestamp
-	107, // 190: grid.v1.Stats.layers:type_name -> grid.v1.LayerStats
-	111, // 191: grid.v1.Stats.computed_at:type_name -> google.protobuf.Timestamp
-	0,   // 192: grid.v1.LayerStats.layer:type_name -> grid.v1.Layer
-	46,  // 193: grid.v1.EventList.MatchesEntry.value:type_name -> grid.v1.SearchMatch
-	70,  // 194: grid.v1.GridService.ListEvents:input_type -> grid.v1.ListEventsRequest
-	71,  // 195: grid.v1.GridService.GetEvent:input_type -> grid.v1.GetEventRequest
-	75,  // 196: grid.v1.GridService.GetEventTimeline:input_type -> grid.v1.GetEventTimelineRequest
-	55,  // 197: grid.v1.GridService.GetEventSamples:input_type -> grid.v1.GetEventSamplesRequest
-	72,  // 198: grid.v1.GridService.ListRelatedEvents:input_type -> grid.v1.ListRelatedEventsRequest
-	78,  // 199: grid.v1.GridService.GetEventHistory:input_type -> grid.v1.GetEventHistoryRequest
-	79,  // 200: grid.v1.GridService.ListHistory:input_type -> grid.v1.ListHistoryRequest
-	80,  // 201: grid.v1.GridService.Search:input_type -> grid.v1.SearchRequest
-	85,  // 202: grid.v1.GridService.ListPlaces:input_type -> grid.v1.ListPlacesRequest
-	87,  // 203: grid.v1.GridService.ResolvePlace:input_type -> grid.v1.ResolvePlaceRequest
-	86,  // 204: grid.v1.GridService.GetPlace:input_type -> grid.v1.GetPlaceRequest
-	63,  // 205: grid.v1.GridService.GetPlaceSummary:input_type -> grid.v1.GetPlaceSummaryRequest
-	90,  // 206: grid.v1.GridService.ListScanners:input_type -> grid.v1.ListScannersRequest
-	93,  // 207: grid.v1.GridService.ListCameras:input_type -> grid.v1.ListCamerasRequest
-	96,  // 208: grid.v1.GridService.GetConditions:input_type -> grid.v1.GetConditionsRequest
-	104, // 209: grid.v1.GridService.ListSources:input_type -> grid.v1.ListSourcesRequest
-	105, // 210: grid.v1.GridService.GetStats:input_type -> grid.v1.GetStatsRequest
-	54,  // 211: grid.v1.GridService.GetRoadHistory:input_type -> grid.v1.GetRoadHistoryRequest
-	59,  // 212: grid.v1.GridService.GetMeshTelemetry:input_type -> grid.v1.GetMeshTelemetryRequest
-	44,  // 213: grid.v1.GridService.ListEvents:output_type -> grid.v1.EventList
-	15,  // 214: grid.v1.GridService.GetEvent:output_type -> grid.v1.Event
-	76,  // 215: grid.v1.GridService.GetEventTimeline:output_type -> grid.v1.EventTimeline
-	56,  // 216: grid.v1.GridService.GetEventSamples:output_type -> grid.v1.EventSamples
-	73,  // 217: grid.v1.GridService.ListRelatedEvents:output_type -> grid.v1.RelatedEventList
-	50,  // 218: grid.v1.GridService.GetEventHistory:output_type -> grid.v1.EventRevisionList
-	50,  // 219: grid.v1.GridService.ListHistory:output_type -> grid.v1.EventRevisionList
-	81,  // 220: grid.v1.GridService.Search:output_type -> grid.v1.SearchResults
-	52,  // 221: grid.v1.GridService.ListPlaces:output_type -> grid.v1.PlaceList
-	89,  // 222: grid.v1.GridService.ResolvePlace:output_type -> grid.v1.ResolvePlaceResponse
-	22,  // 223: grid.v1.GridService.GetPlace:output_type -> grid.v1.Place
-	64,  // 224: grid.v1.GridService.GetPlaceSummary:output_type -> grid.v1.PlaceSummary
-	92,  // 225: grid.v1.GridService.ListScanners:output_type -> grid.v1.ScannerList
-	95,  // 226: grid.v1.GridService.ListCameras:output_type -> grid.v1.CameraList
-	103, // 227: grid.v1.GridService.GetConditions:output_type -> grid.v1.Conditions
-	53,  // 228: grid.v1.GridService.ListSources:output_type -> grid.v1.SourceList
-	106, // 229: grid.v1.GridService.GetStats:output_type -> grid.v1.Stats
-	58,  // 230: grid.v1.GridService.GetRoadHistory:output_type -> grid.v1.RoadHistory
-	60,  // 231: grid.v1.GridService.GetMeshTelemetry:output_type -> grid.v1.MeshTelemetryArchive
-	213, // [213:232] is the sub-list for method output_type
-	194, // [194:213] is the sub-list for method input_type
-	194, // [194:194] is the sub-list for extension type_name
-	194, // [194:194] is the sub-list for extension extendee
-	0,   // [0:194] is the sub-list for field type_name
+	17,  // 3: grid.v1.Event.geometry:type_name -> grid.v1.Geometry
+	20,  // 4: grid.v1.Event.provenance:type_name -> grid.v1.Provenance
+	112, // 5: grid.v1.Event.effective:type_name -> google.protobuf.Timestamp
+	112, // 6: grid.v1.Event.expires:type_name -> google.protobuf.Timestamp
+	112, // 7: grid.v1.Event.observed_at:type_name -> google.protobuf.Timestamp
+	112, // 8: grid.v1.Event.ingested_at:type_name -> google.protobuf.Timestamp
+	21,  // 9: grid.v1.Event.enhancement:type_name -> grid.v1.Enhancement
+	24,  // 10: grid.v1.Event.wildfire:type_name -> grid.v1.WildfireDetail
+	25,  // 11: grid.v1.Event.evacuation:type_name -> grid.v1.EvacuationDetail
+	26,  // 12: grid.v1.Event.weather_alert:type_name -> grid.v1.WeatherAlertDetail
+	27,  // 13: grid.v1.Event.fire_weather:type_name -> grid.v1.FireWeatherDetail
+	28,  // 14: grid.v1.Event.earthquake:type_name -> grid.v1.EarthquakeDetail
+	29,  // 15: grid.v1.Event.road_incident:type_name -> grid.v1.RoadIncidentDetail
+	32,  // 16: grid.v1.Event.mesh:type_name -> grid.v1.MeshDetail
+	35,  // 17: grid.v1.Event.power:type_name -> grid.v1.PowerDetail
+	36,  // 18: grid.v1.Event.burn_status:type_name -> grid.v1.BurnStatusDetail
+	42,  // 19: grid.v1.Event.source_health:type_name -> grid.v1.SourceHealthDetail
+	39,  // 20: grid.v1.Event.chain_control:type_name -> grid.v1.ChainControlDetail
+	37,  // 21: grid.v1.Event.road_segment:type_name -> grid.v1.RoadSegmentDetail
+	10,  // 22: grid.v1.Event.nature:type_name -> grid.v1.EventNature
+	18,  // 23: grid.v1.Geometry.bbox:type_name -> grid.v1.BoundingBox
+	19,  // 24: grid.v1.Geometry.centroid:type_name -> grid.v1.LatLng
+	113, // 25: grid.v1.Geometry.object:type_name -> google.protobuf.Struct
+	112, // 26: grid.v1.Provenance.fetched_at:type_name -> google.protobuf.Timestamp
+	112, // 27: grid.v1.Enhancement.enhanced_at:type_name -> google.protobuf.Timestamp
+	3,   // 28: grid.v1.Source.kind:type_name -> grid.v1.SourceKind
+	112, // 29: grid.v1.Source.last_success_at:type_name -> google.protobuf.Timestamp
+	112, // 30: grid.v1.Source.last_attempt_at:type_name -> google.protobuf.Timestamp
+	4,   // 31: grid.v1.Source.status:type_name -> grid.v1.SourceStatus
+	5,   // 32: grid.v1.Place.kind:type_name -> grid.v1.PlaceKind
+	17,  // 33: grid.v1.Place.geometry:type_name -> grid.v1.Geometry
+	109, // 34: grid.v1.RoadIncidentDetail.metadata:type_name -> grid.v1.RoadIncidentDetail.MetadataEntry
+	31,  // 35: grid.v1.RoadIncidentDetail.closure:type_name -> grid.v1.LaneClosureDetail
+	30,  // 36: grid.v1.RoadIncidentDetail.log:type_name -> grid.v1.IncidentLogEntry
+	112, // 37: grid.v1.IncidentLogEntry.at:type_name -> google.protobuf.Timestamp
+	112, // 38: grid.v1.LaneClosureDetail.planned_start:type_name -> google.protobuf.Timestamp
+	112, // 39: grid.v1.LaneClosureDetail.planned_end:type_name -> google.protobuf.Timestamp
+	112, // 40: grid.v1.LaneClosureDetail.set_up_at:type_name -> google.protobuf.Timestamp
+	19,  // 41: grid.v1.LaneClosureDetail.begin:type_name -> grid.v1.LatLng
+	19,  // 42: grid.v1.LaneClosureDetail.end:type_name -> grid.v1.LatLng
+	33,  // 43: grid.v1.MeshDetail.telemetry:type_name -> grid.v1.MeshTelemetry
+	6,   // 44: grid.v1.MeshDetail.reachability:type_name -> grid.v1.MeshReachability
+	114, // 45: grid.v1.MeshTelemetry.snr:type_name -> google.protobuf.DoubleValue
+	115, // 46: grid.v1.MeshTelemetry.rssi:type_name -> google.protobuf.Int32Value
+	116, // 47: grid.v1.MeshTelemetry.hop_count:type_name -> google.protobuf.UInt32Value
+	112, // 48: grid.v1.MeshTelemetry.last_advert_at:type_name -> google.protobuf.Timestamp
+	34,  // 49: grid.v1.MeshTelemetry.admin:type_name -> grid.v1.MeshAdminTelemetry
+	112, // 50: grid.v1.MeshTelemetry.last_heard_at:type_name -> google.protobuf.Timestamp
+	112, // 51: grid.v1.MeshTelemetry.last_relayed_at:type_name -> google.protobuf.Timestamp
+	112, // 52: grid.v1.MeshAdminTelemetry.reported_at:type_name -> google.protobuf.Timestamp
+	112, // 53: grid.v1.MeshAdminTelemetry.last_success_at:type_name -> google.protobuf.Timestamp
+	112, // 54: grid.v1.MeshAdminTelemetry.last_attempt_at:type_name -> google.protobuf.Timestamp
+	114, // 55: grid.v1.MeshAdminTelemetry.battery_volts:type_name -> google.protobuf.DoubleValue
+	114, // 56: grid.v1.MeshAdminTelemetry.battery_percent:type_name -> google.protobuf.DoubleValue
+	114, // 57: grid.v1.MeshAdminTelemetry.temperature_c:type_name -> google.protobuf.DoubleValue
+	114, // 58: grid.v1.MeshAdminTelemetry.humidity:type_name -> google.protobuf.DoubleValue
+	114, // 59: grid.v1.MeshAdminTelemetry.pressure:type_name -> google.protobuf.DoubleValue
+	115, // 60: grid.v1.MeshAdminTelemetry.noise_floor_dbm:type_name -> google.protobuf.Int32Value
+	114, // 61: grid.v1.MeshAdminTelemetry.last_snr_db:type_name -> google.protobuf.DoubleValue
+	115, // 62: grid.v1.MeshAdminTelemetry.last_rssi_dbm:type_name -> google.protobuf.Int32Value
+	115, // 63: grid.v1.MeshAdminTelemetry.tx_queue_len:type_name -> google.protobuf.Int32Value
+	112, // 64: grid.v1.PowerDetail.estimated_restoration:type_name -> google.protobuf.Timestamp
+	112, // 65: grid.v1.PowerDetail.de_energization_start:type_name -> google.protobuf.Timestamp
+	112, // 66: grid.v1.PowerDetail.de_energization_end:type_name -> google.protobuf.Timestamp
+	112, // 67: grid.v1.PowerDetail.all_clear:type_name -> google.protobuf.Timestamp
+	7,   // 68: grid.v1.BurnStatusDetail.burn_day:type_name -> grid.v1.BurnDay
+	8,   // 69: grid.v1.BurnStatusDetail.calfire_status:type_name -> grid.v1.CalfireBurnStatus
+	9,   // 70: grid.v1.BurnStatusDetail.permission:type_name -> grid.v1.BurnPermission
+	112, // 71: grid.v1.BurnStatusDetail.calfire_effective:type_name -> google.protobuf.Timestamp
+	43,  // 72: grid.v1.BurnStatusDetail.burn_lines:type_name -> grid.v1.BurnLineReading
+	112, // 73: grid.v1.BurnStatusDetail.calfire_observed_at:type_name -> google.protobuf.Timestamp
+	38,  // 74: grid.v1.RoadSegmentDetail.beyond:type_name -> grid.v1.RoadSegmentBeyond
+	40,  // 75: grid.v1.ChainControlDetail.from:type_name -> grid.v1.ChainControlPlace
+	40,  // 76: grid.v1.ChainControlDetail.to:type_name -> grid.v1.ChainControlPlace
+	41,  // 77: grid.v1.ChainControlDetail.signs:type_name -> grid.v1.ChainControlSign
+	19,  // 78: grid.v1.ChainControlPlace.location:type_name -> grid.v1.LatLng
+	112, // 79: grid.v1.ChainControlSign.since:type_name -> google.protobuf.Timestamp
+	19,  // 80: grid.v1.ChainControlSign.location:type_name -> grid.v1.LatLng
+	4,   // 81: grid.v1.SourceHealthDetail.status:type_name -> grid.v1.SourceStatus
+	112, // 82: grid.v1.SourceHealthDetail.since:type_name -> google.protobuf.Timestamp
+	112, // 83: grid.v1.SourceHealthDetail.last_success_at:type_name -> google.protobuf.Timestamp
+	7,   // 84: grid.v1.BurnLineReading.burn_day:type_name -> grid.v1.BurnDay
+	44,  // 85: grid.v1.BurnLineReading.observation:type_name -> grid.v1.BurnObservation
+	112, // 86: grid.v1.BurnObservation.observed_at:type_name -> google.protobuf.Timestamp
+	16,  // 87: grid.v1.EventList.events:type_name -> grid.v1.Event
+	115, // 88: grid.v1.EventList.total_matches:type_name -> google.protobuf.Int32Value
+	46,  // 89: grid.v1.EventList.counts:type_name -> grid.v1.EventCount
+	110, // 90: grid.v1.EventList.matches:type_name -> grid.v1.EventList.MatchesEntry
+	49,  // 91: grid.v1.EventList.search:type_name -> grid.v1.SearchInfo
+	0,   // 92: grid.v1.EventCount.layer:type_name -> grid.v1.Layer
+	48,  // 93: grid.v1.SearchMatch.parts:type_name -> grid.v1.SearchMatchPart
+	112, // 94: grid.v1.SearchInfo.since:type_name -> google.protobuf.Timestamp
+	112, // 95: grid.v1.EventRevision.observed_at:type_name -> google.protobuf.Timestamp
+	112, // 96: grid.v1.EventRevision.ingested_at:type_name -> google.protobuf.Timestamp
+	16,  // 97: grid.v1.EventRevision.event:type_name -> grid.v1.Event
+	47,  // 98: grid.v1.EventRevision.match:type_name -> grid.v1.SearchMatch
+	11,  // 99: grid.v1.EventRevision.kind:type_name -> grid.v1.RevisionKind
+	50,  // 100: grid.v1.EventRevisionList.revisions:type_name -> grid.v1.EventRevision
+	115, // 101: grid.v1.EventRevisionList.total_matches:type_name -> google.protobuf.Int32Value
+	52,  // 102: grid.v1.EventRevisionList.collapsed:type_name -> grid.v1.EventHistoryMatch
+	49,  // 103: grid.v1.EventRevisionList.search:type_name -> grid.v1.SearchInfo
+	50,  // 104: grid.v1.EventHistoryMatch.first:type_name -> grid.v1.EventRevision
+	112, // 105: grid.v1.EventHistoryMatch.last_observed_at:type_name -> google.protobuf.Timestamp
+	23,  // 106: grid.v1.PlaceList.places:type_name -> grid.v1.Place
+	22,  // 107: grid.v1.SourceList.sources:type_name -> grid.v1.Source
+	112, // 108: grid.v1.GetRoadHistoryRequest.from:type_name -> google.protobuf.Timestamp
+	112, // 109: grid.v1.GetRoadHistoryRequest.to:type_name -> google.protobuf.Timestamp
+	112, // 110: grid.v1.GetEventSamplesRequest.from:type_name -> google.protobuf.Timestamp
+	112, // 111: grid.v1.GetEventSamplesRequest.to:type_name -> google.protobuf.Timestamp
+	0,   // 112: grid.v1.EventSamples.layer:type_name -> grid.v1.Layer
+	112, // 113: grid.v1.EventSamples.from:type_name -> google.protobuf.Timestamp
+	112, // 114: grid.v1.EventSamples.to:type_name -> google.protobuf.Timestamp
+	58,  // 115: grid.v1.EventSamples.road:type_name -> grid.v1.RoadSample
+	112, // 116: grid.v1.RoadSample.at:type_name -> google.protobuf.Timestamp
+	115, // 117: grid.v1.RoadSample.duration_minutes:type_name -> google.protobuf.Int32Value
+	115, // 118: grid.v1.RoadSample.delay_minutes:type_name -> google.protobuf.Int32Value
+	112, // 119: grid.v1.RoadHistory.from:type_name -> google.protobuf.Timestamp
+	112, // 120: grid.v1.RoadHistory.to:type_name -> google.protobuf.Timestamp
+	58,  // 121: grid.v1.RoadHistory.samples:type_name -> grid.v1.RoadSample
+	112, // 122: grid.v1.GetMeshTelemetryRequest.from:type_name -> google.protobuf.Timestamp
+	112, // 123: grid.v1.GetMeshTelemetryRequest.to:type_name -> google.protobuf.Timestamp
+	112, // 124: grid.v1.MeshTelemetryArchive.from:type_name -> google.protobuf.Timestamp
+	112, // 125: grid.v1.MeshTelemetryArchive.to:type_name -> google.protobuf.Timestamp
+	62,  // 126: grid.v1.MeshTelemetryArchive.coverage:type_name -> grid.v1.MeshTelemetryCoverage
+	117, // 127: grid.v1.MeshTelemetryArchive.cadence_seconds:type_name -> google.protobuf.Int64Value
+	112, // 128: grid.v1.MeshTelemetryArchive.reboots:type_name -> google.protobuf.Timestamp
+	63,  // 129: grid.v1.MeshTelemetryArchive.samples:type_name -> grid.v1.MeshTelemetrySample
+	112, // 130: grid.v1.MeshTelemetryCoverage.from:type_name -> google.protobuf.Timestamp
+	112, // 131: grid.v1.MeshTelemetryCoverage.to:type_name -> google.protobuf.Timestamp
+	34,  // 132: grid.v1.MeshTelemetrySample.reading:type_name -> grid.v1.MeshAdminTelemetry
+	112, // 133: grid.v1.MeshTelemetrySample.received_at:type_name -> google.protobuf.Timestamp
+	112, // 134: grid.v1.PlaceSummary.generated_at:type_name -> google.protobuf.Timestamp
+	66,  // 135: grid.v1.PlaceSummary.summary:type_name -> grid.v1.SummaryStats
+	68,  // 136: grid.v1.PlaceSummary.domains:type_name -> grid.v1.SummaryDomain
+	70,  // 137: grid.v1.PlaceSummary.sources:type_name -> grid.v1.SummarySourceHealth
+	111, // 138: grid.v1.SummaryStats.severity_counts:type_name -> grid.v1.SummaryStats.SeverityCountsEntry
+	115, // 139: grid.v1.SummaryStats.active_evacuations:type_name -> google.protobuf.Int32Value
+	67,  // 140: grid.v1.SummaryStats.top_events:type_name -> grid.v1.SummaryTopEvent
+	69,  // 141: grid.v1.SummaryDomain.headlines:type_name -> grid.v1.SummaryDomainHeadline
+	112, // 142: grid.v1.SummarySourceHealth.last_success_at:type_name -> google.protobuf.Timestamp
+	75,  // 143: grid.v1.RelatedEventList.related:type_name -> grid.v1.RelatedEvent
+	16,  // 144: grid.v1.RelatedEvent.event:type_name -> grid.v1.Event
+	12,  // 145: grid.v1.RelatedEvent.confidence:type_name -> grid.v1.RelationConfidence
+	78,  // 146: grid.v1.EventTimeline.entries:type_name -> grid.v1.TimelineEntry
+	112, // 147: grid.v1.TimelineEntry.at:type_name -> google.protobuf.Timestamp
+	14,  // 148: grid.v1.TimelineEntry.kind:type_name -> grid.v1.TimelineKind
+	13,  // 149: grid.v1.TimelineEntry.clock:type_name -> grid.v1.TimelineClock
+	84,  // 150: grid.v1.SearchResults.hits:type_name -> grid.v1.SearchHit
+	83,  // 151: grid.v1.SearchResults.totals:type_name -> grid.v1.SearchKindTotal
+	15,  // 152: grid.v1.SearchResults.unavailable:type_name -> grid.v1.SearchKind
+	49,  // 153: grid.v1.SearchResults.search:type_name -> grid.v1.SearchInfo
+	15,  // 154: grid.v1.SearchKindTotal.kind:type_name -> grid.v1.SearchKind
+	15,  // 155: grid.v1.SearchHit.kind:type_name -> grid.v1.SearchKind
+	47,  // 156: grid.v1.SearchHit.match:type_name -> grid.v1.SearchMatch
+	85,  // 157: grid.v1.SearchHit.event:type_name -> grid.v1.SearchHitEvent
+	0,   // 158: grid.v1.SearchHitEvent.layer:type_name -> grid.v1.Layer
+	2,   // 159: grid.v1.SearchHitEvent.status:type_name -> grid.v1.EventStatus
+	1,   // 160: grid.v1.SearchHitEvent.severity:type_name -> grid.v1.Severity
+	112, // 161: grid.v1.SearchHitEvent.observed_at:type_name -> google.protobuf.Timestamp
+	89,  // 162: grid.v1.ResolvePlaceResponse.query:type_name -> grid.v1.ResolveQuery
+	23,  // 163: grid.v1.ResolvePlaceResponse.places:type_name -> grid.v1.Place
+	92,  // 164: grid.v1.ScannerList.scanners:type_name -> grid.v1.Scanner
+	19,  // 165: grid.v1.Camera.location:type_name -> grid.v1.LatLng
+	95,  // 166: grid.v1.CameraList.cameras:type_name -> grid.v1.Camera
+	112, // 167: grid.v1.CameraList.last_source_update:type_name -> google.protobuf.Timestamp
+	112, // 168: grid.v1.WeatherConditions.observed_at:type_name -> google.protobuf.Timestamp
+	112, // 169: grid.v1.ForecastPeriod.time:type_name -> google.protobuf.Timestamp
+	115, // 170: grid.v1.ForecastPeriod.precipitation_probability_percent:type_name -> google.protobuf.Int32Value
+	114, // 171: grid.v1.ForecastPeriod.precipitation_mm:type_name -> google.protobuf.DoubleValue
+	114, // 172: grid.v1.ForecastPeriod.snowfall_mm:type_name -> google.protobuf.DoubleValue
+	115, // 173: grid.v1.ForecastPeriod.snow_level_meters:type_name -> google.protobuf.Int32Value
+	115, // 174: grid.v1.ForecastPeriod.sky_cover_percent:type_name -> google.protobuf.Int32Value
+	112, // 175: grid.v1.DailyForecastPeriod.start:type_name -> google.protobuf.Timestamp
+	112, // 176: grid.v1.DailyForecastPeriod.end:type_name -> google.protobuf.Timestamp
+	115, // 177: grid.v1.DailyForecastPeriod.precipitation_probability_percent:type_name -> google.protobuf.Int32Value
+	115, // 178: grid.v1.WeatherLocation.elevation_meters:type_name -> google.protobuf.Int32Value
+	112, // 179: grid.v1.WeatherForecast.issued_at:type_name -> google.protobuf.Timestamp
+	100, // 180: grid.v1.WeatherForecast.periods:type_name -> grid.v1.ForecastPeriod
+	112, // 181: grid.v1.WeatherForecast.peak_wind_gust_at:type_name -> google.protobuf.Timestamp
+	115, // 182: grid.v1.WeatherForecast.grid_elevation_meters:type_name -> google.protobuf.Int32Value
+	101, // 183: grid.v1.WeatherForecast.daily:type_name -> grid.v1.DailyForecastPeriod
+	98,  // 184: grid.v1.Conditions.weather:type_name -> grid.v1.WeatherConditions
+	99,  // 185: grid.v1.Conditions.fire_weather:type_name -> grid.v1.FireWeatherConditions
+	112, // 186: grid.v1.Conditions.last_updated:type_name -> google.protobuf.Timestamp
+	103, // 187: grid.v1.Conditions.forecast:type_name -> grid.v1.WeatherForecast
+	102, // 188: grid.v1.Conditions.locations:type_name -> grid.v1.WeatherLocation
+	4,   // 189: grid.v1.Conditions.weather_status:type_name -> grid.v1.SourceStatus
+	112, // 190: grid.v1.Stats.since:type_name -> google.protobuf.Timestamp
+	108, // 191: grid.v1.Stats.layers:type_name -> grid.v1.LayerStats
+	112, // 192: grid.v1.Stats.computed_at:type_name -> google.protobuf.Timestamp
+	0,   // 193: grid.v1.LayerStats.layer:type_name -> grid.v1.Layer
+	47,  // 194: grid.v1.EventList.MatchesEntry.value:type_name -> grid.v1.SearchMatch
+	71,  // 195: grid.v1.GridService.ListEvents:input_type -> grid.v1.ListEventsRequest
+	72,  // 196: grid.v1.GridService.GetEvent:input_type -> grid.v1.GetEventRequest
+	76,  // 197: grid.v1.GridService.GetEventTimeline:input_type -> grid.v1.GetEventTimelineRequest
+	56,  // 198: grid.v1.GridService.GetEventSamples:input_type -> grid.v1.GetEventSamplesRequest
+	73,  // 199: grid.v1.GridService.ListRelatedEvents:input_type -> grid.v1.ListRelatedEventsRequest
+	79,  // 200: grid.v1.GridService.GetEventHistory:input_type -> grid.v1.GetEventHistoryRequest
+	80,  // 201: grid.v1.GridService.ListHistory:input_type -> grid.v1.ListHistoryRequest
+	81,  // 202: grid.v1.GridService.Search:input_type -> grid.v1.SearchRequest
+	86,  // 203: grid.v1.GridService.ListPlaces:input_type -> grid.v1.ListPlacesRequest
+	88,  // 204: grid.v1.GridService.ResolvePlace:input_type -> grid.v1.ResolvePlaceRequest
+	87,  // 205: grid.v1.GridService.GetPlace:input_type -> grid.v1.GetPlaceRequest
+	64,  // 206: grid.v1.GridService.GetPlaceSummary:input_type -> grid.v1.GetPlaceSummaryRequest
+	91,  // 207: grid.v1.GridService.ListScanners:input_type -> grid.v1.ListScannersRequest
+	94,  // 208: grid.v1.GridService.ListCameras:input_type -> grid.v1.ListCamerasRequest
+	97,  // 209: grid.v1.GridService.GetConditions:input_type -> grid.v1.GetConditionsRequest
+	105, // 210: grid.v1.GridService.ListSources:input_type -> grid.v1.ListSourcesRequest
+	106, // 211: grid.v1.GridService.GetStats:input_type -> grid.v1.GetStatsRequest
+	55,  // 212: grid.v1.GridService.GetRoadHistory:input_type -> grid.v1.GetRoadHistoryRequest
+	60,  // 213: grid.v1.GridService.GetMeshTelemetry:input_type -> grid.v1.GetMeshTelemetryRequest
+	45,  // 214: grid.v1.GridService.ListEvents:output_type -> grid.v1.EventList
+	16,  // 215: grid.v1.GridService.GetEvent:output_type -> grid.v1.Event
+	77,  // 216: grid.v1.GridService.GetEventTimeline:output_type -> grid.v1.EventTimeline
+	57,  // 217: grid.v1.GridService.GetEventSamples:output_type -> grid.v1.EventSamples
+	74,  // 218: grid.v1.GridService.ListRelatedEvents:output_type -> grid.v1.RelatedEventList
+	51,  // 219: grid.v1.GridService.GetEventHistory:output_type -> grid.v1.EventRevisionList
+	51,  // 220: grid.v1.GridService.ListHistory:output_type -> grid.v1.EventRevisionList
+	82,  // 221: grid.v1.GridService.Search:output_type -> grid.v1.SearchResults
+	53,  // 222: grid.v1.GridService.ListPlaces:output_type -> grid.v1.PlaceList
+	90,  // 223: grid.v1.GridService.ResolvePlace:output_type -> grid.v1.ResolvePlaceResponse
+	23,  // 224: grid.v1.GridService.GetPlace:output_type -> grid.v1.Place
+	65,  // 225: grid.v1.GridService.GetPlaceSummary:output_type -> grid.v1.PlaceSummary
+	93,  // 226: grid.v1.GridService.ListScanners:output_type -> grid.v1.ScannerList
+	96,  // 227: grid.v1.GridService.ListCameras:output_type -> grid.v1.CameraList
+	104, // 228: grid.v1.GridService.GetConditions:output_type -> grid.v1.Conditions
+	54,  // 229: grid.v1.GridService.ListSources:output_type -> grid.v1.SourceList
+	107, // 230: grid.v1.GridService.GetStats:output_type -> grid.v1.Stats
+	59,  // 231: grid.v1.GridService.GetRoadHistory:output_type -> grid.v1.RoadHistory
+	61,  // 232: grid.v1.GridService.GetMeshTelemetry:output_type -> grid.v1.MeshTelemetryArchive
+	214, // [214:233] is the sub-list for method output_type
+	195, // [195:214] is the sub-list for method input_type
+	195, // [195:195] is the sub-list for extension type_name
+	195, // [195:195] is the sub-list for extension extendee
+	0,   // [0:195] is the sub-list for field type_name
 }
 
 func init() { file_grid_proto_init() }
@@ -11411,7 +11498,7 @@ func file_grid_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_grid_proto_rawDesc), len(file_grid_proto_rawDesc)),
-			NumEnums:      15,
+			NumEnums:      16,
 			NumMessages:   96,
 			NumExtensions: 0,
 			NumServices:   1,

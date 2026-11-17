@@ -159,6 +159,19 @@ series behind an event whose layer keeps one. Today that is `ROAD_SEGMENT`:
 `road[]` is the same samples as `GET /api/v1/roads/{road}/history`, which
 stays. An event on any other layer answers 404.
 
+### Every event says what kind of thing it is: `nature`
+
+Some events are things that happen (a fire, an alert, a chain requirement).
+Others are the standing state of something the Grid tracks (a mesh node, a
+county's burn status, a feed's health, a monitored road): always `ACTIVE`,
+revised when their state changes. Until now a client had to know which layers
+were which, and each kept its own list.
+
+`Event.nature` is `OCCURRENCE` or `STATE`, on every event the API returns. It
+follows from the layer. Use it wherever a list of layers would otherwise be
+hard-coded: a count of "events happening" is a count of `OCCURRENCE` events.
+The place summary's hazard rollups leave `STATE` events out by the same rule.
+
 ### New enum values, declared ahead of use
 
 `Layer` gains `SOURCE_HEALTH`, `CHAIN_CONTROL`, `ROAD_SEGMENT` and `WEATHER`;

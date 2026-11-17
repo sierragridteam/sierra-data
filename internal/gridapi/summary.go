@@ -631,16 +631,12 @@ func sourceRows(sources []*gridv1.Source) []*gridv1.SummarySourceHealth {
 	return out
 }
 
-// ambientLayer reports whether a layer is ambient: its events are state, not
-// hazards, and are left out of the summary's hazard rollups (`totalActive`,
-// `severityCounts`, `topEvents`, `mode`). It says nothing about lifetime: a
-// burn status is permanent and a mesh node expires.
+// ambientLayer reports whether a layer's events are standing state and not
+// hazards, and so are left out of the summary's hazard rollups (`totalActive`,
+// `severityCounts`, `topEvents`, `mode`). It is LayerNature, which the API
+// also publishes on each event (Event.nature): there is one list.
 func ambientLayer(l gridv1.Layer) bool {
-	switch l {
-	case gridv1.Layer_MESH, gridv1.Layer_BURN_STATUS, gridv1.Layer_SOURCE_HEALTH, gridv1.Layer_WEATHER:
-		return true
-	}
-	return false
+	return LayerNature(l) == gridv1.EventNature_STATE
 }
 
 // countedElsewhere reports whether a layer's events are hazards the summary
@@ -650,7 +646,7 @@ func ambientLayer(l gridv1.Layer) bool {
 // closure twice. Remove a layer from here when the roads domain reads its
 // events.
 func countedElsewhere(l gridv1.Layer) bool {
-	return l == gridv1.Layer_CHAIN_CONTROL || l == gridv1.Layer_ROAD_SEGMENT
+	return l == gridv1.Layer_CHAIN_CONTROL
 }
 
 // storeLayerEnum resolves a layer slug onto its store Layer enum for layers

@@ -387,6 +387,17 @@ message Event {
     RoadSegmentDetail road_segment = 35;
   }
 
+  // What kind of thing this event is, which follows from its `layer`:
+  // something that happens (OCCURRENCE) or the standing state of something
+  // the Grid tracks (STATE). Read this instead of keeping a list of layers:
+  // a count of "events happening" is a count of OCCURRENCE events, and a
+  // layer added later says which it is. Set on every event the API returns.
+  //
+  // (-- Derived from the layer when a response is written
+  // (gridapi.NatureInterceptor), never stored: zeroed in store.ContentHash
+  // so an event carried back into the store cannot differ by it. --)
+  EventNature nature = 36 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"OCCURRENCE\""}];
+
   // Gauge/AirQuality/Announcement details — defined with their pollers.
   reserved 28 to 30;
 }
@@ -1609,6 +1620,25 @@ message EventRevision {
   // Why this revision was written: the state changed (CHANGE), or a reading
   // of an unchanged state arrived (READING). Never unspecified.
   RevisionKind kind = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"CHANGE\""}];
+}
+
+// EventNature says what kind of thing an event is. It follows from the layer.
+enum EventNature {
+  // Never returned.
+  EVENT_NATURE_UNSPECIFIED = 0;
+  // Something that begins and ends: a wildfire, an evacuation, a weather
+  // alert, an earthquake, a road incident or closure window, a power outage,
+  // a chain requirement. `status` is its lifecycle: ACTIVE or SCHEDULED
+  // while it is on, RESOLVED or EXPIRED when it is over.
+  OCCURRENCE = 1;
+  // The standing state of something the Grid keeps track of: a mesh node, a
+  // county's burn status, an upstream feed's health, a monitored road. The
+  // event lasts as long as the thing does and is ACTIVE throughout; what is
+  // going on is in its detail (a road that is CLOSED is an ACTIVE event whose
+  // `roadSegment.status` is CLOSED), and its revisions are when that
+  // changed. Not something happening: leave these out of counts of events,
+  // and expect `severity` INFO for most of them.
+  STATE = 2;
 }
 
 // RevisionKind says why a revision was written.

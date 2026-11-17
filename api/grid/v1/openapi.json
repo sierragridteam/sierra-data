@@ -6334,6 +6334,15 @@
             ],
             "description": "MESH detail (one MeshCore radio node)."
           },
+          "nature": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/v1EventNature"
+              }
+            ],
+            "description": "What kind of thing this event is, which follows from its `layer`:\nsomething that happens (OCCURRENCE) or the standing state of something\nthe Grid tracks (STATE). Read this instead of keeping a list of layers:\na count of \"events happening\" is a count of OCCURRENCE events, and a\nlayer added later says which it is. Set on every event the API returns.\n",
+            "example": "OCCURRENCE"
+          },
           "observedAt": {
             "description": "When the upstream last changed this event's content. It moves only when a\nnew revision is written, so it is NOT \"last seen\". For a mesh node's\nliveness use `mesh.telemetry.lastHeardAt` / `lastRelayedAt`; for burn\nstatus it follows each new phone-line reading.",
             "format": "date-time",
@@ -6442,6 +6451,7 @@
           "id",
           "ingestedAt",
           "layer",
+          "nature",
           "observedAt",
           "placeIds",
           "provenance",
@@ -6578,6 +6588,16 @@
           "totalMatches"
         ],
         "type": "object"
+      },
+      "v1EventNature": {
+        "default": "EVENT_NATURE_UNSPECIFIED",
+        "description": "EventNature says what kind of thing an event is. It follows from the layer.\n\n - EVENT_NATURE_UNSPECIFIED: Never returned.\n - OCCURRENCE: Something that begins and ends: a wildfire, an evacuation, a weather\nalert, an earthquake, a road incident or closure window, a power outage,\na chain requirement. `status` is its lifecycle: ACTIVE or SCHEDULED\nwhile it is on, RESOLVED or EXPIRED when it is over.\n - STATE: The standing state of something the Grid keeps track of: a mesh node, a\ncounty's burn status, an upstream feed's health, a monitored road. The\nevent lasts as long as the thing does and is ACTIVE throughout; what is\ngoing on is in its detail (a road that is CLOSED is an ACTIVE event whose\n`roadSegment.status` is CLOSED), and its revisions are when that\nchanged. Not something happening: leave these out of counts of events,\nand expect `severity` INFO for most of them.",
+        "enum": [
+          "EVENT_NATURE_UNSPECIFIED",
+          "OCCURRENCE",
+          "STATE"
+        ],
+        "type": "string"
       },
       "v1EventRevision": {
         "description": "EventRevision is one stored snapshot of an event.",

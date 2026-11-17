@@ -38,6 +38,7 @@ func ContentHash(ev *gridv1.Event) string {
 	c := proto.Clone(ev).(*gridv1.Event)
 	c.Revision = 0
 	c.Readings = 0
+	c.Nature = gridv1.EventNature_EVENT_NATURE_UNSPECIFIED // derived at read time, never content
 	c.IngestedAt = nil
 	c.ObservedAt = nil
 	if c.Provenance != nil {

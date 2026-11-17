@@ -41,7 +41,8 @@
       "ingestedAt": null,
       "revision": 1,
       "readings": 0,
-      "enhancement": null
+      "enhancement": null,
+      "nature": "OCCURRENCE"
     },
     {
       "id": "usgs:q1",
@@ -85,7 +86,8 @@
       "ingestedAt": null,
       "revision": 2,
       "readings": 0,
-      "enhancement": null
+      "enhancement": null,
+      "nature": "OCCURRENCE"
     },
     {
       "id": "wx:a1",
@@ -115,7 +117,8 @@
       "ingestedAt": null,
       "revision": 1,
       "readings": 0,
-      "enhancement": null
+      "enhancement": null,
+      "nature": "OCCURRENCE"
     },
     {
       "id": "chp:i1",
@@ -168,7 +171,8 @@
         ],
         "request": "",
         "response": ""
-      }
+      },
+      "nature": "OCCURRENCE"
     },
     {
       "id": "meshcore:aa00",
@@ -208,7 +212,8 @@
       "ingestedAt": null,
       "revision": 1,
       "readings": 0,
-      "enhancement": null
+      "enhancement": null,
+      "nature": "STATE"
     }
   ],
   "nextPageToken": "",
@@ -259,7 +264,8 @@
   "ingestedAt": null,
   "revision": 2,
   "readings": 0,
-  "enhancement": null
+  "enhancement": null,
+  "nature": "OCCURRENCE"
 }
 {
   "revisions": [
@@ -309,7 +315,8 @@
         "ingestedAt": null,
         "revision": 2,
         "readings": 0,
-        "enhancement": null
+        "enhancement": null,
+        "nature": "OCCURRENCE"
       },
       "match": null,
       "kind": "CHANGE"
@@ -360,7 +367,8 @@
         "ingestedAt": null,
         "revision": 1,
         "readings": 0,
-        "enhancement": null
+        "enhancement": null,
+        "nature": "OCCURRENCE"
       },
       "match": null,
       "kind": "CHANGE"
@@ -419,7 +427,8 @@
         "ingestedAt": null,
         "revision": 2,
         "readings": 0,
-        "enhancement": null
+        "enhancement": null,
+        "nature": "OCCURRENCE"
       },
       "match": null,
       "kind": "CHANGE"
@@ -470,7 +479,8 @@
         "ingestedAt": null,
         "revision": 1,
         "readings": 0,
-        "enhancement": null
+        "enhancement": null,
+        "nature": "OCCURRENCE"
       },
       "match": null,
       "kind": "CHANGE"
@@ -520,7 +530,8 @@
         "ingestedAt": null,
         "revision": 1,
         "readings": 0,
-        "enhancement": null
+        "enhancement": null,
+        "nature": "OCCURRENCE"
       },
       "match": null,
       "kind": "CHANGE"
@@ -567,7 +578,8 @@
         "ingestedAt": null,
         "revision": 1,
         "readings": 0,
-        "enhancement": null
+        "enhancement": null,
+        "nature": "STATE"
       },
       "match": null,
       "kind": "CHANGE"
@@ -604,7 +616,8 @@
         "ingestedAt": null,
         "revision": 1,
         "readings": 0,
-        "enhancement": null
+        "enhancement": null,
+        "nature": "OCCURRENCE"
       },
       "match": null,
       "kind": "CHANGE"
@@ -664,7 +677,8 @@
           ],
           "request": "",
           "response": ""
-        }
+        },
+        "nature": "OCCURRENCE"
       },
       "match": null,
       "kind": "CHANGE"

@@ -2053,6 +2053,11 @@
         },
         "roadSegment": {
           "$ref": "#/definitions/v1RoadSegmentDetail"
+        },
+        "nature": {
+          "$ref": "#/definitions/v1EventNature",
+          "example": "OCCURRENCE",
+          "description": "What kind of thing this event is, which follows from its `layer`:\nsomething that happens (OCCURRENCE) or the standing state of something\nthe Grid tracks (STATE). Read this instead of keeping a list of layers:\na count of \"events happening\" is a count of OCCURRENCE events, and a\nlayer added later says which it is. Set on every event the API returns.\n"
         }
       },
       "description": "Event is one item from one upstream source: a hazard, or a piece of ambient\nstate such as a mesh node or a county's burn status.\n\nThe envelope fields are the same for every layer, so a client can render a\ncard from `headline`, `severity`, `status` and `provenance` without knowing the\nlayer. Layer-specific fields are in exactly one detail block (`wildfire`,\n`evacuation`, `weatherAlert`, `earthquake`, `roadIncident`, `mesh`, `power` or\n`burnStatus`), chosen by `layer`; the other blocks are absent. `fireWeather`\nis never populated on an event.",
@@ -2157,6 +2162,16 @@
         }
       },
       "description": "EventList is one page of events."
+    },
+    "v1EventNature": {
+      "type": "string",
+      "enum": [
+        "EVENT_NATURE_UNSPECIFIED",
+        "OCCURRENCE",
+        "STATE"
+      ],
+      "default": "EVENT_NATURE_UNSPECIFIED",
+      "description": "EventNature says what kind of thing an event is. It follows from the layer.\n\n - EVENT_NATURE_UNSPECIFIED: Never returned.\n - OCCURRENCE: Something that begins and ends: a wildfire, an evacuation, a weather\nalert, an earthquake, a road incident or closure window, a power outage,\na chain requirement. `status` is its lifecycle: ACTIVE or SCHEDULED\nwhile it is on, RESOLVED or EXPIRED when it is over.\n - STATE: The standing state of something the Grid keeps track of: a mesh node, a\ncounty's burn status, an upstream feed's health, a monitored road. The\nevent lasts as long as the thing does and is ACTIVE throughout; what is\ngoing on is in its detail (a road that is CLOSED is an ACTIVE event whose\n`roadSegment.status` is CLOSED), and its revisions are when that\nchanged. Not something happening: leave these out of counts of events,\nand expect `severity` INFO for most of them."
     },
     "v1EventRevision": {
       "type": "object",
