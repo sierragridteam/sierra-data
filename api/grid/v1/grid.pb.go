@@ -4421,11 +4421,17 @@ func (x *ChainControlSign) GetLocation() *LatLng {
 
 // SourceHealthDetail is one upstream feed's health as the Grid last found it
 // to change (layer SOURCE_HEALTH, event id `source:{source id}`). The event is
-// revised only when `status` changes, so its history answers "when was this
-// source down?": join an event's `provenance.sourceId` to `source:{id}` and a
-// quiet stretch in that event's history reads as quiet or as blind. The
-// source's current health, with its latest error and attempt time, is
-// `GET /api/v1/sources`.
+// revised only when `status` changes and the change lasts, so its history
+// answers "when was this source down?": join an event's `provenance.sourceId`
+// to `source:{id}` and a quiet stretch in that event's history reads as quiet
+// or as blind. The source's current health, with its latest error and attempt
+// time, is `GET /api/v1/sources`.
+//
+// Two limits. A single failed poll that recovers at the next one is not
+// recorded here (it shows on `/api/v1/sources` while it lasts): STALE is
+// recorded once a source has gone two poll intervals without a good read.
+// And while the Grid itself was not running nothing was recorded, so the
+// status carries across that gap unexamined.
 type SourceHealthDetail struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The source registry id (`Source.id`).
@@ -4435,7 +4441,9 @@ type SourceHealthDetail struct {
 	// When the Grid found the source in this status: the time of the attempt
 	// that changed it. A source goes from STALE to UNAVAILABLE at the first
 	// failed attempt after its stale window, not at the moment the window ran
-	// out. For the first revision it is when the Grid began recording.
+	// out. For the first revision (`revision` 1) it is when the Grid began
+	// recording this source, not when the status began: show it as "recorded
+	// since", never as "since".
 	Since *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=since,proto3" json:"since,omitempty"`
 	// The error of the attempt that changed the status. Empty string for OK.
 	// Later attempts' errors are not recorded here.

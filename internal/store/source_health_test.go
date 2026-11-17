@@ -35,9 +35,19 @@ func healthStatuses(t *testing.T, s *Store, id string) []gridv1.SourceStatus {
 	return out
 }
 
-// A revision is a status change and nothing else: repeated successes and
-// repeated failures write none.
-func TestSourceHealthRevisionPerStatusChange(t *testing.T) {
+// lastSuccessAgo moves a source's last success into the past, as if that
+// long had gone by without a good poll.
+func lastSuccessAgo(t *testing.T, s *Store, id string, d time.Duration) {
+	t.Helper()
+	_, err := s.db.Exec(`UPDATE sources SET last_success_at = $1 WHERE id = $2`, time.Now().Add(-d).Unix(), id)
+	require.NoError(t, err)
+}
+
+// The history is the source's health as it LASTED. One failed poll and its
+// recovery write nothing: the row shows the blip (/api/v1/sources), the
+// history does not. A failure that outlives a second poll is STALE; past the
+// stale window it is UNAVAILABLE; recovery is one revision.
+func TestSourceHealthRevisionPerLastingChange(t *testing.T) {
 	ctx := context.Background()
 	s := healthStore(t)
 	ok, stale, down := gridv1.SourceStatus_OK, gridv1.SourceStatus_STALE, gridv1.SourceStatus_UNAVAILABLE
@@ -46,13 +56,20 @@ func TestSourceHealthRevisionPerStatusChange(t *testing.T) {
 	require.NoError(t, s.RecordAttempt(ctx, "usgs", nil))
 	assert.Equal(t, []gridv1.SourceStatus{ok}, healthStatuses(t, s, "usgs"))
 
+	// A blip: one failed poll, then a good one.
+	require.NoError(t, s.RecordAttempt(ctx, "usgs", errors.New("HTTP 503")))
+	assert.Equal(t, stale, getSource(t, s, "usgs").GetStatus(), "the row is not debounced")
+	require.NoError(t, s.RecordAttempt(ctx, "usgs", nil))
+	assert.Equal(t, []gridv1.SourceStatus{ok}, healthStatuses(t, s, "usgs"), "a blip is not history")
+
+	// Still failing two poll intervals after the last success: STALE, once.
+	lastSuccessAgo(t, s, "usgs", 2*time.Minute+time.Second)
 	require.NoError(t, s.RecordAttempt(ctx, "usgs", errors.New("HTTP 503")))
 	require.NoError(t, s.RecordAttempt(ctx, "usgs", errors.New("HTTP 502")))
 	assert.Equal(t, []gridv1.SourceStatus{ok, stale}, healthStatuses(t, s, "usgs"))
 
 	// Past the stale window, the next failed attempt is the change.
-	_, err := s.db.Exec(`UPDATE sources SET last_success_at = $1 WHERE id = 'usgs'`, time.Now().Add(-10*time.Minute).Unix())
-	require.NoError(t, err)
+	lastSuccessAgo(t, s, "usgs", 10*time.Minute)
 	require.NoError(t, s.RecordAttempt(ctx, "usgs", errors.New("connect timeout")))
 	require.NoError(t, s.RecordAttempt(ctx, "usgs", errors.New("connect timeout again")))
 	assert.Equal(t, []gridv1.SourceStatus{ok, stale, down}, healthStatuses(t, s, "usgs"))
@@ -79,6 +96,14 @@ func TestSourceHealthRevisionPerStatusChange(t *testing.T) {
 	assert.Equal(t, uint32(4), ev.GetRevision())
 }
 
+// A source that has never been read goes straight to UNAVAILABLE, and that
+// first failure is revision 1.
+func TestSourceHealthFirstAttemptFails(t *testing.T) {
+	s := healthStore(t)
+	require.NoError(t, s.RecordAttempt(context.Background(), "usgs", errors.New("HTTP 500")))
+	assert.Equal(t, []gridv1.SourceStatus{gridv1.SourceStatus_UNAVAILABLE}, healthStatuses(t, s, "usgs"))
+}
+
 // Reporter rows get no event (their health does not survive a restart), and
 // neither does the grid row itself.
 func TestSourceHealthFeedsOnly(t *testing.T) {
@@ -97,38 +122,47 @@ func TestSourceHealthFeedsOnly(t *testing.T) {
 	assert.Equal(t, gridv1.SourceStatus_OK, grid.GetStatus(), "the seed records the grid row's success")
 }
 
-// The status and its history commit together: when the event cannot be
-// written, the attempt is not recorded either.
-func TestSourceHealthIsAtomicWithTheAttempt(t *testing.T) {
+// The history must never cost the health. When the event cannot be written
+// the attempt is still recorded (status, error, attempt time), and the next
+// attempt that can write the event puts the history right.
+func TestSourceHealthFailureNeverBlocksTheAttempt(t *testing.T) {
 	ctx := context.Background()
 	s := healthStore(t)
 	require.NoError(t, s.RecordAttempt(ctx, "usgs", nil))
-	// Without its owner row the event cannot be inserted (foreign key).
-	_, err := s.db.Exec(`DELETE FROM event_search WHERE event_id = 'source:usgs'`)
-	require.NoError(t, err)
-	_, err = s.db.Exec(`DELETE FROM event_revision_search; DELETE FROM event_lite; DELETE FROM event_revisions; DELETE FROM events`)
-	require.NoError(t, err)
-	require.NoError(t, s.DeleteSource(ctx, GridSourceID))
+	before := getSource(t, s, "usgs")
 
-	require.Error(t, s.RecordAttempt(ctx, "usgs", errors.New("HTTP 503")))
-	assert.Equal(t, gridv1.SourceStatus_OK, getSource(t, s, "usgs").GetStatus(), "the failed write rolled the status back")
+	// Make every revision write fail, as a broken index or a bad row would.
+	_, err := s.db.Exec(`CREATE FUNCTION refuse() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'refused'; END $$;
+		CREATE TRIGGER refuse_revisions BEFORE INSERT ON event_revisions FOR EACH ROW EXECUTE FUNCTION refuse()`)
+	require.NoError(t, err)
+
+	lastSuccessAgo(t, s, "usgs", 10*time.Minute)
+	time.Sleep(1100 * time.Millisecond) // attempt times are whole seconds
+	require.NoError(t, s.RecordAttempt(ctx, "usgs", errors.New("HTTP 503")), "the attempt commits whatever the history does")
+	after := getSource(t, s, "usgs")
+	assert.Equal(t, gridv1.SourceStatus_UNAVAILABLE, after.GetStatus())
+	assert.Equal(t, "HTTP 503", after.GetLastError())
+	assert.True(t, after.GetLastAttemptAt().AsTime().After(before.GetLastAttemptAt().AsTime()))
+	assert.Equal(t, []gridv1.SourceStatus{gridv1.SourceStatus_OK}, healthStatuses(t, s, "usgs"), "the revision was refused")
+
+	// The obstacle goes away: the next attempt records what was missed.
+	_, err = s.db.Exec(`DROP TRIGGER refuse_revisions ON event_revisions`)
+	require.NoError(t, err)
+	require.NoError(t, s.RecordAttempt(ctx, "usgs", errors.New("HTTP 503 again")))
+	assert.Equal(t, []gridv1.SourceStatus{gridv1.SourceStatus_OK, gridv1.SourceStatus_UNAVAILABLE}, healthStatuses(t, s, "usgs"))
 }
 
-// The term-start seed: a feed already attempted gets its first revision, a
-// disagreement gets a revision, agreement writes nothing, a never-attempted
-// feed waits for its first attempt, and a feed gone from the registry is
-// resolved.
-func TestSeedSourceHealth(t *testing.T) {
+// Turning the layer on over a database that never had it: nothing is written
+// from the rows (their status may be hours old); each feed's next attempt
+// writes its first revision from a real reading.
+func TestSourceHealthStartsAtTheNextAttempt(t *testing.T) {
 	ctx := context.Background()
-	// A store without source health records attempts and no events: the
-	// state a first deploy finds.
 	url := storetest.URL(t)
 	plain, err := Open(url)
 	require.NoError(t, err)
 	require.NoError(t, plain.SeedSources(ctx, []SourceSeed{
 		{ID: "usgs", Name: "USGS", PollInterval: time.Minute},
 		{ID: "nws", Name: "NWS", PollInterval: time.Minute},
-		{ID: "pge", Name: "PG&E", PollInterval: time.Minute},
 	}))
 	require.NoError(t, plain.RecordAttempt(ctx, "usgs", nil))
 	require.NoError(t, plain.RecordAttempt(ctx, "nws", errors.New("HTTP 500")))
@@ -142,30 +176,109 @@ func TestSeedSourceHealth(t *testing.T) {
 	require.Error(t, s.SeedSourceHealth(ctx), "the grid row must be seeded first")
 	require.NoError(t, s.SeedSources(ctx, []SourceSeed{GridSourceSeed()}))
 	require.NoError(t, s.SeedSourceHealth(ctx))
+	_, err = s.GetEvent(ctx, "source:usgs")
+	assert.ErrorIs(t, err, ErrNotFound, "nothing is written from a row")
 
+	require.NoError(t, s.RecordAttempt(ctx, "usgs", nil))
+	require.NoError(t, s.RecordAttempt(ctx, "nws", errors.New("HTTP 500")))
 	assert.Equal(t, []gridv1.SourceStatus{gridv1.SourceStatus_OK}, healthStatuses(t, s, "usgs"))
 	assert.Equal(t, []gridv1.SourceStatus{gridv1.SourceStatus_UNAVAILABLE}, healthStatuses(t, s, "nws"))
-	_, err = s.GetEvent(ctx, "source:pge")
-	assert.ErrorIs(t, err, ErrNotFound, "never attempted: no revision until its first attempt")
+}
 
-	// Agreement: a second seed writes nothing.
-	require.NoError(t, s.SeedSourceHealth(ctx))
-	assert.Len(t, healthStatuses(t, s, "usgs"), 1)
+// A feed that leaves the registry, is retired, or becomes a reporter: its
+// health event is resolved at the next term, the history kept, and resolving
+// is idempotent. A source that comes back is ACTIVE again at its next attempt.
+func TestSourceHealthEventsOfDepartedSourcesAreResolved(t *testing.T) {
+	ctx := context.Background()
+	s := healthStore(t)
+	require.NoError(t, s.SeedSources(ctx, []SourceSeed{{ID: "nws", Name: "NWS", PollInterval: time.Minute}}))
+	require.NoError(t, s.RecordAttempt(ctx, "usgs", nil))
+	require.NoError(t, s.RecordAttempt(ctx, "nws", nil))
 
-	// Disagreement (a build without the layer moved the row): a revision.
-	_, err = s.db.Exec(`UPDATE sources SET status = $1, last_error = 'HTTP 503' WHERE id = 'usgs'`, int32(gridv1.SourceStatus_STALE))
+	_, err := s.RetireSource(ctx, "nws")
 	require.NoError(t, err)
+	require.NoError(t, s.SeedSources(ctx, []SourceSeed{{ID: "usgs", Name: "USGS", Kind: gridv1.SourceKind_REPORTER, PollInterval: time.Minute}}))
 	require.NoError(t, s.SeedSourceHealth(ctx))
-	assert.Equal(t, []gridv1.SourceStatus{gridv1.SourceStatus_OK, gridv1.SourceStatus_STALE}, healthStatuses(t, s, "usgs"))
-
-	// A feed that leaves the registry: its event is resolved, history kept.
-	require.NoError(t, s.DeleteSource(ctx, "nws"))
+	for _, id := range []string{"source:nws", "source:usgs"} {
+		ev, err := s.GetEvent(ctx, id)
+		require.NoError(t, err)
+		assert.Equal(t, gridv1.EventStatus_RESOLVED, ev.GetStatus(), id)
+		assert.Equal(t, uint32(2), ev.GetRevision(), id)
+	}
 	require.NoError(t, s.SeedSourceHealth(ctx))
 	ev, err := s.GetEvent(ctx, "source:nws")
 	require.NoError(t, err)
-	assert.Equal(t, gridv1.EventStatus_RESOLVED, ev.GetStatus())
-	require.NoError(t, s.SeedSourceHealth(ctx))
+	assert.Equal(t, uint32(2), ev.GetRevision(), "resolving is idempotent")
+
+	// The feed is configured again.
+	require.NoError(t, s.SeedSources(ctx, []SourceSeed{{ID: "nws", Name: "NWS", PollInterval: time.Minute}}))
+	require.NoError(t, s.RecordAttempt(ctx, "nws", nil))
 	ev, err = s.GetEvent(ctx, "source:nws")
 	require.NoError(t, err)
-	assert.Equal(t, uint32(2), ev.GetRevision(), "resolving is idempotent")
+	assert.Equal(t, gridv1.EventStatus_ACTIVE, ev.GetStatus())
+}
+
+// RetireSource is what turning a layer off does: the source's live events are
+// EXPIRED (nobody is watching them; that is not "ended"), its row leaves the
+// registry listing, and both come back when the source is seeded and polled
+// again. Without it a layer that was switched off left its events ACTIVE.
+func TestRetireSource(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	seedSource(t, s, "usgs")
+	seedSource(t, s, "caltrans-cc")
+	mk := func(id string, status gridv1.EventStatus) *gridv1.Event {
+		ev := testEvent(id, gridv1.Severity_MODERATE, status, "Hwy 4 chains required")
+		ev.Layer = gridv1.Layer_CHAIN_CONTROL
+		ev.Provenance.SourceId = "caltrans-cc"
+		return ev
+	}
+	for _, ev := range []*gridv1.Event{mk("cc:hwy4:r2", gridv1.EventStatus_ACTIVE), mk("cc:hwy88:r2", gridv1.EventStatus_ACTIVE), mk("cc:hwy108:r1", gridv1.EventStatus_RESOLVED)} {
+		_, err := s.UpsertEvent(ctx, ev)
+		require.NoError(t, err)
+	}
+	other := testEvent("usgs:q", gridv1.Severity_MINOR, gridv1.EventStatus_ACTIVE, "quake")
+	_, err := s.UpsertEvent(ctx, other)
+	require.NoError(t, err)
+
+	n, err := s.RetireSource(ctx, "caltrans-cc")
+	require.NoError(t, err)
+	assert.Equal(t, 2, n)
+	for id, want := range map[string]gridv1.EventStatus{
+		"cc:hwy4:r2": gridv1.EventStatus_EXPIRED, "cc:hwy88:r2": gridv1.EventStatus_EXPIRED,
+		"cc:hwy108:r1": gridv1.EventStatus_RESOLVED, "usgs:q": gridv1.EventStatus_ACTIVE,
+	} {
+		ev, err := s.GetEvent(ctx, id)
+		require.NoError(t, err)
+		assert.Equal(t, want, ev.GetStatus(), id)
+	}
+	listed := map[string]bool{}
+	sources, err := s.ListSources(ctx)
+	require.NoError(t, err)
+	for _, src := range sources {
+		listed[src.GetId()] = true
+	}
+	assert.False(t, listed["caltrans-cc"], "a retired row is not listed")
+	assert.True(t, listed["usgs"])
+
+	// Again, and for an id that was never seeded: nothing to do, no error.
+	n, err = s.RetireSource(ctx, "caltrans-cc")
+	require.NoError(t, err)
+	assert.Zero(t, n)
+	_, err = s.RetireSource(ctx, "never-seeded")
+	require.NoError(t, err)
+
+	// On again: the row is listed, and the next poll's event is ACTIVE.
+	seedSource(t, s, "caltrans-cc")
+	sources, err = s.ListSources(ctx)
+	require.NoError(t, err)
+	listed = map[string]bool{}
+	for _, src := range sources {
+		listed[src.GetId()] = true
+	}
+	assert.True(t, listed["caltrans-cc"])
+	res, err := s.UpsertEvent(ctx, mk("cc:hwy4:r2", gridv1.EventStatus_ACTIVE))
+	require.NoError(t, err)
+	assert.True(t, res.Changed)
+	assert.Equal(t, uint32(3), res.Revision)
 }

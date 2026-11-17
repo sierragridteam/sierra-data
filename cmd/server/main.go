@@ -414,6 +414,32 @@ func seedPaths(obs []store.MeshObservation) []meshcore.SeedPath {
 	return paths
 }
 
+// retireDisabledLayers retires the source of every recorded-state layer whose
+// flag is off (store.RetireSource: its live events become EXPIRED and its
+// registry row is hidden). Idempotent and cheap when there is nothing to do,
+// which is every start after the first with the flag off, and every start of
+// a deployment that never turned the layer on. Best effort.
+func retireDisabledLayers(ctx context.Context, st *store.Store, cfg *config.Config) {
+	off := map[string]bool{
+		store.GridSourceID:          !cfg.Grid.SourceHealth.Enabled,
+		ingest.ChainControlSourceID: !cfg.Grid.ChainControl.Record,
+		ingest.RoadSegmentSourceID:  !cfg.Grid.RoadSegments.Record,
+	}
+	for id, disabled := range off {
+		if !disabled {
+			continue
+		}
+		n, err := st.RetireSource(ctx, id)
+		if err != nil {
+			logging.Warnw(ctx, "Could not retire the source of a disabled layer", "source", id, "error", err)
+			continue
+		}
+		if n > 0 {
+			logging.Infow(ctx, "Retired the events of a disabled layer", "source", id, "expired", n)
+		}
+	}
+}
+
 // gridSourceSeeds builds the source registry rows: ids + tuning from
 // grid.sources config, names/attributions from the static registry (a
 // config id without a registry entry is seeded with its id as the name so it

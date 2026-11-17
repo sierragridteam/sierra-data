@@ -1,0 +1,11 @@
+-- Grid store schema version 7: sources.retired_at.
+--
+-- A source row cannot be deleted while events name it (events.source_id is a
+-- foreign key), and a row nothing polls keeps its last status for ever, so it
+-- reads as a healthy feed that is in fact not being read. retired_at (unix
+-- seconds) marks a row the running configuration no longer uses: it is left
+-- out of the registry listing, and seeding the source again clears it.
+--
+-- Additive and nullable: the previous release neither writes nor reads it,
+-- and lists a retired row as it always has.
+ALTER TABLE sources ADD COLUMN retired_at bigint;

@@ -317,10 +317,15 @@ func (a *gridApp) startTerm(actx context.Context, lease *store.Lease) (*writerTe
 		return nil, fmt.Errorf("seed grid sources: %w", err)
 	}
 	retireOrphanedSources(actx, gridStore)
-	// After the registry is seeded: a feed with no health event, or one whose
-	// event disagrees with its row, gets a revision (a no-op with the layer off).
+	// A layer that is off must not leave its last state standing: with no
+	// poller there is no sweep, so its events would stay ACTIVE and its source
+	// row would keep its last status for good. Turning a flag off is then a
+	// real off switch. Like the orphan sweep above, never a reason not to start.
+	retireDisabledLayers(actx, gridStore, appConfig)
+	// Source health's term-start housekeeping. History must never be able to
+	// stop ingest: a failure is logged and the term goes on.
 	if err := gridStore.SeedSourceHealth(actx); err != nil {
-		return nil, fmt.Errorf("seed source health: %w", err)
+		logging.Errorw(ctx, "Source health: term-start housekeeping failed; continuing", "error", err)
 	}
 	if err := places.Seed(actx, gridStore, appConfig); err != nil {
 		return nil, fmt.Errorf("seed grid places: %w", err)

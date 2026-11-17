@@ -151,23 +151,49 @@ With `WithSourceHealth` (`grid.sourceHealth.enabled`) each FEED row of
 permanently ACTIVE, INFO, no geometry, no places. `sources` stays the registry
 and the current health; the event is its history.
 
-- **A revision is a status change, nothing else.** Nothing in the event is
-  hash-excluded, so it never takes the refresh path. The snapshot's error is
-  the one from the attempt that changed the status.
-- **Written in `RecordAttempt`'s transaction** (`upsertEventTx`, which is
-  `UpsertEvent`'s body for a caller that already holds the write
-  transaction). Two transactions could commit the status without its history,
-  and nothing would repair that. A failed event write rolls the attempt back.
+- **A revision is a change of status that lasted.** The history is debounced
+  and the row is not: one failed poll makes the row STALE and the next good
+  one OK, and neither is a revision. STALE is recorded once the last success
+  is two poll intervals old; UNAVAILABLE at once (`sourceHealthState.recorded`).
+  Written as it happened, a feed polled every minute that failed every other
+  poll would add more revisions a day than the rest of the store. Nothing in
+  the event is hash-excluded, so it never takes the refresh path. The
+  snapshot's error is the one from the attempt that changed the status.
+- **The history must never cost the health.** `RecordAttempt` always commits
+  the row. The event is written in the same transaction under a savepoint
+  (`recordSourceHealth`, through `upsertEventTx`: `UpsertEvent`'s body for a
+  caller that already holds the write transaction); a failure there is
+  logged and rolled back to the savepoint. It compares against the stored
+  event, not the row's previous status, so the next attempt puts right
+  whatever an earlier one could not write. The first version shared the
+  attempt's fate: a broken search index then left `/api/v1/sources` vouching
+  for a dead feed, on exactly the attempts where the status changed.
 - **Owned by the `grid` source row** (`GridSourceSeed`, kind `INTERNAL`).
   `events.source_id` is a foreign key, and an event owned by the source it
   describes would be swept by that source's own poller.
-- **Seeded each writer term** (`SeedSourceHealth`, after `SeedSources`): a
-  feed already attempted and without an event gets one; an event that
-  disagrees with its row gets a revision, comparing statuses, never hashes; a
-  health event whose source left the registry is RESOLVED. It also records
-  the `grid` row's success.
+- **Term start is housekeeping only** (`SeedSourceHealth`): a health event
+  whose source is no longer a feed in the registry is RESOLVED, and the
+  `grid` row records a success. It writes nothing from the rows, whose
+  status may be hours old; each feed's next attempt does. The server logs
+  and continues if it fails: history must not be able to stop ingest.
 - **Feeds only.** A reporter's health is process memory for the mesh streams,
-  so a deploy would write an outage that did not happen.
+  so a deploy would write an outage that did not happen. `meshcore` has a
+  milder form of the same thing (its brokers reconnect after a deploy); the
+  debounce covers a gap shorter than its stale window.
+- **What the history cannot say.** While no process is writing, nothing is
+  recorded, and the event keeps its last status across the gap.
+
+## Retiring a source (`RetireSource`, migration 0007)
+
+A source row cannot be deleted while events name it, and a row nothing polls
+keeps its last status. `sources.retired_at` marks a row the running
+configuration no longer uses: `ListSources` leaves it out, and `SeedSources`
+clears the mark. `RetireSource` also moves the source's ACTIVE and SCHEDULED
+events to EXPIRED. The server calls it at each term start for every
+recorded-state layer whose flag is off (`retireDisabledLayers`), which is
+what makes those flags an off switch: without it a layer that was turned off
+left its events ACTIVE for good, with no poller to end them. A new layer
+behind a flag belongs in that list.
 
 ## `last_seen_at` vs `observed_at`
 

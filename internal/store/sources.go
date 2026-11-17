@@ -64,7 +64,7 @@ func (s *Store) SeedSources(ctx context.Context, seeds []SourceSeed) error {
 				  poll_interval_seconds = excluded.poll_interval_seconds,
 				  stale_after_seconds = excluded.stale_after_seconds,
 				  expire_after_seconds = excluded.expire_after_seconds,
-				  disappearance = excluded.disappearance`,
+				  disappearance = excluded.disappearance, retired_at = NULL`,
 				seed.ID, seed.Name, seed.Attribution, seed.HomepageURL, int32(kind),
 				int64(seed.PollInterval.Seconds()),
 				staleAfter, expireAfter, disappearance,
@@ -90,26 +90,73 @@ func (s *Store) DeleteSource(ctx context.Context, id string) error {
 	})
 }
 
+// RetireSource takes a source the running configuration no longer uses out
+// of service: its ACTIVE and SCHEDULED events become EXPIRED (a revision each;
+// nobody is watching them any more, which is not the same as "ended"), and
+// its registry row is marked retired, so /api/v1/sources stops listing a row
+// that would otherwise keep its last status for ever. The row stays, because
+// its events name it. Idempotent, and a no-op for an id that was never
+// seeded. Seeding the source again (SeedSources) brings the row back, and the
+// next poll that lists an event makes it ACTIVE again.
+//
+// This is what turning a layer's flag off means. Without it the layer's
+// events stayed ACTIVE with no poller to end them.
+func (s *Store) RetireSource(ctx context.Context, id string) (expired int, err error) {
+	now := time.Now()
+	err = s.inTx(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, `UPDATE sources SET retired_at = $1 WHERE id = $2 AND retired_at IS NULL`, now.Unix(), id); err != nil {
+			return fmt.Errorf("store: retire source %s: %w", id, err)
+		}
+		rows, err := tx.QueryContext(ctx, `SELECT id FROM events WHERE source_id = $1 AND status = ANY($2) ORDER BY id`,
+			id, enumInts([]gridv1.EventStatus{gridv1.EventStatus_ACTIVE, gridv1.EventStatus_SCHEDULED}))
+		if err != nil {
+			return fmt.Errorf("store: retire source %s: %w", id, err)
+		}
+		var ids []string
+		for rows.Next() {
+			var eid string
+			if err := rows.Scan(&eid); err != nil {
+				rows.Close()
+				return fmt.Errorf("store: retire source %s: %w", id, err)
+			}
+			ids = append(ids, eid)
+		}
+		if err := rows.Close(); err != nil {
+			return fmt.Errorf("store: retire source %s: %w", id, err)
+		}
+		expired = len(ids)
+		for start := 0; start < len(ids); start += transitionChunk {
+			if err := transitionChunkTx(ctx, tx, ids[start:min(start+transitionChunk, len(ids))], gridv1.EventStatus_EXPIRED, now, nil); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return expired, err
+}
+
 // RecordAttempt records the outcome of one poll of a source. last_attempt is
 // always stamped. On success: last_success=now, last_error cleared,
 // status=OK. On failure: last_error set, and status degrades to STALE while
 // the last success is within stale_after (default 3x poll interval), then
 // UNAVAILABLE — never-succeeded sources go straight to UNAVAILABLE.
 //
-// With WithSourceHealth, a feed whose status changed gets a SOURCE_HEALTH
-// event revision in this same transaction (source_health.go): two
-// transactions could commit the status without its history, and nothing
-// would repair it.
+// With WithSourceHealth, a feed whose recorded health differs from its
+// SOURCE_HEALTH event gets a revision (source_health.go). The row always
+// commits: the event is written under a savepoint, and a failure there is
+// logged and left for the next attempt, which compares again. Current health
+// is what every fail-loud reader depends on; its history must never be able
+// to stop it being recorded.
 func (s *Store) RecordAttempt(ctx context.Context, id string, attemptErr error) error {
 	now := time.Now()
 	return s.inTx(ctx, func(tx *sql.Tx) error {
 		var pollInterval int64
 		var staleAfter, lastSuccess sql.NullInt64
 		var name string
-		var kind, oldStatus int32
+		var kind int32
 		err := tx.QueryRow(
-			`SELECT poll_interval_seconds, stale_after_seconds, last_success_at, name, kind, status FROM sources WHERE id = $1`, id,
-		).Scan(&pollInterval, &staleAfter, &lastSuccess, &name, &kind, &oldStatus)
+			`SELECT poll_interval_seconds, stale_after_seconds, last_success_at, name, kind FROM sources WHERE id = $1`, id,
+		).Scan(&pollInterval, &staleAfter, &lastSuccess, &name, &kind)
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("store: record attempt for unseeded source %q", id)
 		}
@@ -125,10 +172,11 @@ func (s *Store) RecordAttempt(ctx context.Context, id string, attemptErr error) 
 			if err != nil {
 				return fmt.Errorf("store: record success %s: %w", id, err)
 			}
-			return s.sourceStatusChanged(ctx, tx, sourceHealthState{
+			s.recordSourceHealth(ctx, tx, sourceHealthState{
 				id: id, name: name, kind: gridv1.SourceKind(kind), status: gridv1.SourceStatus_OK,
-				lastSuccess: now, at: now,
-			}, gridv1.SourceStatus(oldStatus))
+				lastSuccess: now, at: now, pollInterval: pollInterval,
+			})
+			return nil
 		}
 
 		staleWindow := staleAfter.Int64
@@ -144,11 +192,12 @@ func (s *Store) RecordAttempt(ctx context.Context, id string, attemptErr error) 
 			now.Unix(), attemptErr.Error(), int32(status), id); err != nil {
 			return fmt.Errorf("store: record failure %s: %w", id, err)
 		}
-		st := sourceHealthState{id: id, name: name, kind: gridv1.SourceKind(kind), status: status, err: attemptErr.Error(), at: now}
+		st := sourceHealthState{id: id, name: name, kind: gridv1.SourceKind(kind), status: status, err: attemptErr.Error(), at: now, pollInterval: pollInterval}
 		if lastSuccess.Valid {
 			st.lastSuccess = time.Unix(lastSuccess.Int64, 0)
 		}
-		return s.sourceStatusChanged(ctx, tx, st, gridv1.SourceStatus(oldStatus))
+		s.recordSourceHealth(ctx, tx, st)
+		return nil
 	})
 }
 
@@ -159,7 +208,7 @@ func (s *Store) ListSources(ctx context.Context) ([]*gridv1.Source, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, name, attribution, homepage_url, kind, poll_interval_seconds, stale_after_seconds,
 		       expire_after_seconds, last_success_at, last_attempt_at, last_error, status
-		FROM sources ORDER BY id`)
+		FROM sources WHERE retired_at IS NULL ORDER BY id`)
 	if err != nil {
 		return nil, fmt.Errorf("store: list sources: %w", err)
 	}

@@ -76,6 +76,10 @@ list of NWS outages as the Grid saw them.
 - `since` is the time of the attempt that found the new status. A source goes
   from `STALE` to `UNAVAILABLE` at the first failed attempt after its stale
   window, not when the window ran out.
+- The history is of changes that lasted. One failed poll that recovers at the
+  next is not a revision (it shows on `/api/v1/sources` while it lasts);
+  `STALE` is recorded once a source has gone two poll intervals without a
+  good read.
 - Feeds only. Push reporters (`alanpi`, `relay`, `burn-line`) get no event.
 - These events are owned by a new source row, `grid`, of kind `INTERNAL`,
   which `/api/v1/sources` lists. It is not polled and has no health event.
@@ -83,7 +87,10 @@ list of NWS outages as the Grid saw them.
   `grid_events` tool (about twenty of them), and in no place's events or
   summary.
 - History starts when the flag goes on. The first revision's `since` is that
-  moment, not when the source entered its status.
+  moment, not when the source entered its status: label it "recorded since".
+- Turning the flag off ends these events (`EXPIRED`) and takes the `grid` row
+  out of `/api/v1/sources`. The same holds for the chain-control and
+  monitored-road layers below and their source rows.
 
 ### Chain requirements are events: the `CHAIN_CONTROL` layer
 

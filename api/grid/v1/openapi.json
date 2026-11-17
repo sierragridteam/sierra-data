@@ -8737,7 +8737,7 @@
         "type": "object"
       },
       "v1SourceHealthDetail": {
-        "description": "SourceHealthDetail is one upstream feed's health as the Grid last found it\nto change (layer SOURCE_HEALTH, event id `source:{source id}`). The event is\nrevised only when `status` changes, so its history answers \"when was this\nsource down?\": join an event's `provenance.sourceId` to `source:{id}` and a\nquiet stretch in that event's history reads as quiet or as blind. The\nsource's current health, with its latest error and attempt time, is\n`GET /api/v1/sources`.",
+        "description": "SourceHealthDetail is one upstream feed's health as the Grid last found it\nto change (layer SOURCE_HEALTH, event id `source:{source id}`). The event is\nrevised only when `status` changes and the change lasts, so its history\nanswers \"when was this source down?\": join an event's `provenance.sourceId`\nto `source:{id}` and a quiet stretch in that event's history reads as quiet\nor as blind. The source's current health, with its latest error and attempt\ntime, is `GET /api/v1/sources`.\n\nTwo limits. A single failed poll that recovers at the next one is not\nrecorded here (it shows on `/api/v1/sources` while it lasts): STALE is\nrecorded once a source has gone two poll intervals without a good read.\nAnd while the Grid itself was not running nothing was recorded, so the\nstatus carries across that gap unexamined.",
         "properties": {
           "error": {
             "description": "The error of the attempt that changed the status. Empty string for OK.\nLater attempts' errors are not recorded here.",
@@ -8750,7 +8750,7 @@
             "type": "string"
           },
           "since": {
-            "description": "When the Grid found the source in this status: the time of the attempt\nthat changed it. A source goes from STALE to UNAVAILABLE at the first\nfailed attempt after its stale window, not at the moment the window ran\nout. For the first revision it is when the Grid began recording.",
+            "description": "When the Grid found the source in this status: the time of the attempt\nthat changed it. A source goes from STALE to UNAVAILABLE at the first\nfailed attempt after its stale window, not at the moment the window ran\nout. For the first revision (`revision` 1) it is when the Grid began\nrecording this source, not when the status began: show it as \"recorded\nsince\", never as \"since\".",
             "format": "date-time",
             "type": "string"
           },
