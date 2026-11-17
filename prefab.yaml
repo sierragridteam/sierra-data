@@ -472,7 +472,7 @@ grid:
   # (GET /api/v1/events/{id}/samples needs the event). Off, a road's status
   # history is only what the samples imply.
   roadSegments:
-    record: false
+    record: true
 
   # PG&E power layer. No geography knobs: unlike fire, an outage outside the
   # footprint is not a threat to it, so the layer uses the plain hazards union.

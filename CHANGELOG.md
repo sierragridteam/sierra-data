@@ -23,6 +23,15 @@ the proto-defined `/api/v1` gateway on 2026-07-09.
 
 ## 2026-11-17 (later still)
 
+### Monitored roads are recorded
+
+`grid.roadSegments.record` is on. Each monitored road is a `ROAD_SEGMENT`
+event (`road:{road id}`, source `roads`, listed on `/api/v1/sources`),
+revised when its status or a seasonal closure past its end changes, and
+`GET /api/v1/events/{id}/samples` returns its travel-time series. They are
+standing state (`nature: STATE`): always `ACTIVE`, in every list for their
+places. See "Monitored roads are events" below.
+
 ### Burn-line calls are kept as readings
 
 `grid.readings.enabled` is on. A call to a county burn line that repeats the
