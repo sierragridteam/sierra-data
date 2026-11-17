@@ -201,7 +201,7 @@ func (s *Service) buildPlaceSummary(ctx context.Context, hb hazardsBuilder, plac
 	//     planned roadwork is a calendar.
 	hazardEvents := make([]*gridv1.Event, 0, len(events))
 	for _, ev := range events {
-		if ev.GetLayer() == gridv1.Layer_MESH || ev.GetLayer() == gridv1.Layer_BURN_STATUS {
+		if ambientLayer(ev.GetLayer()) || countedElsewhere(ev.GetLayer()) {
 			continue
 		}
 		if ev.GetLayer() == gridv1.Layer_POWER && ev.GetSeverity() == gridv1.Severity_INFO {
@@ -629,6 +629,24 @@ func sourceRows(sources []*gridv1.Source) []*gridv1.SummarySourceHealth {
 		})
 	}
 	return out
+}
+
+// ambientLayer reports whether a layer's events are standing state and not
+// hazards, and so are left out of the summary's hazard rollups (`totalActive`,
+// `severityCounts`, `topEvents`, `mode`). It is LayerNature, which the API
+// also publishes on each event (Event.nature): there is one list.
+func ambientLayer(l gridv1.Layer) bool {
+	return LayerNature(l) == gridv1.EventNature_STATE
+}
+
+// countedElsewhere reports whether a layer's events are hazards the summary
+// already counts from another reading of the same thing. TEMPORARY: the roads
+// domain reads chain controls and road status from the live roads service,
+// so counting the stored events too would report each requirement and each
+// closure twice. Remove a layer from here when the roads domain reads its
+// events.
+func countedElsewhere(l gridv1.Layer) bool {
+	return l == gridv1.Layer_CHAIN_CONTROL
 }
 
 // storeLayerEnum resolves a layer slug onto its store Layer enum for layers

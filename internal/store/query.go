@@ -56,6 +56,8 @@ type HistoryQuery struct {
 	From, To  time.Time
 	PageSize  int
 	PageToken string
+	// Kinds is which kinds of revision to return. Empty means changes only.
+	Kinds []gridv1.RevisionKind
 	// Search is a text query over each revision's search document. Only
 	// SearchHistory and SearchHistoryByEvent read it.
 	Search *search.Query
@@ -258,20 +260,22 @@ func eventsPageSQL(q EventQuery, pageSize int) (string, []any, error) {
 
 // EventHistory returns an event's revisions, newest first, with keyset
 // pagination on revision number.
-func (s *Store) EventHistory(ctx context.Context, id string, pageSize int, token string) ([]*gridv1.EventRevision, string, error) {
-	p, err := s.EventHistoryPage(ctx, id, pageSize, token)
+func (s *Store) EventHistory(ctx context.Context, id string, pageSize int, token string, kinds ...gridv1.RevisionKind) ([]*gridv1.EventRevision, string, error) {
+	p, err := s.EventHistoryPage(ctx, id, pageSize, token, kinds...)
 	if err != nil {
 		return nil, "", err
 	}
 	return p.Items, p.Next(len(p.Items)), nil
 }
 
-// EventHistoryPage is EventHistory with a resume token for every row.
-func (s *Store) EventHistoryPage(ctx context.Context, id string, pageSize int, token string) (Page[*gridv1.EventRevision], error) {
+// EventHistoryPage is EventHistory with a resume token for every row. kinds
+// is which kinds of revision to return; none means changes only.
+func (s *Store) EventHistoryPage(ctx context.Context, id string, pageSize int, token string, kinds ...gridv1.RevisionKind) (Page[*gridv1.EventRevision], error) {
 	pageSize = clampPageSize(pageSize)
 	var sb strings.Builder
 	var args sqlArgs
-	sb.WriteString(`SELECT revision, observed_at, ingested_at, proto FROM event_revisions WHERE event_id = ` + args.add(id))
+	sb.WriteString(`SELECT revision, kind, observed_at, ingested_at, proto FROM event_revisions WHERE event_id = ` + args.add(id))
+	sb.WriteString(kindFilterSQL("kind", kinds))
 	if token != "" {
 		var cur historyCursor
 		if err := decodeToken(token, &cur); err != nil {
@@ -325,12 +329,12 @@ func (s *Store) QueryHistoryPage(ctx context.Context, q HistoryQuery) (Page[*gri
 
 	var sb strings.Builder
 	var args sqlArgs
-	sb.WriteString(`SELECT r.revision, r.observed_at, r.ingested_at, r.proto, r.event_id
+	sb.WriteString(`SELECT r.revision, r.kind, r.observed_at, r.ingested_at, r.proto, r.event_id
 		FROM event_revisions r JOIN events e ON e.id = r.event_id`)
 	if q.PlaceID != "" {
 		sb.WriteString(` JOIN event_places ep ON ep.event_id = r.event_id AND ep.place_id = ` + args.add(q.PlaceID))
 	}
-	sb.WriteString(` WHERE true`)
+	sb.WriteString(` WHERE true` + kindFilterSQL("r.kind", q.Kinds))
 	if len(q.Layers) > 0 {
 		sb.WriteString(` AND e.layer = ANY(` + args.add(enumInts(q.Layers)) + `)`)
 	}
@@ -381,13 +385,38 @@ func (s *Store) QueryHistoryPage(ctx context.Context, q HistoryQuery) (Page[*gri
 	return page, nil
 }
 
-// scanRevision builds an EventRevision from (revision, observed_at,
+// kindFilterSQL is the WHERE term for a kinds filter on column col. No kinds
+// means changes only (the default every history read has), and the term is a
+// literal so the default statement's plan does not depend on a parameter.
+// Both kinds is no term at all.
+func kindFilterSQL(col string, kinds []gridv1.RevisionKind) string {
+	change, reading := len(kinds) == 0, false
+	for _, k := range kinds {
+		switch k {
+		case gridv1.RevisionKind_CHANGE:
+			change = true
+		case gridv1.RevisionKind_READING:
+			reading = true
+		}
+	}
+	switch {
+	case change && reading:
+		return ""
+	case reading:
+		return ` AND ` + col + ` = 2`
+	default:
+		return ` AND ` + col + ` = 1`
+	}
+}
+
+// scanRevision builds an EventRevision from (revision, kind, observed_at,
 // ingested_at, proto) columns via the given scan function.
 func scanRevision(scan func(...any) error) (*gridv1.EventRevision, error) {
 	var revision uint32
+	var kind int32
 	var observedAt, ingestedAt int64
 	var blob []byte
-	if err := scan(&revision, &observedAt, &ingestedAt, &blob); err != nil {
+	if err := scan(&revision, &kind, &observedAt, &ingestedAt, &blob); err != nil {
 		return nil, fmt.Errorf("store: scan revision: %w", err)
 	}
 	ev := &gridv1.Event{}
@@ -396,6 +425,7 @@ func scanRevision(scan func(...any) error) (*gridv1.EventRevision, error) {
 	}
 	return &gridv1.EventRevision{
 		Revision:   revision,
+		Kind:       gridv1.RevisionKind(kind),
 		ObservedAt: timestamppb.New(time.Unix(observedAt, 0)),
 		IngestedAt: timestamppb.New(time.Unix(ingestedAt, 0)),
 		Event:      ev,
@@ -405,7 +435,7 @@ func scanRevision(scan func(...any) error) (*gridv1.EventRevision, error) {
 // EventRevisionAt returns one revision of an event, or ErrNotFound.
 func (s *Store) EventRevisionAt(ctx context.Context, id string, revision uint32) (*gridv1.EventRevision, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT revision, observed_at, ingested_at, proto FROM event_revisions WHERE event_id = $1 AND revision = $2`, id, revision)
+		`SELECT revision, kind, observed_at, ingested_at, proto FROM event_revisions WHERE event_id = $1 AND revision = $2`, id, revision)
 	rev, err := scanRevision(row.Scan)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound

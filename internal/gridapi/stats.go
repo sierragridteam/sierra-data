@@ -113,6 +113,8 @@ func (g *GridServer) computeStats(ctx context.Context, placeID string) (*gridv1.
 		Place:      placeID,
 		Events:     int32(t.Events),
 		Revisions:  int32(t.Revisions),
+		Changes:    int32(t.Revisions - t.Readings),
+		Readings:   int32(t.Readings),
 		Sources:    int32(t.Sources),
 		ComputedAt: timestamppb.New(now),
 	}
@@ -120,7 +122,8 @@ func (g *GridServer) computeStats(ctx context.Context, placeID string) (*gridv1.
 		out.Since = timestamppb.New(t.Since)
 	}
 	for _, l := range t.Layers {
-		out.Layers = append(out.Layers, &gridv1.LayerStats{Layer: l.Layer, Events: int32(l.Events), Revisions: int32(l.Revisions)})
+		out.Layers = append(out.Layers, &gridv1.LayerStats{Layer: l.Layer, Events: int32(l.Events), Revisions: int32(l.Revisions),
+			Changes: int32(l.Revisions - l.Readings), Readings: int32(l.Readings)})
 	}
 
 	g.stats.mu.Lock()

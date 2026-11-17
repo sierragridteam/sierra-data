@@ -840,6 +840,99 @@ events, the roads domain). That carve-out lives in `internal/gridapi/summary.go`
 with the other two. CWWP2 publishes a week of windows, 200+ in the incident
 box, and planned roadwork is a calendar, not a hazard.
 
+## Chain requirements as events (`chain_control.go`)
+
+With `grid.chainControl.record`, `ChainControlNormalizer` (source
+`caltrans-cc`, 5m) stores one event per chain-control stretch, layer
+`CHAIN_CONTROL`. The map layer stays a live projection; the events are its
+record.
+
+- **One rule, two reads.** The poller calls
+  `hazards.Service.ChainRequirements`, which sorts, groups and numbers with
+  the code the `chain_control` layer uses, over everything Caltrans reported,
+  so one read gives an event the id, headline, severity and signs of the map
+  feature for the same stretch (`TestChainRequirements_MatchTheMapLayer`). It
+  is its own fetch, not the layer's cached one: the map can lag an event by
+  its 5-minute cache. Do not group in the poller.
+- **Scope starts an event; only Caltrans ends it.** A stretch is recorded
+  from when it has a sign inside a hazard area, and then for as long as
+  Caltrans reports it (`held`: the poller holds a stretch whose id it has
+  stored and which still shares a sign with what is stored). Without that,
+  the last in-area sign clearing while the road beyond stays under the
+  requirement was written RESOLVED: Hwy 88 R2 on 2026-11-17, during the
+  first live run. The sign test is there because ids are numbered along the
+  highway and another stretch can inherit one.
+- **A source outage is not a change.** With CWWP2 or cc.kml down the read
+  comes from the other, which names signs differently, drops seconds and
+  infers every stretch (`ChainRead.SourceDown`). The stored events ride
+  forward untouched and no new one is started until both answer; a
+  requirement that begins during the outage is recorded when it ends, with
+  Caltrans's own start time.
+- **Its own source id.** The sweep runs per source and `caltrans` belongs to
+  the lane-closure poller ("a source has exactly one poller"). The row is
+  seeded only while the flag is on.
+- **The id is the lifecycle handle** (`cc:hwy4:r2`): stable while a stretch
+  grows, shrinks or a sign flaps, and a level change is a different id by
+  design, so one event resolves and another opens. **The id is a slot, not
+  an occurrence**: the next R2 on Hwy 4 reuses `cc:hwy4:r2`, as an ACTIVE
+  revision of the same event, so its history is every R2 on that highway.
+  Known limit: a stretch
+  that splits, merges or gains a neighbour before it on the road renumbers
+  (`cc:hwy88:r2:2`), which reads the same way. Districts 3 and 9 (cc.kml
+  only) infer their stretches and will renumber more; their events carry
+  `inferred`.
+- **Fail-loud, the lane-closure precedent.** A failed registry read is a
+  hard error. A read that cannot vouch for completeness (a district file
+  failed, or an in-scope sign is unrecognized or has no position) is a
+  `PerSource` error: events land, nothing is swept. No areas is
+  `errEmptyScope`. A confirmed-empty read is a success and resolves every
+  stretch, which is the end of the storm.
+- **Place ids are preset from every sign**: `area:<id>` for each hazard area
+  whose bounds contain a sign (what the map layer scopes by), plus the
+  store's `PlacesContaining` per sign. The point alone would attach a stretch
+  only where its low end is.
+- **Stretches only.** Gates and truck or hold levels stay map features.
+- **Not counted in the place summary yet** (`countedElsewhere` in
+  `internal/gridapi/summary.go`): the roads domain counts the live layer.
+- Each sign's `since` is hashed. If a source starts re-stamping it without a
+  status change, that is a revision per poll: zero it in the hash then, with
+  the usual note in the store guide. Not seen in the 2026-11-13 captures.
+
+## Monitored roads as events (`road_segment.go`)
+
+With `grid.roadSegments.record`, `RoadSegmentNormalizer` (source `roads`, 5m)
+stores one long-lived event per `roads.monitoredRoads` entry, layer
+`ROAD_SEGMENT`, id `road:<id>`. It is the mesh-node pattern: **the event
+holds the state, a table holds the series.** The road sampler
+(`runRoadSampling`) still writes `road_samples` every refresh, and
+`GET /api/v1/events/{id}/samples` serves them through the event.
+
+- **Hashed: status and the seasonal closures past its ends.** Travel time,
+  delay and congestion level are samples and never on the event. Congestion
+  was on it at first; in a week of production samples 11 of Hwy 49's 14
+  changes were traffic crossing the clear/light line, burying two closures.
+- **Deterministic only.** The roads service's `status_explanation` is
+  model-written and reworded between refreshes; on the event it would mint a
+  revision each time.
+- **Easing waits for a second refresh.** The roads service does not say when
+  its inputs failed: a failed CHP or road-conditions fetch reads as "nothing
+  reported", which is OPEN and no seasonal closure. So a change that only
+  eases (a lower status, a closure gone) is recorded when a second refresh
+  agrees (`pending`, poller-local); a change that restricts anything is
+  recorded at once. Production samples had a restricted Hwy 49 reading open
+  for exactly one refresh on 2026-11-12. The proper fix is the roads service
+  reporting its inputs' health; until then this is the guard.
+- **A stale set is not a reading.** `ListRoads` serves its last set while
+  its refresh fails. Older than twice `roads.refreshInterval`, the events
+  keep their state and `roads` is a `PerSource` failure. `observed_at` is
+  the set's refresh time.
+- **No geometry**; places are preset: the road's own corridor, and the
+  areas, counties and towns at either end. Never another road's corridor:
+  roads meet in towns, and the corridor buffer reaches across.
+- **Fail-loud.** The roads service failing is a hard error; a monitored road
+  it has no status for is a `PerSource` error and keeps its stored event; no
+  monitored roads is `errEmptyScope`.
+
 ## Weather-alert headline: deterministic, never AI
 
 `nws.Alert.ShortHeadline` composes `<Event> — <reason>` from the product name

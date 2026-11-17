@@ -22,6 +22,7 @@ const (
 	GridService_ListEvents_FullMethodName        = "/grid.v1.GridService/ListEvents"
 	GridService_GetEvent_FullMethodName          = "/grid.v1.GridService/GetEvent"
 	GridService_GetEventTimeline_FullMethodName  = "/grid.v1.GridService/GetEventTimeline"
+	GridService_GetEventSamples_FullMethodName   = "/grid.v1.GridService/GetEventSamples"
 	GridService_ListRelatedEvents_FullMethodName = "/grid.v1.GridService/ListRelatedEvents"
 	GridService_GetEventHistory_FullMethodName   = "/grid.v1.GridService/GetEventHistory"
 	GridService_ListHistory_FullMethodName       = "/grid.v1.GridService/ListHistory"
@@ -103,6 +104,16 @@ type GridServiceClient interface {
 	// to its 500 most recent revisions (`truncated` says when there were more).
 	// Supports ETag / If-None-Match.
 	GetEventTimeline(ctx context.Context, in *GetEventTimelineRequest, opts ...grpc.CallOption) (*EventTimeline, error)
+	// Get an event's samples.
+	//
+	// The dense numeric series behind an event whose layer has one. The event's
+	// revisions record when its state changed; its samples are the readings in
+	// between. Today one layer has samples: ROAD_SEGMENT (`road:{road id}`),
+	// one sample per roads refresh (about every 15 minutes) with status,
+	// congestion, travel time and delay, kept 400 days. It is the series
+	// `GET /api/v1/roads/{road}/history` returns. Default window: the 7 days
+	// before `to` (default now); windows over 400 days are clamped.
+	GetEventSamples(ctx context.Context, in *GetEventSamplesRequest, opts ...grpc.CallOption) (*EventSamples, error)
 	// List events related to one event.
 	//
 	// Events about the same situation, each with the rule that matched, a
@@ -314,6 +325,16 @@ func (c *gridServiceClient) GetEventTimeline(ctx context.Context, in *GetEventTi
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EventTimeline)
 	err := c.cc.Invoke(ctx, GridService_GetEventTimeline_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gridServiceClient) GetEventSamples(ctx context.Context, in *GetEventSamplesRequest, opts ...grpc.CallOption) (*EventSamples, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EventSamples)
+	err := c.cc.Invoke(ctx, GridService_GetEventSamples_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -534,6 +555,16 @@ type GridServiceServer interface {
 	// to its 500 most recent revisions (`truncated` says when there were more).
 	// Supports ETag / If-None-Match.
 	GetEventTimeline(context.Context, *GetEventTimelineRequest) (*EventTimeline, error)
+	// Get an event's samples.
+	//
+	// The dense numeric series behind an event whose layer has one. The event's
+	// revisions record when its state changed; its samples are the readings in
+	// between. Today one layer has samples: ROAD_SEGMENT (`road:{road id}`),
+	// one sample per roads refresh (about every 15 minutes) with status,
+	// congestion, travel time and delay, kept 400 days. It is the series
+	// `GET /api/v1/roads/{road}/history` returns. Default window: the 7 days
+	// before `to` (default now); windows over 400 days are clamped.
+	GetEventSamples(context.Context, *GetEventSamplesRequest) (*EventSamples, error)
 	// List events related to one event.
 	//
 	// Events about the same situation, each with the rule that matched, a
@@ -730,6 +761,9 @@ func (UnimplementedGridServiceServer) GetEvent(context.Context, *GetEventRequest
 func (UnimplementedGridServiceServer) GetEventTimeline(context.Context, *GetEventTimelineRequest) (*EventTimeline, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetEventTimeline not implemented")
 }
+func (UnimplementedGridServiceServer) GetEventSamples(context.Context, *GetEventSamplesRequest) (*EventSamples, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetEventSamples not implemented")
+}
 func (UnimplementedGridServiceServer) ListRelatedEvents(context.Context, *ListRelatedEventsRequest) (*RelatedEventList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListRelatedEvents not implemented")
 }
@@ -846,6 +880,24 @@ func _GridService_GetEventTimeline_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GridServiceServer).GetEventTimeline(ctx, req.(*GetEventTimelineRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GridService_GetEventSamples_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetEventSamplesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GridServiceServer).GetEventSamples(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GridService_GetEventSamples_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GridServiceServer).GetEventSamples(ctx, req.(*GetEventSamplesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1138,6 +1190,10 @@ var GridService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetEventTimeline",
 			Handler:    _GridService_GetEventTimeline_Handler,
+		},
+		{
+			MethodName: "GetEventSamples",
+			Handler:    _GridService_GetEventSamples_Handler,
 		},
 		{
 			MethodName: "ListRelatedEvents",

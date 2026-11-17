@@ -196,9 +196,25 @@ type GridConfig struct {
 	Meshcore    MeshcoreConfig          `koanf:"meshcore"`
 	Wildfire    WildfireConfig          `koanf:"wildfire"`
 	Places      PlacesConfig            `koanf:"places"`
-	Power       PowerConfig             `koanf:"power"`
-	Burn        BurnConfig              `koanf:"burn"`
-	Ingest      IngestConfig            `koanf:"ingest"`
+	Readings    ReadingsConfig          `koanf:"readings"`
+	// SourceHealth records each feed's status changes as SOURCE_HEALTH events
+	// (one long-lived event per feed, owned by the `grid` source row). Turn it
+	// on only once every deployed consumer of the SDK knows the SOURCE_HEALTH
+	// layer and the INTERNAL source kind.
+	SourceHealth ReadingsConfig `koanf:"sourceHealth"`
+	// ChainControl.Record stores chain requirements as CHAIN_CONTROL events
+	// (source caltrans-cc), so a storm's sequence is kept. The chain_control
+	// map layer does not depend on it. Turn it on only once every deployed
+	// consumer of the SDK knows the CHAIN_CONTROL layer.
+	ChainControl ChainControlRecordConfig `koanf:"chainControl"`
+	// RoadSegments.Record stores each monitored road's state as a
+	// ROAD_SEGMENT event (source roads), revised when it closes, reopens or
+	// its congestion level changes. Turn it on only once every deployed
+	// consumer of the SDK knows the ROAD_SEGMENT layer.
+	RoadSegments ChainControlRecordConfig `koanf:"roadSegments"`
+	Power        PowerConfig              `koanf:"power"`
+	Burn         BurnConfig               `koanf:"burn"`
+	Ingest       IngestConfig             `koanf:"ingest"`
 }
 
 // GridDatabaseConfig is the Grid store's PostgreSQL connection.
@@ -468,6 +484,20 @@ func (w WildfireConfig) PlaceBuffer() float64 {
 		return w.PlaceBufferMeters
 	}
 	return DefaultWildfirePlaceBufferMeters
+}
+
+// ReadingsConfig turns on READING revisions: a reading that confirms an
+// unchanged state (a burn line's daily call) is kept as a revision of its
+// own kind instead of overwriting the last one. Off, the store behaves as it
+// did before revision kinds. Turn it on only once every deployed consumer of
+// the SDK knows the READING kind (the SDK's enums are closed).
+type ReadingsConfig struct {
+	Enabled bool `koanf:"enabled"`
+}
+
+// ChainControlRecordConfig is grid.chainControl.
+type ChainControlRecordConfig struct {
+	Record bool `koanf:"record"`
 }
 
 // PlacesConfig tunes the place directory's geometry rules.

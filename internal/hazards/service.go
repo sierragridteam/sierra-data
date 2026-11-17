@@ -326,6 +326,154 @@ func (s *Service) BuildLayer(ctx context.Context, area config.HazardArea, layer 
 }
 
 // --- layer builders (re-project existing feeds) ---
+// sortedChainControls is what Caltrans reported, sorted for the two readers
+// of it (the map layer per area, and ChainRequirements for the stored
+// events), so both group the same signs and number the same stretches.
+type sortedChainControls struct {
+	// active is every chain requirement Caltrans reported, anywhere: the
+	// stretches are grouped and numbered over all of it, so an id means the
+	// same stretch wherever it is read.
+	active []caltrans.ChainControlData
+	// points is everything else with a position: road closures, and cc.kml's
+	// truck and hold levels (MAX, MIN, TS, HT, TTA). Not stretch members on
+	// purpose. They are not car requirements, cc.kml gives no level we parse
+	// and no end for them, and folding a "hold all traffic" into an R2
+	// stretch would bury it.
+	points []caltrans.ChainControlData
+	// quiet is the checkpoints that end a direction's requirement: the ones
+	// handed in plus every unrecognized one.
+	quiet []caltrans.ChainControlData
+	// unrecognized and uncorroborated name in-scope signs; unplaced names
+	// every sign without a position (it cannot be ruled in or out of scope).
+	unrecognized, unplaced, uncorroborated []string
+}
+
+// sortChainControls sorts the registry's controls. inScope says whether a
+// sign is in the reader's scope (an area, or any area).
+func sortChainControls(controls, quiet []caltrans.ChainControlData, inScope func(caltrans.ChainControlData) bool) sortedChainControls {
+	out := sortedChainControls{quiet: quiet}
+	for _, c := range controls {
+		if c.Coordinates == nil {
+			// Can't be ruled in or out of scope, so the reader can't claim
+			// to be complete. (Only CWWP2 rows can lack a position.) A
+			// requirement is still grouped: with a milepost it is listed
+			// inside its stretch, which the signs around it place.
+			out.unplaced = append(out.unplaced, strings.TrimSpace(c.Highway+" "+c.LocationName))
+		}
+		if c.Uncorroborated && inScope(c) {
+			out.uncorroborated = append(out.uncorroborated, strings.TrimSpace(c.Highway+" "+c.Direction+" "+c.LocationName+" "+c.Level))
+		}
+		switch {
+		case c.Unrecognized:
+			// Neither a requirement nor an all-clear: keep it off the map, but
+			// don't let the reader claim OK over a checkpoint we can't read.
+			// It is still a sign: the requirement of the one before it in
+			// its direction ends there.
+			out.quiet = append(out.quiet, c)
+			if inScope(c) {
+				out.unrecognized = append(out.unrecognized, fmt.Sprintf("%s %s (%q)", c.Highway, c.LocationName, c.RawStatus))
+			}
+		case !c.Closed && isChainLevel(c.Level):
+			out.active = append(out.active, c)
+		case c.Coordinates != nil:
+			out.points = append(out.points, c)
+		}
+	}
+	return out
+}
+
+// ChainRead is one read of the chain-control registry for the stored events.
+type ChainRead struct {
+	// Stretches is every stretch in scope (see ChainRequirements), as the
+	// map layer's feature for it.
+	Stretches []Feature
+	// SourceDown is set when one of the two sources failed and the read was
+	// put together from the other (caltrans.PartialError). The stretches are
+	// real, but their detail is the surviving source's: cc.kml alone names
+	// signs differently, drops seconds and mileposts, and infers every
+	// stretch. A reader that stores them must not take that as a change.
+	SourceDown error
+	// Incomplete is set when the read cannot vouch for completeness for
+	// another reason (an in-scope sign with an unreadable status, or a sign
+	// with no position). The stretches and their detail are good.
+	Incomplete error
+}
+
+// Degraded is why a stretch missing from the read proves nothing, or nil
+// when the read is complete.
+func (r ChainRead) Degraded() error { return errors.Join(r.SourceDown, r.Incomplete) }
+
+// ChainRequirements returns the chain-control stretches the stored events
+// cover, whole, each as the map layer's feature for it (id, headline,
+// severity and signs: chainStretchFeature). It groups over everything
+// Caltrans reported, with the sorting and numbering the chain_control map
+// layer uses, so one read gives a stretch the id the map gives it. It is its
+// own read of Caltrans, not the map layer's cached one: the two agree per
+// read, and the map can lag by its cache.
+//
+// A stretch is in scope when it has a sign inside one of areas, OR when
+// held(id, signIDs, sourceDown) says the caller already holds an event for
+// it (sourceDown: this read is from one source only, see ChainRead). The second
+// half is what keeps a requirement from being recorded as lifted when it is
+// not: a stretch's signs clear one at a time, and when the last sign inside
+// an area clears while signs outside it still require chains, the stretch
+// is still in force. Scope decides when a stretch STARTS being recorded;
+// only Caltrans dropping it ends it. held may be nil.
+//
+// err is a failed read: nothing is known. A ChainRead with Degraded() nil
+// and no stretches is Caltrans confirming there are none.
+func (s *Service) ChainRequirements(ctx context.Context, areas []config.HazardArea, held func(id string, signIDs []string, sourceDown bool) bool) (ChainRead, error) {
+	controls, quiet, err := s.caltrans.ParseChainControlRegistry(ctx)
+	var partial *caltrans.PartialError
+	if err != nil && !errors.As(err, &partial) {
+		return ChainRead{}, err
+	}
+	inScope := func(c caltrans.ChainControlData) bool {
+		if c.Coordinates == nil {
+			return false
+		}
+		for _, a := range areas {
+			if a.Bounds.Contains(c.Coordinates.Latitude, c.Coordinates.Longitude) {
+				return true
+			}
+		}
+		return false
+	}
+	sorted := sortChainControls(controls, quiet, inScope)
+	grouped := groupChainStretches(sorted.active, sorted.quiet)
+	var read ChainRead
+	for i, st := range grouped {
+		id := chainStretchID(grouped, i)
+		if !anySign(st.Signs, inScope) {
+			if held == nil {
+				continue
+			}
+			signIDs := make([]string, len(st.Signs))
+			for j, c := range st.Signs {
+				signIDs[j] = chainControlID(c)
+			}
+			if !held(id, signIDs, partial != nil) {
+				continue
+			}
+		}
+		if f, ok := chainStretchFeature(st, id); ok {
+			read.Stretches = append(read.Stretches, f)
+		}
+	}
+	if partial != nil {
+		read.SourceDown = partial
+	}
+	var problems []error
+	if len(sorted.unrecognized) > 0 {
+		problems = append(problems, fmt.Errorf("unrecognized chain-control status at %s", strings.Join(sorted.unrecognized, "; ")))
+	}
+	if len(sorted.unplaced) > 0 {
+		problems = append(problems, fmt.Errorf("chain-control entries without a position: %s", strings.Join(sorted.unplaced, "; ")))
+	}
+	read.Incomplete = errors.Join(problems...)
+	return read, nil
+}
+
 func (s *Service) chainControls(ctx context.Context, area config.HazardArea) ([]Feature, error) {
 	controls, quiet, err := s.caltrans.ParseChainControlRegistry(ctx)
 	var partial *caltrans.PartialError
@@ -335,42 +483,9 @@ func (s *Service) chainControls(ctx context.Context, area config.HazardArea) ([]
 	inArea := func(c caltrans.ChainControlData) bool {
 		return c.Coordinates != nil && area.Bounds.Contains(c.Coordinates.Latitude, c.Coordinates.Longitude)
 	}
-
-	// Sort what Caltrans sent into chain requirements (grouped into stretches
-	// below) and everything else, which stays one point feature per entry:
-	// road closures, and cc.kml's truck and hold levels (MAX, MIN, TS, HT,
-	// TTA). Those are not stretch members on purpose. They are not car
-	// requirements, cc.kml gives no level we parse and no end for them, and
-	// folding a "hold all traffic" into an R2 stretch would bury it.
-	var active, points []caltrans.ChainControlData
-	var unrecognized, unplaced, uncorroborated []string
-	for _, c := range controls {
-		if c.Coordinates == nil {
-			// Can't be ruled in or out of the area, so the layer can't claim
-			// to be complete. (Only CWWP2 rows can lack a position.) A
-			// requirement is still grouped: with a milepost it is listed
-			// inside its stretch, which the signs around it place.
-			unplaced = append(unplaced, strings.TrimSpace(c.Highway+" "+c.LocationName))
-		}
-		if c.Uncorroborated && inArea(c) {
-			uncorroborated = append(uncorroborated, strings.TrimSpace(c.Highway+" "+c.Direction+" "+c.LocationName+" "+c.Level))
-		}
-		switch {
-		case c.Unrecognized:
-			// Neither a requirement nor an all-clear: keep it off the map, but
-			// don't let the layer claim OK over a checkpoint we can't read.
-			// It is still a sign: the requirement of the one before it in
-			// its direction ends there.
-			quiet = append(quiet, c)
-			if inArea(c) {
-				unrecognized = append(unrecognized, fmt.Sprintf("%s %s (%q)", c.Highway, c.LocationName, c.RawStatus))
-			}
-		case !c.Closed && isChainLevel(c.Level):
-			active = append(active, c)
-		case c.Coordinates != nil:
-			points = append(points, c)
-		}
-	}
+	sorted := sortChainControls(controls, quiet, inArea)
+	active, points, quiet := sorted.active, sorted.points, sorted.quiet
+	unrecognized, unplaced, uncorroborated := sorted.unrecognized, sorted.unplaced, sorted.uncorroborated
 
 	var out []Feature
 	stretches := groupChainStretches(active, quiet)

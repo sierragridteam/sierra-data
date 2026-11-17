@@ -35,7 +35,7 @@ event→place join so the hot read path never touches geometry.
 with volatile fields zeroed**. `UpsertEvent` writes a new revision only when the
 hash differs from the stored one. Zeroed fields and the reason each is excluded:
 
-- `revision`, `ingested_at`, `observed_at`, `provenance.fetched_at` — bookkeeping
+- `revision`, `readings`, `ingested_at`, `observed_at`, `provenance.fetched_at` — bookkeeping
   timestamps/counters. Upstream re-stamping a record it didn't actually change
   must not mint a revision.
 - `place_ids` — derived at ingest (geometry match ∪ caller preset), not upstream
@@ -60,11 +60,17 @@ hash differs from the stored one. Zeroed fields and the reason each is excluded:
   ANSWER does not; hashed, it would mint a revision a day. The lines' `burn_day`
   and the facets stay hashed: a changed answer IS the transition.
 
-**Every hash-excluded field needs a way back into the blob**, or it freezes at
+**Every hash-excluded field is either a reading, with its history in
+`event_revisions`, or is listed here with the reason its history is not
+kept**, and either way it needs a way back into the blob, or it freezes at
 whatever was current the last time something hashed changed. The hash-equal
-path (`refreshEventPlaces`) persists, without a revision: place_ids, a fresh
-enhancement/summary, mesh telemetry, and burn status's observations (plus the
-burn event's `observed_at`/`fetched_at`, which follow the reading). The
+path (`refreshEventPlaces`) persists, without a revision: place_ids (derived),
+a fresh enhancement/summary (derived text), mesh telemetry (`mesh_telemetry`
+is its archive), CAL FIRE's `calfire_observed_at` (a stamp with no content;
+an outage shows as source health) and `fetched_at`. A burn line's observation
+is a reading: see "Revision kinds" below. With readings off
+(`grid.readings.enabled: false`) the refresh path also persists the
+observations and moves the burn event's `observed_at`, as it did before. The
 scheduler skips hash-equal events entirely unless the poller lists them in
 `PollResult.ForceWrite`, so a poller with such a field must list them — mesh
 does (coalesced), burn does (every event; two an hour). Burn status shipped
@@ -105,13 +111,112 @@ equals what the next poll's `ContentHash` yields.
 - `status` **is** hashed content — that's what makes a resolve→reappear cycle
   produce revisions rather than silently no-op.
 
+## Revision kinds: changes and readings
+
+`event_revisions.kind` (migration 0006) is 1 `CHANGE` or 2 `READING`, and
+`events.readings` / `Event.readings` count an event's readings. A change is
+what a revision has always been. A reading is a hash-equal upsert for which
+the event's POLLER says a reading advanced. **The store holds no layer's idea
+of a reading**: the poller passes a test (`ReadingAdvanced`, through
+`PollResult.Readings` and `UpsertEventReading`), asked only when the hashes
+are equal, with the stored event. Today one poller supplies one: burn status
+(`burnCallAdvanced`: a line's call is later than the stored call of the same
+line). `writeReading` runs only with `WithReadings`
+(`grid.readings.enabled`) and a test:
+
+- The stored blob takes the incoming detail (equal hashes: it differs only
+  where the hash does not look) and `observed_at`; `revision` and `readings`
+  increment; `content_hash` stays; a snapshot row is inserted with
+  `kind = 2`; the lite copy is rewritten; the `revisions` version is bumped.
+- **`readings` is counted from the column**, never from the stored blob. The
+  previous release's writer rebuilds the blob from the poller's event and
+  drops the field; counting from the blob after a rollback and roll-forward
+  lost every earlier reading (`TestReadingsCountSurvivesAnOlderWriter`).
+  Readers that need "are there readings" ask the rows, not the blob's count
+  (the timeline does).
+- No new search rows: a reading's content is outside the search text.
+  `BackfillRevisionSearch` skips kind 2, or its walk would never end. The
+  current `event_search` row's `revision` stamp is moved with the event, so
+  the term-start walk does not rebuild it. In collapsed history search the
+  last matching revision runs on through the readings that follow the last
+  matching change (the text is the same at each).
+- `event_places` is not touched. The refresh path reconciles places on the
+  next hash-equal poll, so a READING snapshot can carry a place set one tick
+  old.
+- An equal reading is not an advance: the burn poller re-offers the same call
+  every hour and that must write nothing.
+- A read-modify-write on the stored blob, safe only under the single writer.
+
+Every history read (`EventHistoryPage`, `QueryHistoryPage`) defaults to
+changes; the filter is a literal (`kindFilterSQL`) so the default plans do not
+depend on a parameter. Revision numbers in a default read therefore skip. A
+row written without `kind` (the previous release's writer) is a change by the
+column default. `readings` is counted by the store: a poller's event never
+carries it, so `UpsertEvent` copies the stored count onto a change.
+
+A reading revision is not a sample table: each is a full snapshot, affordable
+only for sparse readings (two burn calls a day). A dense series goes to a
+typed table with its subject as an event (`mesh_telemetry`, `road_samples`).
+
+## Source health as events (`source_health.go`)
+
+With `WithSourceHealth` (`grid.sourceHealth.enabled`) each FEED row of
+`sources` has one long-lived event, `source:<id>`, layer `SOURCE_HEALTH`:
+permanently ACTIVE, INFO, no geometry, no places. `sources` stays the registry
+and the current health; the event is its history.
+
+- **A revision is a change of status that lasted.** The history is debounced
+  and the row is not: one failed poll makes the row STALE and the next good
+  one OK, and neither is a revision. STALE is recorded once the last success
+  is two poll intervals old; UNAVAILABLE at once (`sourceHealthState.recorded`).
+  Written as it happened, a feed polled every minute that failed every other
+  poll would add more revisions a day than the rest of the store. Nothing in
+  the event is hash-excluded, so it never takes the refresh path. The
+  snapshot's error is the one from the attempt that changed the status.
+- **The history must never cost the health.** `RecordAttempt` always commits
+  the row. The event is written in the same transaction under a savepoint
+  (`recordSourceHealth`, through `upsertEventTx`: `UpsertEvent`'s body for a
+  caller that already holds the write transaction); a failure there is
+  logged and rolled back to the savepoint. It compares against the stored
+  event, not the row's previous status, so the next attempt puts right
+  whatever an earlier one could not write. The first version shared the
+  attempt's fate: a broken search index then left `/api/v1/sources` vouching
+  for a dead feed, on exactly the attempts where the status changed.
+- **Owned by the `grid` source row** (`GridSourceSeed`, kind `INTERNAL`).
+  `events.source_id` is a foreign key, and an event owned by the source it
+  describes would be swept by that source's own poller.
+- **Term start is housekeeping only** (`SeedSourceHealth`): a health event
+  whose source is no longer a feed in the registry is RESOLVED, and the
+  `grid` row records a success. It writes nothing from the rows, whose
+  status may be hours old; each feed's next attempt does. The server logs
+  and continues if it fails: history must not be able to stop ingest.
+- **Feeds only.** A reporter's health is process memory for the mesh streams,
+  so a deploy would write an outage that did not happen. `meshcore` has a
+  milder form of the same thing (its brokers reconnect after a deploy); the
+  debounce covers a gap shorter than its stale window.
+- **What the history cannot say.** While no process is writing, nothing is
+  recorded, and the event keeps its last status across the gap.
+
+## Retiring a source (`RetireSource`, migration 0007)
+
+A source row cannot be deleted while events name it, and a row nothing polls
+keeps its last status. `sources.retired_at` marks a row the running
+configuration no longer uses: `ListSources` leaves it out, and `SeedSources`
+clears the mark. `RetireSource` also moves the source's ACTIVE and SCHEDULED
+events to EXPIRED. The server calls it at each term start for every
+recorded-state layer whose flag is off (`retireDisabledLayers`), which is
+what makes those flags an off switch: without it a layer that was turned off
+left its events ACTIVE for good, with no poller to end them. A new layer
+behind a flag belongs in that list.
+
 ## `last_seen_at` vs `observed_at`
 
 Two different questions, do not conflate:
 
 - `observed_at` (blob + index column, caller-owned) — *when the content was
-  observed*. Moves only on a content change or a transition — except burn
-  status, where it follows each new reading (see the hash-equal path above).
+  observed*. Moves only with a revision (a content change, a transition, a
+  reading). While readings are off, burn status is the exception: its
+  `observed_at` follows each hourly check (see the hash-equal path above).
 - `last_seen_at` (column only, `TouchSeen`) — *when a successful poll last
   included this event*, **coalesced**: the scheduler passes a staleness cutoff
   and only rows whose stamp is older than the coalescing window

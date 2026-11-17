@@ -122,6 +122,15 @@ func TestResponsesHonorFieldPresence(t *testing.T) {
 	seedRoadSamples(t, s, s.Cfg.Roads.MonitoredRoads[0].ID)
 	rh, err := g.GetRoadHistory(rpcBG(), &gridv1.GetRoadHistoryRequest{Road: s.Cfg.Roads.MonitoredRoads[0].ID})
 	check("GetRoadHistory", rh, err)
+	require.NoError(t, s.Store.SeedSources(context.Background(), []store.SourceSeed{{ID: "roads", Name: "Road conditions", PollInterval: 5 * time.Minute}}))
+	upsert(t, s.Store, &gridv1.Event{
+		Id: "road:" + s.Cfg.Roads.MonitoredRoads[0].ID, Layer: gridv1.Layer_ROAD_SEGMENT, Category: "open",
+		Severity: gridv1.Severity_INFO, Status: gridv1.EventStatus_ACTIVE, Headline: "Hwy 4: open",
+		Provenance: &gridv1.Provenance{SourceId: "roads", SourceName: "Road conditions", FetchedAt: timestamppb.New(base)},
+		Detail:     &gridv1.Event_RoadSegment{RoadSegment: &gridv1.RoadSegmentDetail{RoadId: s.Cfg.Roads.MonitoredRoads[0].ID, Status: "OPEN"}},
+	})
+	es, err := g.GetEventSamples(rpcBG(), &gridv1.GetEventSamplesRequest{Id: "road:" + s.Cfg.Roads.MonitoredRoads[0].ID})
+	check("GetEventSamples", es, err)
 	scan, err := g.ListScanners(rpcBG(), &gridv1.ListScannersRequest{})
 	check("ListScanners", scan, err)
 
@@ -175,7 +184,29 @@ func seedPresenceFixtures(t *testing.T, s *Service) {
 		{ID: "caltrans", Name: "Caltrans", PollInterval: 10 * time.Minute},
 		{ID: "pge", Name: "PG&E", PollInterval: 5 * time.Minute},
 		{ID: "burnline", Name: "County burn line", PollInterval: time.Hour},
+		store.GridSourceSeed(),
+		{ID: "caltrans-cc", Name: "Caltrans (chain control)", PollInterval: 5 * time.Minute},
 	}))
+	upsert(t, s.Store, &gridv1.Event{
+		Id: "cc:hwy4:r2", Layer: gridv1.Layer_CHAIN_CONTROL, Category: "r2",
+		Severity: gridv1.Severity_MODERATE, Status: gridv1.EventStatus_ACTIVE,
+		Headline: "Hwy 4 chains required, Poison Springs to Mount Reba Road (R2)",
+		Geometry: pointGeom(38.389, -120.183), Provenance: &gridv1.Provenance{SourceId: "caltrans-cc", SourceName: "Caltrans", FetchedAt: timestamppb.New(base)},
+		Detail: &gridv1.Event_ChainControl{ChainControl: &gridv1.ChainControlDetail{
+			Level: "R2", Highway: "Highway 4",
+			From:  &gridv1.ChainControlPlace{Place: "Poison Springs", Location: &gridv1.LatLng{Lat: 38.389, Lng: -120.183}},
+			To:    &gridv1.ChainControlPlace{Place: "Mount Reba Road"},
+			Signs: []*gridv1.ChainControlSign{{Id: "cc:10-CAL-4-56.3-E-12E", Place: "POISON SPRINGS", Level: "R2", Since: timestamppb.New(base)}},
+		}},
+	})
+	upsert(t, s.Store, &gridv1.Event{
+		Id: "source:caloes", Layer: gridv1.Layer_SOURCE_HEALTH, Category: "unavailable",
+		Severity: gridv1.Severity_INFO, Status: gridv1.EventStatus_ACTIVE, Headline: "Cal OES: unavailable",
+		Provenance: &gridv1.Provenance{SourceId: store.GridSourceID, SourceName: "The Grid", FetchedAt: timestamppb.New(base)},
+		Detail: &gridv1.Event_SourceHealth{SourceHealth: &gridv1.SourceHealthDetail{
+			SourceId: "caloes", Status: gridv1.SourceStatus_UNAVAILABLE, Since: timestamppb.New(base), Error: "HTTP 503",
+		}},
+	})
 	require.NoError(t, s.Store.RecordAttempt(ctx, "caloes", nil))
 	prov := func(id string) *gridv1.Provenance {
 		return &gridv1.Provenance{SourceId: id, SourceName: id, FetchedAt: timestamppb.New(base)}

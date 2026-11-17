@@ -317,6 +317,16 @@ func (a *gridApp) startTerm(actx context.Context, lease *store.Lease) (*writerTe
 		return nil, fmt.Errorf("seed grid sources: %w", err)
 	}
 	retireOrphanedSources(actx, gridStore)
+	// A layer that is off must not leave its last state standing: with no
+	// poller there is no sweep, so its events would stay ACTIVE and its source
+	// row would keep its last status for good. Turning a flag off is then a
+	// real off switch. Like the orphan sweep above, never a reason not to start.
+	retireDisabledLayers(actx, gridStore, appConfig)
+	// Source health's term-start housekeeping. History must never be able to
+	// stop ingest: a failure is logged and the term goes on.
+	if err := gridStore.SeedSourceHealth(actx); err != nil {
+		logging.Errorw(ctx, "Source health: term-start housekeeping failed; continuing", "error", err)
+	}
 	if err := places.Seed(actx, gridStore, appConfig); err != nil {
 		return nil, fmt.Errorf("seed grid places: %w", err)
 	}
@@ -345,6 +355,31 @@ func (a *gridApp) startTerm(actx context.Context, lease *store.Lease) (*writerTe
 		pollers = append(pollers, ingest.PollerSpec{
 			Normalizer: ingest.NewLaneClosureNormalizer(appConfig, a.cwClient),
 			Interval:   gridPollInterval(appConfig, "caltrans"),
+		})
+	}
+
+	// Chain requirements as events: the same stretches the chain_control map
+	// layer shows (hazards.Service groups and numbers for both).
+	placesAt := func(ctx context.Context, lat, lng float64) ([]string, error) {
+		found, err := gridStore.PlacesContaining(ctx, lat, lng)
+		ids := make([]string, len(found))
+		for i, p := range found {
+			ids[i] = p.GetId()
+		}
+		return ids, err
+	}
+	// Each monitored road's state as an event (its travel-time series stays
+	// in road_samples, written by the scheduler's road sampler).
+	if appConfig.Grid.RoadSegments.Record && a.roadsService != nil {
+		pollers = append(pollers, ingest.PollerSpec{
+			Normalizer: ingest.NewRoadSegmentNormalizer(appConfig, a.roadsService, placesAt),
+			Interval:   gridPollInterval(appConfig, ingest.RoadSegmentSourceID),
+		})
+	}
+	if appConfig.Grid.ChainControl.Record {
+		pollers = append(pollers, ingest.PollerSpec{
+			Normalizer: ingest.NewChainControlNormalizer(appConfig, a.hazards, placesAt),
+			Interval:   gridPollInterval(appConfig, ingest.ChainControlSourceID),
 		})
 	}
 

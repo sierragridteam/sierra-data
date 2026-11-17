@@ -185,7 +185,9 @@ func (a *gridApp) Serve(ctx context.Context) error {
 		store.WithMinConns(dbCfg.MinConns),
 		store.WithLockContext(ctx),
 		store.WithWildfireProximity(appConfig.Grid.Wildfire.PlaceBuffer()),
-		store.WithTownRadius(appConfig.Grid.Places.TownRadiusMeters))
+		store.WithTownRadius(appConfig.Grid.Places.TownRadiusMeters),
+		store.WithReadings(appConfig.Grid.Readings.Enabled),
+		store.WithSourceHealth(appConfig.Grid.SourceHealth.Enabled))
 	if err != nil {
 		return fmt.Errorf("open grid store: %w", err)
 	}
@@ -275,6 +277,7 @@ func (a *gridApp) Serve(ctx context.Context) error {
 		// response — the freshness lifetime that complements the ETag revalidation
 		// below. Restores what the hand-built /v1 handlers set before the migration.
 		prefab.WithGRPCInterceptor(gridapi.CacheControlInterceptor(30)),
+		prefab.WithGRPCInterceptor(gridapi.NatureInterceptor()),
 		// Conditional GET (ETag/If-None-Match -> 304) for RPCs that call
 		// etag.Guard — event detail (revision + in-place refreshes), the
 		// event/history lists (DataVersion + per-layer RefreshVersion +

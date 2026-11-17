@@ -61,6 +61,7 @@ func TestDefaultGeometryJSONIsUnchanged(t *testing.T) {
 	var out []byte
 	for _, m := range []proto.Message{list, one, hist, arch, town, resolved} {
 		scrubIngestTimes(m)
+		StampNature(m) // as the interceptor does on the wire
 		b, err := prefab.JSONMarshalOptions.Marshal(m)
 		require.NoError(t, err)
 		var norm bytes.Buffer

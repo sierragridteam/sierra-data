@@ -674,7 +674,7 @@ func (s *Scheduler) tick(ctx context.Context, spec PollerSpec, st *pollerState) 
 			continue
 		}
 		upserted++
-		if _, err := s.store.UpsertEvent(ctx, ev); err != nil {
+		if _, err := s.store.UpsertEventReading(ctx, ev, result.Readings[ev.GetId()]); err != nil {
 			logging.Errorw(ctx, "Ingest tick: upsert failed", "event", ev.GetId(), "error", err)
 		}
 	}

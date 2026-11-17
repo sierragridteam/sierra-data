@@ -58,7 +58,7 @@ func TestTimelineCHPIncident(t *testing.T) {
 	assert.Equal(t, "Log line 2", e[2].GetDetail())
 	assert.Equal(t, gridv1.TimelineClock_TIMELINE_CLOCK_SOURCE, e[2].GetClock(), "at 19:28 the log line precedes the Grid's first record")
 	assert.Equal(t, gridv1.TimelineClock_TIMELINE_CLOCK_GRID, e[3].GetClock())
-	assert.Equal(t, "2 revisions since", e[3].GetDetail(), "revision 1 is the first record itself")
+	assert.Equal(t, "2 changes since", e[3].GetDetail(), "revision 1 is the first record itself")
 	last := e[4]
 	assert.Equal(t, gridv1.TimelineKind_TIMELINE_STATUS, last.GetKind())
 	assert.Equal(t, uint32(3), last.GetRevision())
@@ -84,15 +84,61 @@ func TestTimelineLaneClosureAndFire(t *testing.T) {
 	assert.Equal(t, "120 acres", tl.GetEntries()[2].GetBefore())
 }
 
-// Truncated history: no change entry across the gap, and FIRST_RECORDED
-// still comes from revision 1 when the caller supplies it.
+// Truncated history: the page is the newest changes as a block, so nothing is
+// diffed against revision 1 across the cut, and FIRST_RECORDED still comes
+// from revision 1 when the caller supplies it.
 func TestTimelineTruncated(t *testing.T) {
 	ev := &gridv1.Event{Id: "x", Layer: gridv1.Layer_EARTHQUAKE, Effective: at(0), Revision: 900}
 	other := proto.Clone(ev).(*gridv1.Event)
 	other.Severity = gridv1.Severity_SEVERE
-	tl := buildTimeline(ev, []*gridv1.EventRevision{rev(899, 50, other), rev(700, 40, ev)}, rev(1, 1, ev), true)
+	first := proto.Clone(ev).(*gridv1.Event)
+	first.Severity = gridv1.Severity_MINOR
+	tl := buildTimeline(ev, []*gridv1.EventRevision{rev(900, 50, other), rev(899, 40, other)}, rev(1, 1, first), true)
 	assert.True(t, tl.GetTruncated())
 	assert.Equal(t, []string{"Occurred", "First recorded by the Grid"}, labels(tl))
+}
+
+// History is read as changes only, so change numbers skip wherever readings
+// sit between them. The change after a run of readings is still diffed
+// against the change before it, and the count leaves the readings out.
+func TestTimelineChangeAfterReadings(t *testing.T) {
+	burn := func(p gridv1.BurnPermission, d gridv1.BurnDay) *gridv1.Event {
+		return &gridv1.Event{Id: "burn:calaveras-county", Layer: gridv1.Layer_BURN_STATUS, Revision: 7, Readings: 5,
+			Detail: &gridv1.Event_BurnStatus{BurnStatus: &gridv1.BurnStatusDetail{Permission: p, BurnDay: d,
+				CalfireStatus: gridv1.CalfireBurnStatus_CALFIRE_PERMIT_REQUIRED}}}
+	}
+	yes := burn(gridv1.BurnPermission_BURN_PERMISSION_ALLOWED, gridv1.BurnDay_BURN_DAY_YES)
+	no := burn(gridv1.BurnPermission_BURN_PERMISSION_PROHIBITED, gridv1.BurnDay_BURN_DAY_NO)
+	tl := buildTimeline(no, []*gridv1.EventRevision{rev(1, 5, yes), rev(7, 90, no)}, nil, false)
+	assert.Equal(t, []string{"First recorded by the Grid", "Burning prohibited", "County line: no-burn day"}, labels(tl))
+	assert.Equal(t, "1 change since", tl.GetEntries()[0].GetDetail())
+	assert.Equal(t, "allowed", tl.GetEntries()[1].GetBefore())
+	assert.Equal(t, uint32(7), tl.GetEntries()[1].GetRevision())
+}
+
+// A READING revision is one timeline entry at the time of the call, naming
+// the line that was called.
+func TestTimelineReadings(t *testing.T) {
+	snap := func(revision uint32, aMin, bMin int) *gridv1.EventRevision {
+		line := func(id string, min int) *gridv1.BurnLineReading {
+			return &gridv1.BurnLineReading{Id: id, Name: id + " line", BurnDay: gridv1.BurnDay_BURN_DAY_YES,
+				Observation: &gridv1.BurnObservation{Message: "burn day per " + id, ObservedAt: at(min)}}
+		}
+		return &gridv1.EventRevision{Revision: revision, Kind: gridv1.RevisionKind_READING, Event: &gridv1.Event{
+			Id: "burn:x", Layer: gridv1.Layer_BURN_STATUS,
+			Detail: &gridv1.Event_BurnStatus{BurnStatus: &gridv1.BurnStatusDetail{BurnLines: []*gridv1.BurnLineReading{line("a", aMin), line("b", bMin)}}}}}
+	}
+	tl := &gridv1.EventTimeline{}
+	// Newest first: revision 4 moved line b's call, revision 3 line a's.
+	addReadings(tl, []*gridv1.EventRevision{snap(4, 100, 130), snap(3, 100, 10), snap(2, 20, 10)})
+	require.Len(t, tl.GetEntries(), 3)
+	last := tl.GetEntries()[2]
+	assert.Equal(t, gridv1.TimelineKind_TIMELINE_READING, last.GetKind())
+	assert.Equal(t, at(130).AsTime(), last.GetAt().AsTime())
+	assert.Equal(t, "burn day per b", last.GetDetail())
+	assert.Equal(t, "Checked: burn day", last.GetLabel())
+	assert.Equal(t, "burn day per a", tl.GetEntries()[1].GetDetail())
+	assert.Equal(t, uint32(3), tl.GetEntries()[1].GetRevision())
 }
 
 func TestGetEventTimelineRPC(t *testing.T) {

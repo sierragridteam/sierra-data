@@ -435,3 +435,136 @@ func keys(m map[string]any) []string {
 	}
 	return out
 }
+
+// ChainRequirements is the stored events' read of the same registry: for an
+// area it returns exactly the stretches that area's map layer shows, with the
+// same id, headline, severity and signs, and none of the layer's point
+// features (gates).
+func TestChainRequirements_MatchTheMapLayer(t *testing.T) {
+	s := chainService(kmlDoer{200, loadKML(t, stormKML)}, loadCheckpoints(t, stormCWWP2))
+	features, status, _, _, _, _ := s.BuildLayer(testCtx(), ebbettsArea, LayerChainControl)
+	require.Equal(t, "OK", status)
+	want := map[string]Properties{}
+	for _, f := range features {
+		if f.Properties.ChainControl.From != nil { // a stretch, not a gate
+			want[f.Properties.ID] = f.Properties
+		}
+	}
+	require.Len(t, want, 4)
+
+	read, err := s.ChainRequirements(testCtx(), []config.HazardArea{ebbettsArea}, nil)
+	require.NoError(t, err)
+	require.NoError(t, read.Degraded())
+	got := map[string]Properties{}
+	for _, f := range read.Stretches {
+		got[f.Properties.ID] = f.Properties
+	}
+	assert.Equal(t, want, got)
+
+	// Over every area at once the numbering is the same: ids are assigned
+	// over everything Caltrans reported, not per scope.
+	all, err := s.ChainRequirements(testCtx(), []config.HazardArea{everywhere}, nil)
+	require.NoError(t, err)
+	ids := map[string]bool{}
+	for _, f := range all.Stretches {
+		assert.False(t, ids[f.Properties.ID], "duplicate id %s", f.Properties.ID)
+		ids[f.Properties.ID] = true
+	}
+	for id := range want {
+		assert.True(t, ids[id], id)
+	}
+
+	// No areas: nothing is in scope.
+	none, err := s.ChainRequirements(testCtx(), nil, nil)
+	require.NoError(t, err)
+	assert.Empty(t, none.Stretches)
+}
+
+// A stretch the caller holds stays in scope after its last sign inside the
+// area clears, for as long as Caltrans reports it: scope decides when a
+// stretch starts being recorded, never when it ends. On 2026-11-17 Hwy 88's
+// only sign inside the Ebbetts Pass rectangle (Peddler Vista) went to R-0
+// while the road beyond it stayed at R-2, and the stretch was written
+// RESOLVED.
+func TestChainRequirements_HeldStretchOutlivesItsInAreaSigns(t *testing.T) {
+	cps := loadCheckpoints(t, stormCWWP2)
+	s := chainService(kmlDoer{200, emptyCCKML}, cps)
+	before, err := s.ChainRequirements(testCtx(), []config.HazardArea{ebbettsArea}, nil)
+	require.NoError(t, err)
+	var hwy88 *Feature
+	for i, f := range before.Stretches {
+		if f.Properties.ID == "cc:hwy88:r2" {
+			hwy88 = &before.Stretches[i]
+		}
+	}
+	require.NotNil(t, hwy88, "the storm has Hwy 88 at R2 with signs inside the area")
+
+	// A scope with none of its signs: an area far from Hwy 88.
+	elsewhere := config.HazardArea{ID: "elsewhere", Bounds: config.GeoBounds{MinLatitude: 33, MaxLatitude: 34, MinLongitude: -118, MaxLongitude: -117}}
+	gone, err := s.ChainRequirements(testCtx(), []config.HazardArea{elsewhere}, nil)
+	require.NoError(t, err)
+	require.NoError(t, gone.Degraded())
+	assert.Empty(t, gone.Stretches, "unheld, it is out of scope")
+
+	stored := map[string]bool{}
+	for _, sg := range hwy88.Properties.ChainControl.Signs {
+		stored[sg.ID] = true
+	}
+	held := func(id string, signIDs []string, sourceDown bool) bool {
+		assert.False(t, sourceDown)
+		if id != "cc:hwy88:r2" {
+			return false
+		}
+		for _, sid := range signIDs {
+			if stored[sid] {
+				return true
+			}
+		}
+		return false
+	}
+	kept, err := s.ChainRequirements(testCtx(), []config.HazardArea{elsewhere}, held)
+	require.NoError(t, err)
+	require.Len(t, kept.Stretches, 1)
+	assert.Equal(t, hwy88.Properties, kept.Stretches[0].Properties, "whole and unchanged")
+}
+
+// With CWWP2 down the read is cc.kml's alone: the same stretches, described
+// differently. The read says so (SourceDown), apart from a read that is
+// merely incomplete, so a caller that stores stretches can tell "do not take
+// this detail" from "do not sweep".
+func TestChainRequirements_SourceDownIsSaidApart(t *testing.T) {
+	both := chainService(kmlDoer{200, loadKML(t, stormKML)}, loadCheckpoints(t, stormCWWP2))
+	full, err := both.ChainRequirements(testCtx(), []config.HazardArea{ebbettsArea}, nil)
+	require.NoError(t, err)
+	require.NoError(t, full.Degraded())
+
+	p := &caltrans.FeedParser{HTTPClient: kmlDoer{200, loadKML(t, stormKML)}}
+	p.UseCWWP2ChainControls(failingSource{}, []int{10})
+	down := NewServiceWithAPIs(&config.Config{}, nil, nil, p, nil)
+	read, err := down.ChainRequirements(testCtx(), []config.HazardArea{ebbettsArea}, nil)
+	require.NoError(t, err, "one source down is a degraded read, not a failed one")
+	require.Error(t, read.SourceDown)
+	require.Error(t, read.Degraded())
+	require.NotEmpty(t, read.Stretches)
+
+	// The detail really does differ, which is why it must not be stored.
+	fullByID := map[string]Properties{}
+	for _, f := range full.Stretches {
+		fullByID[f.Properties.ID] = f.Properties
+	}
+	differs := false
+	for _, f := range read.Stretches {
+		if want, ok := fullByID[f.Properties.ID]; ok && !assert.ObjectsAreEqual(want, f.Properties) {
+			differs = true
+		}
+	}
+	assert.True(t, differs, "cc.kml alone describes the stretches differently")
+}
+
+// A failed read is an error, never an empty answer: the caller's sweep would
+// read "no stretches" as every requirement lifted.
+func TestChainRequirements_FailLoud(t *testing.T) {
+	s := NewServiceWithAPIs(&config.Config{}, nil, nil, &caltrans.FeedParser{HTTPClient: kmlDoer{500, ""}}, nil)
+	_, err := s.ChainRequirements(testCtx(), []config.HazardArea{everywhere}, nil)
+	require.Error(t, err)
+}

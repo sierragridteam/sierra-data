@@ -348,6 +348,15 @@ message Event {
   // or status transition. `/api/v1/events/{id}/history` lists every revision.
   uint32 revision = 18 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "2"}];
 
+  // How many of this event's revisions are readings (`EventRevision.kind`
+  // READING): a reading with content of its own arrived and the state held.
+  // `revision - readings` is the number of changes, counting the first. 0 for
+  // every layer that records no readings (today only BURN_STATUS does: one
+  // per call to a burn line).
+  //
+  // (-- Zeroed in store.ContentHash beside revision, and written with it. --)
+  uint32 readings = 32 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "0"}];
+
   // Present when an AI model generated some of this event's text; lists which
   // fields. `null` for events with no AI involvement.
   Enhancement enhancement = 19;
@@ -373,7 +382,21 @@ message Event {
     PowerDetail power = 27;
     // BURN_STATUS detail (one county's residential burning status).
     BurnStatusDetail burn_status = 31;
+    SourceHealthDetail source_health = 33;
+    ChainControlDetail chain_control = 34;
+    RoadSegmentDetail road_segment = 35;
   }
+
+  // What kind of thing this event is, which follows from its `layer`:
+  // something that happens (OCCURRENCE) or the standing state of something
+  // the Grid tracks (STATE). Read this instead of keeping a list of layers:
+  // a count of "events happening" is a count of OCCURRENCE events, and a
+  // layer added later says which it is. Set on every event the API returns.
+  //
+  // (-- Derived from the layer when a response is written
+  // (gridapi.NatureInterceptor), never stored: zeroed in store.ContentHash
+  // so an event carried back into the store cannot differ by it. --)
+  EventNature nature = 36 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"OCCURRENCE\""}];
 
   // Gauge/AirQuality/Announcement details — defined with their pollers.
   reserved 28 to 30;
@@ -408,7 +431,6 @@ enum Layer {
   // lane-closure windows (source `caltrans`). Planned windows not yet set up are
   // SCHEDULED.
   ROAD_INCIDENT = 6;
-  // (-- condition-backed layers (ROAD_SEGMENT, CHAIN_CONTROL) are projections, not events --)
   // PG&E electric outages (source `pge`) and Public Safety Power Shutoffs
   // (source `psps`). Most outages affect one customer and are INFO.
   POWER = 10;
@@ -425,6 +447,28 @@ enum Layer {
   // today (sources `burnline`, `calfire-burn`). Ambient, permanently ACTIVE,
   // always INFO; its revision history is the record of changes.
   BURN_STATUS = 15;
+  // One event per upstream feed (`source:{source id}`), saying whether the Grid
+  // can read it (source `grid`). Ambient, permanently ACTIVE, always INFO, in
+  // no place; a revision is a change of the source's status, so its history
+  // is the record of outages. Written only when the Grid has source-health
+  // recording on.
+  SOURCE_HEALTH = 16;
+  // One event per stretch of highway under a chain requirement, from Caltrans
+  // (source `caltrans-cc`): the same stretches, with the same ids, as the
+  // `chain_control` map layer. RESOLVED when Caltrans lifts the requirement; a
+  // change of level is a new event, so the events on a highway are a storm's
+  // sequence. Written only when the Grid has chain-control recording on.
+  CHAIN_CONTROL = 17;
+  // One event per monitored road (`road:{road id}`, source `roads`), revised
+  // when its status or a seasonal closure past its end changes: its history
+  // is when the road closed and reopened. No geometry
+  // (the shape is the `road_segment` map layer). The travel-time series is
+  // `GET /api/v1/events/{id}/samples`. Written only when the Grid has
+  // road-segment recording on.
+  ROAD_SEGMENT = 18;
+  // Reserved for one event per weather location, revised when its state
+  // changes (precipitation, freezing); no events today.
+  WEATHER = 19;
 }
 
 // Severity is the unified 5-level scale shared by every layer: how urgently the
@@ -536,7 +580,7 @@ message Provenance {
   // Source registry id; joins to `Source.id` on `/api/v1/sources`.
   string source_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     example: "\"chp\""
-    enum: ["calfire", "firis", "caloes", "nws", "usgs", "chp", "caltrans", "pge", "psps", "meshcore", "burnline", "calfire-burn"]
+    enum: ["calfire", "firis", "caloes", "nws", "usgs", "chp", "caltrans", "pge", "psps", "meshcore", "burnline", "calfire-burn", "grid", "caltrans-cc", "roads"]
   }];
   // Display name of the publisher, e.g. "CAL FIRE", "NWS Sacramento CA",
   // "CHP / Caltrans".
@@ -648,6 +692,11 @@ enum SourceKind {
   // An operator-run monitor that pushes to the Grid's ingest endpoint. Health
   // only: no event carries its id, and `homepageUrl` is empty.
   REPORTER = 2;
+  // The Grid itself (row `grid`): the owner of events the Grid derives from
+  // its own state (the SOURCE_HEALTH layer). Not polled: it records a success
+  // each time a Grid process takes over writing, and has no health event of
+  // its own. Listed only when the Grid has source-health recording on.
+  INTERNAL = 3;
 }
 
 // SourceStatus is a source's health. The same three values appear as strings in
@@ -1269,6 +1318,142 @@ message BurnStatusDetail {
   google.protobuf.Timestamp calfire_observed_at = 7;
 }
 
+// RoadSegmentDetail is one monitored road's state (layer ROAD_SEGMENT, event
+// id `road:{road id}`, the id of its feature on the `road_segment` map
+// layer). The event holds the state and is revised when it changes: the
+// road's status, and the seasonal closures past its ends. What moves at
+// every refresh (travel time, delay, congestion level) is in the samples:
+// `GET /api/v1/events/{id}/samples`.
+//
+// A change that eases the road (reopened, a closure lifted) is recorded once
+// a second refresh, about 15 minutes later, agrees; a change that restricts
+// it is recorded at once. `observedAt` is the refresh the state was read at.
+message RoadSegmentDetail {
+  // The monitored segment id (`road.roadId` on the map layer).
+  string road_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"hwy4-arnold-bearvalley\""}];
+  // The highway, and which part of it.
+  string name = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"Hwy 4\""}];
+  string section = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"Arnold to Bear Valley\""}];
+  // `OPEN`, `RESTRICTED`, `CLOSED` or `MAINTENANCE`, as on the map layer.
+  string status = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"OPEN\""}];
+  reserved 5; // was congestion: a sample, not state (see the samples endpoint)
+  reserved "congestion";
+  // Named seasonal closures in effect past one of the segment's ends (the
+  // Ebbetts Pass winter closure past Bear Valley). They do not change
+  // `status`: the segment itself is open up to its end. Empty when none.
+  repeated RoadSegmentBeyond beyond = 6;
+}
+
+// RoadSegmentBeyond is a named seasonal closure past a segment's end.
+message RoadSegmentBeyond {
+  // The closure's name.
+  string name = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"Ebbetts Pass winter closure\""}];
+  // `END`: past the segment's destination. `START`: before its origin.
+  string side = 2;
+  // What the highway is there: `CLOSED`.
+  string status = 3;
+}
+
+// ChainControlDetail is one stretch of highway under one chain requirement
+// (layer CHAIN_CONTROL, event id `cc:{route}:{level}`, e.g. `cc:hwy4:r2`; a
+// second stretch of the same level on one route is `cc:hwy88:r2:2`). Caltrans
+// reports chain controls sign by sign; the Grid groups the signs of one
+// requirement into a stretch.
+//
+// The id names the requirement, not its signs: it holds while the stretch
+// grows or shrinks by a checkpoint (a revision), and a change of level
+// resolves this event and opens another. The id is reused: the next
+// requirement of the same level on the same route is this event again,
+// ACTIVE in a new revision, so one event's history is every such
+// requirement on that highway. A stretch that splits, merges or
+// gains a neighbour before it on the road renumbers, which reads as one event
+// resolving and another opening. The event's geometry is a point at the low
+// end (`from`); each sign's own position is in `signs`.
+message ChainControlDetail {
+  // The requirement: `R1` (chains or snow tires), `R2` (chains, except
+  // four-wheel drive with snow tires) or `R3` (chains on every vehicle).
+  string level = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"R2\""}];
+  // The highway as Caltrans names it.
+  string highway = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"SR 4\""}];
+  // Direction of travel, only when every sign in the stretch faces the same
+  // way. Empty string for a stretch signed in both directions.
+  string direction = 3;
+  // The stretch's two ends, low end first (west to east, south to north).
+  // Equal when the stretch is one place.
+  ChainControlPlace from = 4 [(google.api.field_behavior) = REQUIRED];
+  ChainControlPlace to = 5 [(google.api.field_behavior) = REQUIRED];
+  // The stretch was put together from signs lying near each other, because
+  // the source lists active signs only and nothing reports the road between
+  // them (Caltrans Districts 3 and 9). False when Caltrans's own signs
+  // establish it.
+  bool inferred = 6;
+  // Every checkpoint Caltrans reported in the stretch, `from` to `to`.
+  repeated ChainControlSign signs = 7;
+}
+
+// ChainControlPlace is one end of a chain-control stretch.
+message ChainControlPlace {
+  // The checkpoint's name.
+  string place = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"Poison Springs\""}];
+  // Where the checkpoint is. `null` when Caltrans gave no position.
+  LatLng location = 2;
+}
+
+// ChainControlSign is one Caltrans checkpoint inside a stretch, as reported.
+message ChainControlSign {
+  // The sign's own id: `cc:{CWWP2 checkpoint index}` or
+  // `cc:{district}-{cc.kml message id}`.
+  string id = 1;
+  // The checkpoint's name, verbatim.
+  string place = 2;
+  // The direction of travel the sign faces.
+  string direction = 3;
+  // The level this sign shows.
+  string level = 4;
+  // When Caltrans says the sign took this status. `null` when not given.
+  google.protobuf.Timestamp since = 5;
+  // The host the entry came from (`cwwp2.dot.ca.gov` or `quickmap.dot.ca.gov`).
+  string source = 6;
+  // County and postmile (CWWP2 only; empty strings otherwise).
+  string county = 7;
+  string postmile = 8;
+  // Where the sign is. `null` when Caltrans gave no position.
+  LatLng location = 9;
+}
+
+// SourceHealthDetail is one upstream feed's health as the Grid last found it
+// to change (layer SOURCE_HEALTH, event id `source:{source id}`). The event is
+// revised only when `status` changes and the change lasts, so its history
+// answers "when was this source down?": join an event's `provenance.sourceId`
+// to `source:{id}` and a quiet stretch in that event's history reads as quiet
+// or as blind. The source's current health, with its latest error and attempt
+// time, is `GET /api/v1/sources`.
+//
+// Two limits. A single failed poll that recovers at the next one is not
+// recorded here (it shows on `/api/v1/sources` while it lasts): STALE is
+// recorded once a source has gone two poll intervals without a good read.
+// And while the Grid itself was not running nothing was recorded, so the
+// status carries across that gap unexamined.
+message SourceHealthDetail {
+  // The source registry id (`Source.id`).
+  string source_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"nws\""}];
+  // The source's status from `since` on.
+  SourceStatus status = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"UNAVAILABLE\""}];
+  // When the Grid found the source in this status: the time of the attempt
+  // that changed it. A source goes from STALE to UNAVAILABLE at the first
+  // failed attempt after its stale window, not at the moment the window ran
+  // out. For the first revision (`revision` 1) it is when the Grid began
+  // recording this source, not when the status began: show it as "recorded
+  // since", never as "since".
+  google.protobuf.Timestamp since = 3 [(google.api.field_behavior) = REQUIRED];
+  // The error of the attempt that changed the status. Empty string for OK.
+  // Later attempts' errors are not recorded here.
+  string error = 4;
+  // The source's last successful attempt as of `since`. `null` if it had
+  // never succeeded.
+  google.protobuf.Timestamp last_success_at = 5;
+}
+
 // BurnLineReading is one recorded phone line's answer for today.
 message BurnLineReading {
   // Stable line id.
@@ -1432,6 +1617,41 @@ message EventRevision {
   // On `/api/v1/history` with `q`: where this revision's text matched. Null
   // otherwise.
   SearchMatch match = 5;
+  // Why this revision was written: the state changed (CHANGE), or a reading
+  // of an unchanged state arrived (READING). Never unspecified.
+  RevisionKind kind = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"CHANGE\""}];
+}
+
+// EventNature says what kind of thing an event is. It follows from the layer.
+enum EventNature {
+  // Never returned.
+  EVENT_NATURE_UNSPECIFIED = 0;
+  // Something that begins and ends: a wildfire, an evacuation, a weather
+  // alert, an earthquake, a road incident or closure window, a power outage,
+  // a chain requirement. `status` is its lifecycle: ACTIVE or SCHEDULED
+  // while it is on, RESOLVED or EXPIRED when it is over.
+  OCCURRENCE = 1;
+  // The standing state of something the Grid keeps track of: a mesh node, a
+  // county's burn status, an upstream feed's health, a monitored road. The
+  // event lasts as long as the thing does and is ACTIVE throughout; what is
+  // going on is in its detail (a road that is CLOSED is an ACTIVE event whose
+  // `roadSegment.status` is CLOSED), and its revisions are when that
+  // changed. Not something happening: leave these out of counts of events,
+  // and expect `severity` INFO for most of them.
+  STATE = 2;
+}
+
+// RevisionKind says why a revision was written.
+enum RevisionKind {
+  // Never returned.
+  REVISION_KIND_UNSPECIFIED = 0;
+  // The event's content or status changed. Every revision of most layers.
+  CHANGE = 1;
+  // A reading with content of its own (a burn line's call: message,
+  // transcript, confidence) arrived and the state held. The snapshot is the
+  // event as it stood with that reading. Left out of history unless asked for
+  // with `kind`.
+  READING = 2;
 }
 
 // EventRevisionList is one page of revisions.
@@ -1594,6 +1814,30 @@ service GridService {
       responses: {
         key: "404"
         value: {description: "NOT_FOUND: no event has this id."}
+      }
+    };
+  }
+
+  // Get an event's samples.
+  //
+  // The dense numeric series behind an event whose layer has one. The event's
+  // revisions record when its state changed; its samples are the readings in
+  // between. Today one layer has samples: ROAD_SEGMENT (`road:{road id}`),
+  // one sample per roads refresh (about every 15 minutes) with status,
+  // congestion, travel time and delay, kept 400 days. It is the series
+  // `GET /api/v1/roads/{road}/history` returns. Default window: the 7 days
+  // before `to` (default now); windows over 400 days are clamped.
+  rpc GetEventSamples(GetEventSamplesRequest) returns (EventSamples) {
+    option (google.api.http) = {get: "/api/v1/events/{id}/samples"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      tags: "Events"
+      responses: {
+        key: "404"
+        value: {description: "NOT_FOUND: no event has this id, or its layer keeps no samples."}
+      }
+      responses: {
+        key: "400"
+        value: {description: "INVALID_ARGUMENT: `from` not before `to`."}
       }
     };
   }
@@ -1990,6 +2234,28 @@ message GetRoadHistoryRequest {
   google.protobuf.Timestamp to = 3;
 }
 
+// GetEventSamplesRequest names an event and a window.
+message GetEventSamplesRequest {
+  // The event id, e.g. `road:hwy4-arnold-bearvalley`.
+  string id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"road:hwy4-arnold-bearvalley\""}];
+  // Window start, RFC 3339, inclusive. Default: 7 days before `to`.
+  google.protobuf.Timestamp from = 2;
+  // Window end, RFC 3339, exclusive. Default: now.
+  google.protobuf.Timestamp to = 3;
+}
+
+// EventSamples is one event's samples over a window. The list that is filled
+// depends on the event's layer.
+message EventSamples {
+  string event_id = 1;
+  // The event's layer, which says which list below holds the samples.
+  Layer layer = 2;
+  google.protobuf.Timestamp from = 3 [(google.api.field_behavior) = REQUIRED];
+  google.protobuf.Timestamp to = 4 [(google.api.field_behavior) = REQUIRED];
+  // ROAD_SEGMENT: one per roads refresh, oldest first.
+  repeated RoadSample road = 5;
+}
+
 // RoadSample is a segment at one roads refresh.
 message RoadSample {
   google.protobuf.Timestamp at = 1 [(google.api.field_behavior) = REQUIRED];
@@ -2325,7 +2591,7 @@ message ListEventsRequest {
   // (for MESH) also work. FIRE_WEATHER, GAUGE, AIR_QUALITY and ANNOUNCEMENT are
   // accepted but no events carry them. Default: every layer.
   repeated string layer = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    enum: ["WILDFIRE", "EVACUATION", "WEATHER_ALERT", "EARTHQUAKE", "ROAD_INCIDENT", "POWER", "MESH", "BURN_STATUS"]
+    enum: ["WILDFIRE", "EVACUATION", "WEATHER_ALERT", "EARTHQUAKE", "ROAD_INCIDENT", "POWER", "MESH", "BURN_STATUS", "SOURCE_HEALTH", "CHAIN_CONTROL", "ROAD_SEGMENT"]
   }];
   // Only these statuses. Repeat the parameter or comma-separate.
   // Case-insensitive. Default: ACTIVE and SCHEDULED. Pass `ACTIVE` alone to drop
@@ -2514,6 +2780,10 @@ enum TimelineKind {
   // keys when the Grid holds no node for them), `before` empty for the first.
   // Not a revision: read from the telemetry archive, the 50 most recent.
   TIMELINE_READ_PATH = 13;
+  // SOURCE. A reading that confirmed the state without changing it (a burn
+  // line's call). `revision` is the READING revision; `detail` is what the
+  // reading said. The 50 most recent.
+  TIMELINE_READING = 14;
 }
 
 // TimelineEntry is one moment in an event's timeline.
@@ -2557,6 +2827,12 @@ message GetEventHistoryRequest {
     enum: ["BASE64", "OBJECT", "NONE"]
     default: "BASE64"
   }];
+  // Which kinds of revision to return: `CHANGE`, `READING`. Repeat the
+  // parameter or comma-separate. Case-insensitive. Default: `CHANGE`, so a
+  // reader that does not ask sees only revisions where something changed.
+  repeated string kind = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    enum: ["CHANGE", "READING"]
+  }];
 }
 
 // ListHistoryRequest filters the revision archive.
@@ -2565,7 +2841,7 @@ message ListHistoryRequest {
   string place = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"calaveras-county\""}];
   // Only these layers; same rules as on `/api/v1/events`.
   repeated string layer = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    enum: ["WILDFIRE", "EVACUATION", "WEATHER_ALERT", "EARTHQUAKE", "ROAD_INCIDENT", "POWER", "MESH", "BURN_STATUS"]
+    enum: ["WILDFIRE", "EVACUATION", "WEATHER_ALERT", "EARTHQUAKE", "ROAD_INCIDENT", "POWER", "MESH", "BURN_STATUS", "SOURCE_HEALTH", "CHAIN_CONTROL", "ROAD_SEGMENT"]
   }];
   // Window start on each revision's `observedAt`, RFC 3339, inclusive. Default:
   // no lower bound.
@@ -2603,6 +2879,13 @@ message ListHistoryRequest {
   // revision. Case-insensitive. Requires `q`. Default: not collapsed.
   string collapse = 11 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     enum: ["event"]
+  }];
+  // Which kinds of revision to return: `CHANGE`, `READING`. Repeat the
+  // parameter or comma-separate. Case-insensitive. Default: `CHANGE`, so a
+  // reader that does not ask sees only revisions where something changed.
+  // Text search (`q`) is over changes only: `q` with `READING` is a 400.
+  repeated string kind = 12 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    enum: ["CHANGE", "READING"]
   }];
 }
 
@@ -3077,6 +3360,11 @@ message Stats {
   int32 events = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "18233"}];
   // Revisions recorded across those events (each event's `revision` summed).
   int32 revisions = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "96410"}];
+  // Of `revisions`, those where the event's content or status changed.
+  int32 changes = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "96100"}];
+  // Of `revisions`, readings that confirmed an unchanged state.
+  // `changes + readings = revisions`.
+  int32 readings = 9 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "310"}];
   // Distinct sources those events came from.
   int32 sources = 4;
   // When the earliest of those events was first stored. Null when there are
@@ -3094,4 +3382,7 @@ message LayerStats {
   Layer layer = 1;
   int32 events = 2;
   int32 revisions = 3;
+  // Of `revisions`, changes and readings (see Stats).
+  int32 changes = 4;
+  int32 readings = 5;
 }

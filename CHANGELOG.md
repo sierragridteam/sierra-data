@@ -21,6 +21,168 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-17 (later)
+
+### Revisions have a kind: `CHANGE` or `READING`
+
+Until now the Grid kept history for one thing: a change in an event's content
+or status. A reading that confirmed the state was written over the last one.
+A county burn line that says "not a burn day" three days running left one
+revision, and the three calls were gone.
+
+- `EventRevision.kind` is `CHANGE` (what every revision has been) or `READING`:
+  a reading with content of its own arrived and the state held. The snapshot
+  is the event as it stood with that reading. Never unspecified.
+- `Event.readings` counts an event's `READING` revisions, so
+  `revision - readings` is its number of changes.
+- `GET /api/v1/events/{id}/history` and `GET /api/v1/history` take `kind`
+  (`CHANGE`, `READING`, repeated or comma-separated). **The default is
+  `CHANGE`**, so a client that does not ask sees what it sees today. `q` with
+  `kind=READING` is a 400: text search is over changes.
+- `GET /api/v1/stats` reports `changes` and `readings` beside `revisions`,
+  overall and per layer.
+- `GET /api/v1/events/{id}/timeline` reads changes, counts changes in "N
+  changes since" (it said "revisions"), diffs burn status (`permission`,
+  `burnDay`, `calfireStatus`, which it never did), and lists up to 50 readings
+  as `TIMELINE_READING` entries on the source's clock.
+- The MCP `grid_history` tool takes `kind`.
+
+Readings are written only when `grid.readings.enabled` is on, and it ships
+off. Today one layer records them: `BURN_STATUS`, one per call to a burn line.
+Two things to know once it is on, neither a shape change:
+
+- Revision numbers in default history can skip (3, 7, 12): the numbers
+  between are readings.
+- A burn event's `revision` moves with each call, and its `observedAt` moves
+  only with a revision, like every other layer's. It used to follow the hourly
+  check. For "when was this last checked" read
+  `burnStatus.burnLines[].observation.observedAt` and
+  `burnStatus.calfireObservedAt`, as before.
+
+### Source health has a history: the `SOURCE_HEALTH` layer
+
+`GET /api/v1/sources` says whether a source is healthy now. Nothing said when
+it was not, so a quiet week in an event's history could mean nothing happened
+or that the Grid could not see.
+
+With `grid.sourceHealth.enabled` (off as shipped) the Grid keeps one
+long-lived event per upstream feed, id `source:{source id}`, layer
+`SOURCE_HEALTH`: permanently `ACTIVE`, always `INFO`, in no place.
+`sourceHealth` carries `sourceId`, `status`, `since`, the `error` of the
+attempt that changed the status, and `lastSuccessAt`. A revision is a change
+of status and nothing else, so `GET /api/v1/events/source:nws/history` is the
+list of NWS outages as the Grid saw them.
+
+- `since` is the time of the attempt that found the new status. A source goes
+  from `STALE` to `UNAVAILABLE` at the first failed attempt after its stale
+  window, not when the window ran out.
+- The history is of changes that lasted. One failed poll that recovers at the
+  next is not a revision (it shows on `/api/v1/sources` while it lasts);
+  `STALE` is recorded once a source has gone two poll intervals without a
+  good read.
+- Feeds only. Push reporters (`alanpi`, `relay`, `burn-line`) get no event.
+- These events are owned by a new source row, `grid`, of kind `INTERNAL`,
+  which `/api/v1/sources` lists. It is not polled and has no health event.
+- They appear in an unscoped `/api/v1/events`, in search and in the MCP
+  `grid_events` tool (about twenty of them), and in no place's events or
+  summary.
+- History starts when the flag goes on. The first revision's `since` is that
+  moment, not when the source entered its status: label it "recorded since".
+- Turning the flag off ends these events (`EXPIRED`) and takes the `grid` row
+  out of `/api/v1/sources`. The same holds for the chain-control and
+  monitored-road layers below and their source rows.
+
+### Chain requirements are events: the `CHAIN_CONTROL` layer
+
+Chain controls were a live map layer only, so when a storm ended its sequence
+(R1 at 14:10, R2 at 15:30, lifted at 06:00) was gone.
+
+With `grid.chainControl.record` (off as shipped) each stretch of highway
+under one requirement level is an event: layer `CHAIN_CONTROL`, source
+`caltrans-cc`, id `cc:{route}:{level}` (`cc:hwy4:r2`). They are the same
+stretches, with the same ids, headlines and severity, as the features of
+`/api/v1/places/{place}/map/chain_control.geojson`, which is unchanged.
+
+- `chainControl` carries `level`, `highway`, `direction`, `from`, `to`,
+  `inferred` and every sign in `signs` (each with its own level, time and
+  position). Times are RFC 3339 UTC.
+- Appearing is revision 1. A stretch that grows or shrinks by a checkpoint is
+  a revision. Caltrans lifting it is a `RESOLVED` revision. The id is reused:
+  the next R2 on the same highway is the same event, `ACTIVE` again.
+- A stretch is recorded from when it has a sign inside a coverage area, and
+  then until Caltrans drops it, even if its remaining signs are all outside
+  the area. Stretches that never enter an area have no event.
+- While one of Caltrans's two feeds is down, stored requirements are left as
+  they are and no new one is started; `caltrans-cc` says so on
+  `/api/v1/sources`. **A change of
+  level is a different event**: `cc:hwy4:r2` resolves and `cc:hwy4:r3` opens,
+  so `/api/v1/history?layer=CHAIN_CONTROL&place=...` is the storm in order.
+- The event's geometry is a point at the low end, like the map feature. It is
+  attached to every place any of its signs is in, so `?place=` finds a
+  stretch from either end.
+- Stretches only. Pass-closure gates and truck or hold levels stay point
+  features on the map layer.
+- The place summary does not count these events: its roads domain already
+  reports chain controls from the live layer. That exclusion is temporary.
+- A read the Grid cannot vouch for (a district file failed, an unreadable
+  sign) records what it has, marks `caltrans-cc` on `/api/v1/sources`, and
+  resolves nothing.
+
+### Monitored roads are events, and events can have samples
+
+A monitored road's history was a table of samples: every 15 minutes, a status
+and a travel time. "When did Hwy 4 close" had to be worked out from them, and
+it was not in the same history as everything else.
+
+With `grid.roadSegments.record` (off as shipped) each monitored road is one
+long-lived event: layer `ROAD_SEGMENT`, source `roads`, id `road:{road id}`
+(the id of its feature on the `road_segment` map layer).
+
+- `roadSegment` carries `roadId`, `name`, `section`, `status` and `beyond`
+  (named seasonal closures in effect past the segment's end, such as the
+  Ebbetts Pass winter closure).
+- A revision is a change of status or of those closures: the road closed,
+  reopened, the winter closure took effect. Travel time, delay and congestion
+  level are samples and never revise the event.
+- A change that eases the road (reopened, a closure lifted) is recorded once
+  a second refresh, about 15 minutes later, agrees. A closure or restriction
+  is recorded at once. `observedAt` is the refresh the state was read at.
+- The event is always `ACTIVE`; closed is its state, in `roadSegment.status`
+  and `category`, with `severity` as on the map layer.
+- No geometry. The shape is the map layer's. The event is attached to its own
+  corridor place and to the places at either end.
+- The place summary does not count these events; its roads domain already
+  reports the roads. That exclusion is temporary.
+
+New endpoint: **`GET /api/v1/events/{id}/samples`** (`from`, `to`) returns the
+series behind an event whose layer keeps one. Today that is `ROAD_SEGMENT`:
+`road[]` is the same samples as `GET /api/v1/roads/{road}/history`, which
+stays. An event on any other layer answers 404.
+
+### Every event says what kind of thing it is: `nature`
+
+Some events are things that happen (a fire, an alert, a chain requirement).
+Others are the standing state of something the Grid tracks (a mesh node, a
+county's burn status, a feed's health, a monitored road): always `ACTIVE`,
+revised when their state changes. Until now a client had to know which layers
+were which, and each kept its own list.
+
+`Event.nature` is `OCCURRENCE` or `STATE`, on every event the API returns. It
+follows from the layer. Use it wherever a list of layers would otherwise be
+hard-coded: a count of "events happening" is a count of `OCCURRENCE` events.
+The place summary's hazard rollups leave `STATE` events out by the same rule.
+
+### New enum values, declared ahead of use
+
+`Layer` gains `SOURCE_HEALTH`, `CHAIN_CONTROL`, `ROAD_SEGMENT` and `WEATHER`;
+`SourceKind` gains `INTERNAL`; `TimelineKind` gains `TIMELINE_READING`. `provenance.sourceId` gains `grid` (source health), `caltrans-cc` (chain control) and `roads` (monitored roads). No
+response carries the layer or source-kind values until the flag for its layer
+is on. They are published first
+because a client with closed enums (the TypeScript SDK validates responses)
+rejects a value it does not know. TypeScript SDK 0.5.0 and later accept
+unknown enum values; a client on an older SDK, or with its own closed lists,
+must update before the Grid starts writing these layers.
+
 ## 2026-11-17
 
 ### BREAKING for clients with closed enums: `calfireStatus` can be `CALFIRE_BURNING_ALLOWED`

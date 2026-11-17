@@ -5,12 +5,14 @@ Shared domain vocabulary for this project — entities, named processes, and sta
 ## Events & lifecycle
 
 ### Event
-A single occurrence the Grid tracks and serves — a wildfire, an evacuation, a weather alert, an earthquake, a road incident, a mesh node — as a canonical record carrying geometry, severity, a source-namespaced id, and full revision history.
+A thing the Grid tracks and serves, with a state and a history, that lasts as long as what it describes — a wildfire, an evacuation, a weather alert, an earthquake, a road incident, a mesh node, a county's burn status. It is a canonical record carrying geometry, severity, a source-namespaced id, and full revision history. An Event is not a moment: a later report about the same thing revises its Event rather than creating another.
 
 An Event has a lifecycle status: Active or Scheduled while live, Resolved when a feed that authoritatively lists everything current drops it, Expired when a feed that goes quiet without confirming an ending passes the event's own expiry or a per-source grace. Every status change is a Revision, so the record of an ending is part of history, not a deletion.
 
 ### Revision
 An immutable snapshot of an Event written on any content change or lifecycle transition. Volatile bookkeeping (re-stamped timestamps, AI enhancement, high-frequency telemetry) is excluded from the change test, so re-observing an unchanged record does not mint a Revision.
+
+A Revision has a kind. A **Change** is written when the Event's content or status changed. A **Reading** is written when a reading with content of its own (a burn line's call: message, transcript, confidence) arrived and the state held; the change test is unaffected, and history leaves Readings out unless asked. A poll that only confirms what is stored is neither: it writes nothing.
 
 ### Disappearance sweep
 The per-tick reconciliation that transitions Events which are absent from a *successful, complete* poll of their Source, governed by that Source's disappearance policy (resolve immediately, or expire only after a grace). See Fail-loud.

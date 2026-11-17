@@ -40,7 +40,9 @@
       "observedAt": "2026-07-01T12:00:00Z",
       "ingestedAt": null,
       "revision": 1,
-      "enhancement": null
+      "readings": 0,
+      "enhancement": null,
+      "nature": "OCCURRENCE"
     },
     {
       "id": "usgs:q1",
@@ -83,7 +85,9 @@
       "observedAt": "2026-07-01T15:00:00Z",
       "ingestedAt": null,
       "revision": 2,
-      "enhancement": null
+      "readings": 0,
+      "enhancement": null,
+      "nature": "OCCURRENCE"
     },
     {
       "id": "wx:a1",
@@ -112,7 +116,9 @@
       "observedAt": "2026-07-01T11:00:00Z",
       "ingestedAt": null,
       "revision": 1,
-      "enhancement": null
+      "readings": 0,
+      "enhancement": null,
+      "nature": "OCCURRENCE"
     },
     {
       "id": "chp:i1",
@@ -154,6 +160,7 @@
       "observedAt": "2026-07-01T10:00:00Z",
       "ingestedAt": null,
       "revision": 1,
+      "readings": 0,
       "enhancement": {
         "model": "gpt-5-mini",
         "enhancedAt": null,
@@ -164,7 +171,8 @@
         ],
         "request": "",
         "response": ""
-      }
+      },
+      "nature": "OCCURRENCE"
     },
     {
       "id": "meshcore:aa00",
@@ -203,7 +211,9 @@
       "observedAt": "2026-07-01T12:00:00Z",
       "ingestedAt": null,
       "revision": 1,
-      "enhancement": null
+      "readings": 0,
+      "enhancement": null,
+      "nature": "STATE"
     }
   ],
   "nextPageToken": "",
@@ -253,7 +263,9 @@
   "observedAt": "2026-07-01T15:00:00Z",
   "ingestedAt": null,
   "revision": 2,
-  "enhancement": null
+  "readings": 0,
+  "enhancement": null,
+  "nature": "OCCURRENCE"
 }
 {
   "revisions": [
@@ -302,9 +314,12 @@
         "observedAt": "2026-07-01T15:00:00Z",
         "ingestedAt": null,
         "revision": 2,
-        "enhancement": null
+        "readings": 0,
+        "enhancement": null,
+        "nature": "OCCURRENCE"
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     },
     {
       "revision": 1,
@@ -351,9 +366,12 @@
         "observedAt": "2026-07-01T14:00:00Z",
         "ingestedAt": null,
         "revision": 1,
-        "enhancement": null
+        "readings": 0,
+        "enhancement": null,
+        "nature": "OCCURRENCE"
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     }
   ],
   "nextPageToken": "",
@@ -408,9 +426,12 @@
         "observedAt": "2026-07-01T15:00:00Z",
         "ingestedAt": null,
         "revision": 2,
-        "enhancement": null
+        "readings": 0,
+        "enhancement": null,
+        "nature": "OCCURRENCE"
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     },
     {
       "revision": 1,
@@ -457,9 +478,12 @@
         "observedAt": "2026-07-01T14:00:00Z",
         "ingestedAt": null,
         "revision": 1,
-        "enhancement": null
+        "readings": 0,
+        "enhancement": null,
+        "nature": "OCCURRENCE"
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     },
     {
       "revision": 1,
@@ -505,9 +529,12 @@
         "observedAt": "2026-07-01T12:00:00Z",
         "ingestedAt": null,
         "revision": 1,
-        "enhancement": null
+        "readings": 0,
+        "enhancement": null,
+        "nature": "OCCURRENCE"
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     },
     {
       "revision": 1,
@@ -550,9 +577,12 @@
         "observedAt": "2026-07-01T12:00:00Z",
         "ingestedAt": null,
         "revision": 1,
-        "enhancement": null
+        "readings": 0,
+        "enhancement": null,
+        "nature": "STATE"
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     },
     {
       "revision": 1,
@@ -585,9 +615,12 @@
         "observedAt": "2026-07-01T11:00:00Z",
         "ingestedAt": null,
         "revision": 1,
-        "enhancement": null
+        "readings": 0,
+        "enhancement": null,
+        "nature": "OCCURRENCE"
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     },
     {
       "revision": 1,
@@ -633,6 +666,7 @@
         "observedAt": "2026-07-01T10:00:00Z",
         "ingestedAt": null,
         "revision": 1,
+        "readings": 0,
         "enhancement": {
           "model": "gpt-5-mini",
           "enhancedAt": null,
@@ -643,9 +677,11 @@
           ],
           "request": "",
           "response": ""
-        }
+        },
+        "nature": "OCCURRENCE"
       },
-      "match": null
+      "match": null,
+      "kind": "CHANGE"
     }
   ],
   "nextPageToken": "",

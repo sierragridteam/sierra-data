@@ -11,6 +11,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -371,6 +372,10 @@ func (g *GridServer) GetEventHistory(ctx context.Context, req *gridv1.GetEventHi
 	if err != nil {
 		return nil, invalidErr(err)
 	}
+	kinds, err := parseRevisionKinds(req.GetKind())
+	if err != nil {
+		return nil, invalidErr(err)
+	}
 	// A cheap revision read doubles as the existence check (replacing a full
 	// blob load) and the ETag validator: history grows only when the current
 	// revision bumps; the page window and IO flag shape the body.
@@ -387,11 +392,11 @@ func (g *GridServer) GetEventHistory(ctx context.Context, req *gridv1.GetEventHi
 	if err != nil {
 		return nil, internalErr(ctx, err)
 	}
-	tag := etag.Weak(fmt.Sprintf("%s:%s:%d:%d:%s:%t:%s", prefix, req.GetId(), stamp.Revision, req.GetPageSize(), req.GetPageToken(), req.GetEnhancementIo(), geomFmt))
+	tag := etag.Weak(fmt.Sprintf("%s:%s:%d:%d:%s:%t:%s:%s", prefix, req.GetId(), stamp.Revision, req.GetPageSize(), req.GetPageToken(), req.GetEnhancementIo(), geomFmt, strings.ToUpper(strings.Join(req.GetKind(), ","))))
 	if err := etag.Guard(ctx, tag); err != nil {
 		return nil, err // 304 — skip the history query + blob rehydrate
 	}
-	page, err := g.svc.Store.EventHistoryPage(ctx, req.GetId(), pageSize, req.GetPageToken())
+	page, err := g.svc.Store.EventHistoryPage(ctx, req.GetId(), pageSize, req.GetPageToken(), kinds...)
 	if err != nil {
 		return nil, tokenOrInternal(ctx, err)
 	}
@@ -441,6 +446,12 @@ func (g *GridServer) ListHistory(ctx context.Context, req *gridv1.ListHistoryReq
 	if hq.Search, err = parseSearch(req.GetQ(), req.GetQTyping()); err != nil {
 		return nil, err
 	}
+	if hq.Kinds, err = parseRevisionKinds(req.GetKind()); err != nil {
+		return nil, invalidErr(err)
+	}
+	if hq.Search != nil && slices.Contains(hq.Kinds, gridv1.RevisionKind_READING) {
+		return nil, invalidErr(errors.New("q searches changes only: a reading's content is not in the search text, so q cannot be combined with kind=READING"))
+	}
 	collapse := false
 	switch c := strings.ToLower(strings.TrimSpace(req.GetCollapse())); {
 	case c == "":
@@ -480,7 +491,8 @@ func (g *GridServer) ListHistory(ctx context.Context, req *gridv1.ListHistoryReq
 	tag := weakListTag(version,
 		req.GetPlace(), strings.Join(req.GetLayer(), ","), req.GetFrom(), req.GetTo(),
 		strconv.Itoa(int(req.GetPageSize())), req.GetPageToken(), strconv.FormatBool(req.GetEnhancementIo()),
-		geomFmt.String(), req.GetQ(), strconv.FormatBool(req.GetQTyping()), strconv.FormatBool(collapse))
+		geomFmt.String(), req.GetQ(), strconv.FormatBool(req.GetQTyping()), strconv.FormatBool(collapse),
+		"kind="+strings.ToUpper(strings.Join(req.GetKind(), ",")))
 	if err := etag.Guard(ctx, tag); err != nil {
 		return nil, err // 304 — skip the query
 	}

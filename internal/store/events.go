@@ -19,12 +19,13 @@ import (
 
 // UpsertResult reports what UpsertEvent did.
 type UpsertResult struct {
-	Changed  bool   // a row was written (new event or new revision)
+	Changed  bool   // the event is new or its content changed (a CHANGE revision)
+	Reading  bool   // a READING revision was written: the state held, a reading advanced
 	Revision uint32 // current revision after the call
 }
 
 // ContentHash returns the SHA-256 hex of a deterministic marshal of ev with
-// volatile fields zeroed: revision, ingested_at, observed_at,
+// volatile fields zeroed: revision, readings, ingested_at, observed_at,
 // provenance.fetched_at, enhancement, summary, place_ids, and (for MESH
 // events) mesh.telemetry. Upstream re-stamps without content change produce
 // the same hash (no revision), and enhancement output never causes hash churn
@@ -36,6 +37,8 @@ type UpsertResult struct {
 func ContentHash(ev *gridv1.Event) string {
 	c := proto.Clone(ev).(*gridv1.Event)
 	c.Revision = 0
+	c.Readings = 0
+	c.Nature = gridv1.EventNature_EVENT_NATURE_UNSPECIFIED // derived at read time, never content
 	c.IngestedAt = nil
 	c.ObservedAt = nil
 	if c.Provenance != nil {
@@ -137,6 +140,10 @@ func (s *Store) NeedsUpdate(ctx context.Context, ev *gridv1.Event) (bool, error)
 //     place seeded after the event first arrived must still attach;
 //   - hash differs: revision = old+1, row updated.
 //
+// With WithReadings, a hash-equal upsert whose reading advanced
+// (readingAdvanced) writes a READING revision instead of the refresh: the
+// state held, and the reading is kept as a snapshot (writeReading).
+//
 // Every content write also inserts an event_revisions snapshot (bumping the
 // 'revisions' version), recomputes event_places, writes the bbox columns and
 // the lite copy, and stamps last_seen_at. first_ingested_at is set on insert
@@ -144,16 +151,46 @@ func (s *Store) NeedsUpdate(ctx context.Context, ev *gridv1.Event) (bool, error)
 // ingested_at is stamped here; callers own observed_at (nil falls back to
 // now for the NOT NULL index column only).
 func (s *Store) UpsertEvent(ctx context.Context, ev *gridv1.Event) (UpsertResult, error) {
+	return s.UpsertEventReading(ctx, ev, nil)
+}
+
+// ReadingAdvanced is a poller's answer to "does this event carry a reading
+// newer than the stored one?". It is called only when the two are hash-equal,
+// so they differ only in hash-excluded fields, and stored is the event as the
+// store holds it. The store knows nothing about what a reading is in any
+// layer: the poller that produces readings supplies the test.
+type ReadingAdvanced func(stored *gridv1.Event) bool
+
+// UpsertEventReading is UpsertEvent for an event whose poller records
+// readings. With WithReadings on, a hash-equal upsert for which advanced
+// reports true writes a READING revision (writeReading) instead of taking
+// the refresh path. A nil advanced, or the option off, is UpsertEvent.
+func (s *Store) UpsertEventReading(ctx context.Context, ev *gridv1.Event, advanced ReadingAdvanced) (UpsertResult, error) {
 	if ev.GetId() == "" {
 		return UpsertResult{}, fmt.Errorf("store: upsert event with empty id")
 	}
+	var res UpsertResult
+	err := s.inTx(ctx, func(tx *sql.Tx) (err error) {
+		res, err = s.upsertEventTx(ctx, tx, ev, advanced)
+		return err
+	})
+	if err != nil {
+		return UpsertResult{}, err
+	}
+	return res, nil
+}
+
+// upsertEventTx is UpsertEvent inside a write transaction the caller holds,
+// for a write that must commit with something else (a source's status and
+// its SOURCE_HEALTH revision, RecordAttempt).
+func (s *Store) upsertEventTx(ctx context.Context, tx *sql.Tx, ev *gridv1.Event, advanced ReadingAdvanced) (UpsertResult, error) {
 	// Hash the event exactly as passed — before any store-side mutation — so
 	// the stored hash always matches what the next poll's ContentHash yields.
 	hash := ContentHash(ev)
 
 	var res UpsertResult
-	err := s.inTx(ctx, func(tx *sql.Tx) error {
-		var oldRev uint32
+	err := func() error {
+		var oldRev, oldReadings uint32
 		var oldHash string
 		var pre storedForRefresh
 		// One round trip for the lookup and, when the hash matches, everything
@@ -161,12 +198,12 @@ func (s *Store) UpsertEvent(ctx context.Context, ev *gridv1.Event) (UpsertResult
 		// set), which were two more statements. The blob and places are only
 		// fetched on a match: a content change does not need them.
 		err := tx.QueryRow(`
-			SELECT revision, content_hash,
+			SELECT revision, content_hash, readings,
 			       CASE WHEN content_hash = $2 THEN proto END,
 			       CASE WHEN content_hash = $2 THEN
 			         (SELECT json_agg(place_id ORDER BY place_id) FROM event_places WHERE event_id = $1) END
 			FROM events WHERE id = $1`, ev.GetId(), hash).
-			Scan(&oldRev, &oldHash, &pre.blob, &pre.placesJSON)
+			Scan(&oldRev, &oldHash, &oldReadings, &pre.blob, &pre.placesJSON)
 		switch {
 		case err == sql.ErrNoRows:
 			res = UpsertResult{Changed: true, Revision: 1}
@@ -174,6 +211,16 @@ func (s *Store) UpsertEvent(ctx context.Context, ev *gridv1.Event) (UpsertResult
 			return fmt.Errorf("store: upsert lookup %s: %w", ev.GetId(), err)
 		case oldHash == hash:
 			res = UpsertResult{Changed: false, Revision: oldRev}
+			if s.readings && advanced != nil {
+				wrote, err := writeReading(ctx, tx, ev, &pre, oldReadings, advanced)
+				if err != nil {
+					return err
+				}
+				if wrote {
+					res.Reading, res.Revision = true, oldRev+1
+					return nil
+				}
+			}
 			// Content unchanged, but the place set may not be: recompute and
 			// sync attachments without touching revision/hash/history.
 			_, err := s.refreshEventPlaces(tx, ev, &pre)
@@ -185,6 +232,9 @@ func (s *Store) UpsertEvent(ctx context.Context, ev *gridv1.Event) (UpsertResult
 		now := time.Now()
 		c := proto.Clone(ev).(*gridv1.Event)
 		c.Revision = res.Revision
+		// Readings are counted by the store; a poller's event never carries
+		// the count, so a change keeps the stored one.
+		c.Readings = oldReadings
 		c.IngestedAt = timestamppb.New(now)
 		ensureGeometryIndex(c)
 
@@ -225,7 +275,7 @@ func (s *Store) UpsertEvent(ctx context.Context, ev *gridv1.Event) (UpsertResult
 		); err != nil {
 			return fmt.Errorf("store: upsert event %s: %w", c.GetId(), err)
 		}
-		if err := insertRevision(tx, c.GetId(), res.Revision, observedAt, now.Unix(), blob); err != nil {
+		if err := insertRevision(tx, c.GetId(), res.Revision, gridv1.RevisionKind_CHANGE, observedAt, now.Unix(), blob); err != nil {
 			return err
 		}
 		if err := putLite(tx, c); err != nil {
@@ -235,7 +285,7 @@ func (s *Store) UpsertEvent(ctx context.Context, ev *gridv1.Event) (UpsertResult
 			return err
 		}
 		return replaceEventPlaces(tx, c.GetId(), c.PlaceIds)
-	})
+	}()
 	if err != nil {
 		return UpsertResult{}, err
 	}
@@ -553,11 +603,11 @@ func (s *Store) EventVersion(ctx context.Context, id string) (stamp EventStamp, 
 
 // --- internals ---
 
-func insertRevision(tx *sql.Tx, id string, rev uint32, observedAt, ingestedAt int64, blob []byte) error {
+func insertRevision(tx *sql.Tx, id string, rev uint32, kind gridv1.RevisionKind, observedAt, ingestedAt int64, blob []byte) error {
 	if _, err := tx.Exec(`
-		INSERT INTO event_revisions (event_id, revision, observed_at, ingested_at, proto)
-		VALUES ($1, $2, $3, $4, $5)`,
-		id, rev, observedAt, ingestedAt, blob,
+		INSERT INTO event_revisions (event_id, revision, kind, observed_at, ingested_at, proto)
+		VALUES ($1, $2, $3, $4, $5, $6)`,
+		id, rev, int32(kind), observedAt, ingestedAt, blob,
 	); err != nil {
 		return fmt.Errorf("store: insert revision %s@%d: %w", id, rev, err)
 	}
@@ -646,10 +696,15 @@ func (s *Store) refreshEventPlaces(tx *sql.Tx, ev *gridv1.Event, pre *storedForR
 	// readings landed), and consumers reading observation.observedAt as "as of"
 	// declared fresh data stale. The event's own observed_at / fetched_at follow
 	// the reading, since they are the "as of" the API documents.
+	//
+	// With WithReadings a newer call does not come here at all: it is a
+	// READING revision (writeReading). What is left for this branch is CAL
+	// FIRE's observed-at stamp and fetched_at, and the event's observed_at
+	// stays with its latest revision like every other layer's.
 	burnChanged := false
 	if in, have := ev.GetBurnStatus(), stored.GetBurnStatus(); in != nil && have != nil {
 		burnChanged = !proto.Equal(burnVolatile(in), burnVolatile(have)) ||
-			!proto.Equal(ev.GetObservedAt(), stored.GetObservedAt()) ||
+			(!s.readings && !proto.Equal(ev.GetObservedAt(), stored.GetObservedAt())) ||
 			!proto.Equal(ev.GetProvenance().GetFetchedAt(), stored.GetProvenance().GetFetchedAt())
 	}
 
@@ -676,7 +731,9 @@ func (s *Store) refreshEventPlaces(tx *sql.Tx, ev *gridv1.Event, pre *storedForR
 		// hash-excluded fields (the hashes are equal), so taking it wholesale
 		// persists the fresh observations without touching the answer.
 		stored.Detail = &gridv1.Event_BurnStatus{BurnStatus: ev.GetBurnStatus()}
-		stored.ObservedAt = ev.GetObservedAt()
+		if !s.readings {
+			stored.ObservedAt = ev.GetObservedAt()
+		}
 		if stored.Provenance != nil && ev.GetProvenance() != nil {
 			stored.Provenance.FetchedAt = ev.GetProvenance().GetFetchedAt()
 		}
@@ -1072,4 +1129,68 @@ func burnVolatile(b *gridv1.BurnStatusDetail) *gridv1.BurnStatusDetail {
 		v.BurnLines = append(v.BurnLines, &gridv1.BurnLineReading{Id: l.GetId(), Observation: l.GetObservation()})
 	}
 	return v
+}
+
+// writeReading writes a READING revision for a hash-equal event whose
+// reading advanced (the poller's test), and reports whether it did. The
+// stored event takes the incoming detail (it differs only in hash-excluded
+// fields: the hashes are equal), observed_at and fetched_at; revision and
+// readings increment; the content hash, the place set and the search text
+// stay (a reading's content is outside the search text, and place ids are not
+// part of a reading: the refresh path still reconciles them on the next
+// hash-equal poll).
+//
+// The readings count comes from the COLUMN (oldReadings), never the stored
+// blob: the previous release's writer rebuilds the blob from the poller's
+// event and drops the field, and counting from that after a rollback and
+// roll-forward lost every reading written before it.
+//
+// A read-modify-write on the stored blob, safe only under the single writer
+// (inTx holds the store mutex and the lease fence).
+func writeReading(ctx context.Context, tx *sql.Tx, ev *gridv1.Event, pre *storedForRefresh, oldReadings uint32, advanced ReadingAdvanced) (bool, error) {
+	stored := &gridv1.Event{}
+	if err := proto.Unmarshal(pre.blob, stored); err != nil {
+		return false, fmt.Errorf("store: unmarshal event %s for reading: %w", ev.GetId(), err)
+	}
+	if !advanced(stored) {
+		return false, nil
+	}
+	now := time.Now()
+	// Whatever the layer, the detail is the incoming one: equal hashes mean
+	// it differs from the stored detail only where the hash does not look.
+	stored.Detail = proto.Clone(ev).(*gridv1.Event).Detail
+	if ev.GetObservedAt() != nil {
+		stored.ObservedAt = ev.GetObservedAt()
+	}
+	if stored.Provenance != nil && ev.GetProvenance().GetFetchedAt() != nil {
+		stored.Provenance.FetchedAt = ev.GetProvenance().GetFetchedAt()
+	}
+	stored.Revision++
+	stored.Readings = oldReadings + 1
+	stored.IngestedAt = timestamppb.New(now)
+	blob, err := proto.Marshal(stored)
+	if err != nil {
+		return false, fmt.Errorf("store: marshal event %s for reading: %w", ev.GetId(), err)
+	}
+	observedAt := now.Unix()
+	if stored.GetObservedAt() != nil {
+		observedAt = stored.GetObservedAt().AsTime().Unix()
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE events SET proto = $1, observed_at = $2, ingested_at = $3,
+		revision = $4, readings = $5, last_seen_at = $3 WHERE id = $6`,
+		blob, observedAt, now.Unix(), stored.GetRevision(), stored.GetReadings(), ev.GetId()); err != nil {
+		return false, fmt.Errorf("store: update event %s for reading: %w", ev.GetId(), err)
+	}
+	if err := insertRevision(tx, ev.GetId(), stored.GetRevision(), gridv1.RevisionKind_READING, observedAt, now.Unix(), blob); err != nil {
+		return false, err
+	}
+	// The current search row is stamped with the revision it was built from,
+	// and the term-start walk rebuilds any row whose stamp is behind its
+	// event. The text has not changed, so move the stamp (revision is not an
+	// indexed column: no GIN write) instead of leaving a row the walk would
+	// rebuild, bumping the search version for nothing.
+	if _, err := tx.ExecContext(ctx, `UPDATE event_search SET revision = $1 WHERE event_id = $2`, stored.GetRevision(), ev.GetId()); err != nil {
+		return false, fmt.Errorf("store: restamp search row %s for reading: %w", ev.GetId(), err)
+	}
+	return true, putLite(tx, stored)
 }
