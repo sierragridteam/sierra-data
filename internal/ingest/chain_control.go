@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -19,16 +20,15 @@ import (
 // every chain requirement it does not list.
 const ChainControlSourceID = "caltrans-cc"
 
-// ChainRequirementSource is the read the poller needs: the chain-control
-// stretches with a sign inside one of the areas (hazards.Service).
+// ChainRequirementSource is the read the poller needs (hazards.Service).
 type ChainRequirementSource interface {
-	ChainRequirements(ctx context.Context, areas []config.HazardArea) (stretches []hazards.Feature, degraded, err error)
+	ChainRequirements(ctx context.Context, areas []config.HazardArea, held func(id string, signIDs []string, sourceDown bool) bool) (hazards.ChainRead, error)
 }
 
 // ChainControlNormalizer records chain requirements as events (layer
 // CHAIN_CONTROL, id namespace "cc:"): one event per stretch of highway under
-// one requirement level, the same stretch and id as the chain_control map
-// layer shows, because both come from hazards.Service over one cached read.
+// one requirement level, with the id, headline and signs the chain_control
+// map layer gives it (hazards.Service sorts, groups and numbers for both).
 //
 // A requirement starts, holds and ends, and until this poller existed nothing
 // stored that: the map layer is a live projection, so a storm's sequence was
@@ -37,10 +37,26 @@ type ChainRequirementSource interface {
 // read resolves every one of them, which is the end of the storm. A change of
 // level is a different id by design (see hazards.chainStretchID).
 //
-// Fail-loud, like the lane closures: a failed registry read is a hard error;
-// a read that cannot vouch for completeness (a district file failed, or an
-// in-scope sign is unrecognized or has no position) is a PerSource error, so
-// the stretches it did report land and nothing is swept.
+// Three rules keep the record from saying a requirement ended when it did
+// not. Each has a test, and the first two were found the hard way:
+//
+//   - A stretch is recorded from when it has a sign inside a hazard area, and
+//     then for as long as Caltrans reports it (held, below). Its signs clear
+//     one at a time; the last in-area sign clearing while the road beyond it
+//     is still under the requirement is not a lift. On 2026-11-17 Hwy 88 R2
+//     was written RESOLVED that way while it ran from Iron Mountain Road to
+//     Pickett's Junction.
+//   - When one of the two sources is down the read comes from the other,
+//     which describes the same stretches differently (sign ids, times,
+//     inferred, and sometimes numbering). The stored events ride forward
+//     unchanged and no new one is started until both sources answer; hashed,
+//     the difference would be a revision per stretch when the source fails
+//     and another when it returns, and a stretch numbered differently for
+//     the outage would be resolved on recovery, with nothing having happened
+//     on the road. A requirement that starts during the outage is recorded
+//     when it ends, with Caltrans's own start time.
+//   - Fail-loud, like the lane closures: a failed registry read is a hard
+//     error; any degraded read is a PerSource error, so nothing is swept.
 type ChainControlNormalizer struct {
 	cfg    *config.Config
 	source ChainRequirementSource
@@ -59,19 +75,64 @@ func NewChainControlNormalizer(cfg *config.Config, source ChainRequirementSource
 func (n *ChainControlNormalizer) SourceIDs() []string { return []string{ChainControlSourceID} }
 
 // Poll implements Normalizer.
-func (n *ChainControlNormalizer) Poll(ctx context.Context, _ Prior) (*PollResult, error) {
+func (n *ChainControlNormalizer) Poll(ctx context.Context, prior Prior) (*PollResult, error) {
 	areas := n.cfg.Hazards.Areas
 	if len(areas) == 0 {
 		return nil, errEmptyScope("hazard areas")
 	}
-	stretches, degraded, err := n.source.ChainRequirements(ctx, areas)
+	// A stretch we hold stays ours while Caltrans still reports it under the
+	// same id AND it is the same piece of road: ids are numbered along the
+	// highway, so another stretch can inherit one. Sharing a sign with what
+	// is stored is the test. With a source down the sign ids are the other
+	// source's and prove nothing either way, so the id alone holds it.
+	held := func(id string, signIDs []string, sourceDown bool) bool {
+		ev := prior.ByID(id)
+		if ev == nil {
+			return false
+		}
+		have := map[string]bool{}
+		for _, s := range ev.GetChainControl().GetSigns() {
+			have[s.GetId()] = true
+		}
+		for _, sid := range signIDs {
+			if have[sid] {
+				return true
+			}
+		}
+		return sourceDown
+	}
+	read, err := n.source.ChainRequirements(ctx, areas, held)
 	if err != nil {
 		return nil, err
 	}
 	now := n.now()
 	res := &PollResult{}
-	for _, f := range stretches {
-		ev, err := n.event(ctx, f, now)
+	degraded := read.Degraded()
+	// The paired signs of a checkpoint stand metres apart and each lookup
+	// reads the place directory: ask once per spot per poll.
+	var placesNow func(ctx context.Context, lat, lng float64) ([]string, error)
+	if n.placesAt != nil {
+		seen := map[[2]float64][]string{}
+		placesNow = func(ctx context.Context, lat, lng float64) ([]string, error) {
+			key := [2]float64{math.Round(lat*200) / 200, math.Round(lng*200) / 200} // about 500 m
+			if ids, ok := seen[key]; ok {
+				return ids, nil
+			}
+			ids, err := n.placesAt(ctx, lat, lng)
+			if err == nil {
+				seen[key] = ids
+			}
+			return ids, err
+		}
+	}
+	for _, f := range read.Stretches {
+		if read.SourceDown != nil {
+			if stored := prior.ByID(f.Properties.ID); stored != nil {
+				res.Events = append(res.Events, stored)
+			}
+			continue
+		}
+		ev, err := n.event(ctx, f, now, placesNow)
 		if err != nil {
 			// A stretch we cannot build is a stretch missing from the set:
 			// the sweep must not read that as lifted.
@@ -94,7 +155,7 @@ func joinErr(a, b error) error {
 }
 
 // event builds the stored event from the map layer's feature for a stretch.
-func (n *ChainControlNormalizer) event(ctx context.Context, f hazards.Feature, now time.Time) (*gridv1.Event, error) {
+func (n *ChainControlNormalizer) event(ctx context.Context, f hazards.Feature, now time.Time, placesAt func(ctx context.Context, lat, lng float64) ([]string, error)) (*gridv1.Event, error) {
 	p := f.Properties
 	cc := p.ChainControl
 	if cc == nil || cc.From == nil || cc.To == nil {
@@ -142,8 +203,8 @@ func (n *ChainControlNormalizer) event(ctx context.Context, f hazards.Feature, n
 					places["area:"+a.ID] = true
 				}
 			}
-			if n.placesAt != nil {
-				ids, err := n.placesAt(ctx, lat, lng)
+			if placesAt != nil {
+				ids, err := placesAt(ctx, lat, lng)
 				if err != nil {
 					return nil, fmt.Errorf("chain control %s: places at %s: %w", p.ID, s.Place, err)
 				}

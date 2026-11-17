@@ -2,6 +2,7 @@ package hazards
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -36,6 +37,13 @@ type fixtureSource struct{ checkpoints []cwwp2.ChainControl }
 
 func (f fixtureSource) ChainControls(context.Context, int) ([]cwwp2.ChainControl, error) {
 	return f.checkpoints, nil
+}
+
+// failingSource is CWWP2 not answering.
+type failingSource struct{}
+
+func (failingSource) ChainControls(context.Context, int) ([]cwwp2.ChainControl, error) {
+	return nil, errors.New("HTTP 503")
 }
 
 func loadCheckpoints(t *testing.T, name string) []cwwp2.ChainControl {

@@ -847,18 +847,36 @@ With `grid.chainControl.record`, `ChainControlNormalizer` (source
 `CHAIN_CONTROL`. The map layer stays a live projection; the events are its
 record.
 
-- **One read, two readers.** The poller calls
-  `hazards.Service.ChainRequirements`, which reads the registry the
-  `chain_control` layer reads (same cache) and groups over everything Caltrans
-  reported, so an event has the id, headline, severity and signs of the map
-  feature for the same stretch (`TestChainRequirements_MatchTheMapLayer`). Do
-  not group in the poller.
+- **One rule, two reads.** The poller calls
+  `hazards.Service.ChainRequirements`, which sorts, groups and numbers with
+  the code the `chain_control` layer uses, over everything Caltrans reported,
+  so one read gives an event the id, headline, severity and signs of the map
+  feature for the same stretch (`TestChainRequirements_MatchTheMapLayer`). It
+  is its own fetch, not the layer's cached one: the map can lag an event by
+  its 5-minute cache. Do not group in the poller.
+- **Scope starts an event; only Caltrans ends it.** A stretch is recorded
+  from when it has a sign inside a hazard area, and then for as long as
+  Caltrans reports it (`held`: the poller holds a stretch whose id it has
+  stored and which still shares a sign with what is stored). Without that,
+  the last in-area sign clearing while the road beyond stays under the
+  requirement was written RESOLVED: Hwy 88 R2 on 2026-11-17, during the
+  first live run. The sign test is there because ids are numbered along the
+  highway and another stretch can inherit one.
+- **A source outage is not a change.** With CWWP2 or cc.kml down the read
+  comes from the other, which names signs differently, drops seconds and
+  infers every stretch (`ChainRead.SourceDown`). The stored events ride
+  forward untouched and no new one is started until both answer; a
+  requirement that begins during the outage is recorded when it ends, with
+  Caltrans's own start time.
 - **Its own source id.** The sweep runs per source and `caltrans` belongs to
   the lane-closure poller ("a source has exactly one poller"). The row is
   seeded only while the flag is on.
 - **The id is the lifecycle handle** (`cc:hwy4:r2`): stable while a stretch
   grows, shrinks or a sign flaps, and a level change is a different id by
-  design, so one event resolves and another opens. Known limit: a stretch
+  design, so one event resolves and another opens. **The id is a slot, not
+  an occurrence**: the next R2 on Hwy 4 reuses `cc:hwy4:r2`, as an ACTIVE
+  revision of the same event, so its history is every R2 on that highway.
+  Known limit: a stretch
   that splits, merges or gains a neighbour before it on the road renumbers
   (`cc:hwy88:r2:2`), which reads the same way. Districts 3 and 9 (cc.kml
   only) infer their stretches and will renumber more; their events carry

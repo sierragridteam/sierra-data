@@ -57,7 +57,6 @@ const (
 	// lane-closure windows (source `caltrans`). Planned windows not yet set up are
 	// SCHEDULED.
 	Layer_ROAD_INCIDENT Layer = 6
-	// (-- condition-backed layers (ROAD_SEGMENT, CHAIN_CONTROL) are projections, not events --)
 	// PG&E electric outages (source `pge`) and Public Safety Power Shutoffs
 	// (source `psps`). Most outages affect one customer and are INFO.
 	Layer_POWER Layer = 10
@@ -4136,7 +4135,10 @@ func (x *RoadSegmentBeyond) GetStatus() string {
 //
 // The id names the requirement, not its signs: it holds while the stretch
 // grows or shrinks by a checkpoint (a revision), and a change of level
-// resolves this event and opens another. A stretch that splits, merges or
+// resolves this event and opens another. The id is reused: the next
+// requirement of the same level on the same route is this event again,
+// ACTIVE in a new revision, so one event's history is every such
+// requirement on that highway. A stretch that splits, merges or
 // gains a neighbour before it on the road renumbers, which reads as one event
 // resolving and another opening. The event's geometry is a point at the low
 // end (`from`); each sign's own position is in `signs`.

@@ -354,7 +354,7 @@ func (a *gridApp) startTerm(actx context.Context, lease *store.Lease) (*writerTe
 	}
 
 	// Chain requirements as events: the same stretches the chain_control map
-	// layer shows, read through the hazards service's cache.
+	// layer shows (hazards.Service groups and numbers for both).
 	placesAt := func(ctx context.Context, lat, lng float64) ([]string, error) {
 		found, err := gridStore.PlacesContaining(ctx, lat, lng)
 		ids := make([]string, len(found))

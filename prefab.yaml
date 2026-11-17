@@ -570,9 +570,9 @@ grid:
       disappearance: "resolve"
     caltrans-cc:
       # Chain requirements as events (grid.chainControl.record; not a source
-      # row while that is off). Reads the registry the chain_control map layer
-      # reads, through its cache. resolve: a stretch missing from a complete
-      # read has been lifted.
+      # row while that is off). Its own read of the registry the chain_control
+      # map layer reads (CWWP2 and cc.kml), every 5 minutes. resolve: a stretch
+      # missing from a complete read has been lifted.
       pollInterval: "5m"
       disappearance: "resolve"
     caltrans:

@@ -100,7 +100,14 @@ stretches, with the same ids, headlines and severity, as the features of
   `inferred` and every sign in `signs` (each with its own level, time and
   position). Times are RFC 3339 UTC.
 - Appearing is revision 1. A stretch that grows or shrinks by a checkpoint is
-  a revision. Caltrans lifting it is a `RESOLVED` revision. **A change of
+  a revision. Caltrans lifting it is a `RESOLVED` revision. The id is reused:
+  the next R2 on the same highway is the same event, `ACTIVE` again.
+- A stretch is recorded from when it has a sign inside a coverage area, and
+  then until Caltrans drops it, even if its remaining signs are all outside
+  the area. Stretches that never enter an area have no event.
+- While one of Caltrans's two feeds is down, stored requirements are left as
+  they are and no new one is started; `caltrans-cc` says so on
+  `/api/v1/sources`. **A change of
   level is a different event**: `cc:hwy4:r2` resolves and `cc:hwy4:r3` opens,
   so `/api/v1/history?layer=CHAIN_CONTROL&place=...` is the storm in order.
 - The event's geometry is a point at the low end, like the map feature. It is

@@ -16,15 +16,32 @@ import (
 	"github.com/sierragridteam/sierra-data/internal/store"
 )
 
-// fakeChainSource scripts ChainRequirements.
+// fakeChainSource scripts ChainRequirements: stretches have a sign in an
+// area; outside are stretches Caltrans reports with none, returned only when
+// the caller holds them (as hazards.Service does).
 type fakeChainSource struct {
-	stretches []hazards.Feature
-	degraded  error
-	err       error
+	stretches  []hazards.Feature
+	outside    []hazards.Feature
+	sourceDown error
+	degraded   error
+	err        error
 }
 
-func (f *fakeChainSource) ChainRequirements(context.Context, []config.HazardArea) ([]hazards.Feature, error, error) {
-	return f.stretches, f.degraded, f.err
+func (f *fakeChainSource) ChainRequirements(_ context.Context, _ []config.HazardArea, held func(string, []string, bool) bool) (hazards.ChainRead, error) {
+	if f.err != nil {
+		return hazards.ChainRead{}, f.err
+	}
+	read := hazards.ChainRead{Stretches: append([]hazards.Feature(nil), f.stretches...), SourceDown: f.sourceDown, Incomplete: f.degraded}
+	for _, st := range f.outside {
+		var ids []string
+		for _, sg := range st.Properties.ChainControl.Signs {
+			ids = append(ids, sg.ID)
+		}
+		if held != nil && held(st.Properties.ID, ids, f.sourceDown != nil) {
+			read.Stretches = append(read.Stretches, st)
+		}
+	}
+	return read, nil
 }
 
 // chainFeature is a stretch as hazards.Service projects it: signs are
@@ -177,13 +194,54 @@ func TestChainControlLifecycle(t *testing.T) {
 	assert.Equal(t, uint32(2), eventRevision(t, st, r2))
 
 	// A degraded read that lists nothing proves nothing: not swept.
-	src.stretches, src.degraded = nil, errors.New("District 10 chain controls: HTTP 503")
+	grown := src.stretches
+	src.stretches, src.degraded = nil, errors.New("unrecognized chain-control status at Highway 4 X")
 	sched.tick(ctx, spec, ps)
 	assert.Equal(t, gridv1.EventStatus_ACTIVE, eventStatus(t, st, r2))
 	assert.NotEqual(t, gridv1.SourceStatus_OK, sourceByID(t, st, ChainControlSourceID).GetStatus())
 
-	// The level rises: a different requirement, so a different event.
+	// Its last sign inside an area clears while Caltrans still reports the
+	// stretch (signs beyond the area still require chains): it is still in
+	// force, so it stays ACTIVE, as it shrinks.
 	src.degraded = nil
+	src.outside = []hazards.Feature{chainFeature(r2, "Highway 4", "R2", [3]any{"Poison Springs", 38.39, -120.18}, [3]any{"Far End", 38.10, -119.60})}
+	sched.tick(ctx, spec, ps)
+	assert.Equal(t, gridv1.EventStatus_ACTIVE, eventStatus(t, st, r2), "a stretch leaving the area is not a lift")
+	assert.Equal(t, uint32(3), eventRevision(t, st, r2), "it shrank: a change")
+
+	// A different piece of road inheriting the id (stretches are numbered
+	// along the highway) is not the stretch we hold: none of its signs are
+	// ours, so it is out of scope and ours is resolved.
+	other := chainFeature(r2, "Highway 4", "R2", [3]any{"Somewhere Else", 39.5, -121.0})
+	other.Properties.ChainControl.Signs[0].ID = "cc:another-sign"
+	src.outside = []hazards.Feature{other}
+	sched.tick(ctx, spec, ps)
+	assert.Equal(t, gridv1.EventStatus_RESOLVED, eventStatus(t, st, r2))
+
+	// Back in the area, then one of the two sources fails: the read describes
+	// the same stretch differently (other sign ids, inferred). The stored
+	// event rides forward untouched, nothing new is started, nothing is swept.
+	src.outside, src.stretches = nil, grown
+	sched.tick(ctx, spec, ps)
+	rev := eventRevision(t, st, r2)
+	kmlOnly := chainFeature(r2, "Highway 4", "R2", [3]any{"POISON SPRINGS", 38.39, -120.18})
+	kmlOnly.Properties.ChainControl.Signs[0].ID = "cc:10-2537"
+	kmlOnly.Properties.ChainControl.Inferred = true
+	phantom := chainFeature("cc:hwy4:r2:2", "Highway 4", "R2", [3]any{"Hathaway Pines", 38.20, -120.36})
+	src.stretches, src.sourceDown = []hazards.Feature{kmlOnly, phantom}, errors.New("partial chain-control data: District 10: HTTP 503")
+	sched.tick(ctx, spec, ps)
+	assert.Equal(t, rev, eventRevision(t, st, r2), "an outage is not a change")
+	ev, err = st.GetEvent(ctx, r2)
+	require.NoError(t, err)
+	assert.False(t, ev.GetChainControl().GetInferred())
+	_, err = st.GetEvent(ctx, "cc:hwy4:r2:2")
+	assert.ErrorIs(t, err, store.ErrNotFound, "nothing is started from one source's numbering")
+	assert.NotEqual(t, gridv1.SourceStatus_OK, sourceByID(t, st, ChainControlSourceID).GetStatus())
+	src.stretches, src.sourceDown = grown, nil
+	sched.tick(ctx, spec, ps)
+	assert.Equal(t, rev, eventRevision(t, st, r2), "nor is its recovery")
+
+	// The level rises: a different requirement, so a different event.
 	src.stretches = []hazards.Feature{chainFeature(r3, "Highway 4", "R3", [3]any{"Poison Springs", 38.39, -120.18})}
 	sched.tick(ctx, spec, ps)
 	assert.Equal(t, gridv1.EventStatus_RESOLVED, eventStatus(t, st, r2))
@@ -201,7 +259,7 @@ func TestChainControlLifecycle(t *testing.T) {
 	ev, err = st.GetEvent(ctx, r2)
 	require.NoError(t, err)
 	assert.Equal(t, gridv1.EventStatus_ACTIVE, ev.GetStatus())
-	assert.Equal(t, uint32(4), ev.GetRevision(), "appeared, grew, resolved, reappeared: each a revision")
+	assert.Equal(t, gridv1.EventStatus_ACTIVE, ev.GetStatus())
 }
 
 func eventRevision(t *testing.T, st *store.Store, id string) uint32 {

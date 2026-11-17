@@ -382,23 +382,51 @@ func sortChainControls(controls, quiet []caltrans.ChainControlData, inScope func
 	return out
 }
 
-// ChainRequirements returns every chain-control stretch with at least one
-// sign inside one of areas, whole, as the map layer's feature for it (same
-// id, headline, severity and signs: chainStretchFeature). It reads the same
-// registry, through the same cache, as the chain_control map layer, and
-// groups over everything Caltrans reported, so a stretch has the id the map
-// shows for it.
+// ChainRead is one read of the chain-control registry for the stored events.
+type ChainRead struct {
+	// Stretches is every stretch in scope (see ChainRequirements), as the
+	// map layer's feature for it.
+	Stretches []Feature
+	// SourceDown is set when one of the two sources failed and the read was
+	// put together from the other (caltrans.PartialError). The stretches are
+	// real, but their detail is the surviving source's: cc.kml alone names
+	// signs differently, drops seconds and mileposts, and infers every
+	// stretch. A reader that stores them must not take that as a change.
+	SourceDown error
+	// Incomplete is set when the read cannot vouch for completeness for
+	// another reason (an in-scope sign with an unreadable status, or a sign
+	// with no position). The stretches and their detail are good.
+	Incomplete error
+}
+
+// Degraded is why a stretch missing from the read proves nothing, or nil
+// when the read is complete.
+func (r ChainRead) Degraded() error { return errors.Join(r.SourceDown, r.Incomplete) }
+
+// ChainRequirements returns the chain-control stretches the stored events
+// cover, whole, each as the map layer's feature for it (id, headline,
+// severity and signs: chainStretchFeature). It groups over everything
+// Caltrans reported, with the sorting and numbering the chain_control map
+// layer uses, so one read gives a stretch the id the map gives it. It is its
+// own read of Caltrans, not the map layer's cached one: the two agree per
+// read, and the map can lag by its cache.
 //
-// err is a failed read: nothing is known. degraded is a read that cannot
-// vouch for completeness (a district file failed, or an in-scope sign is
-// unrecognized or has no position): the stretches returned are real, and a
-// stretch missing from them proves nothing. Both nil with no stretches is
-// Caltrans confirming there are none.
-func (s *Service) ChainRequirements(ctx context.Context, areas []config.HazardArea) (stretches []Feature, degraded, err error) {
+// A stretch is in scope when it has a sign inside one of areas, OR when
+// held(id, signIDs, sourceDown) says the caller already holds an event for
+// it (sourceDown: this read is from one source only, see ChainRead). The second
+// half is what keeps a requirement from being recorded as lifted when it is
+// not: a stretch's signs clear one at a time, and when the last sign inside
+// an area clears while signs outside it still require chains, the stretch
+// is still in force. Scope decides when a stretch STARTS being recorded;
+// only Caltrans dropping it ends it. held may be nil.
+//
+// err is a failed read: nothing is known. A ChainRead with Degraded() nil
+// and no stretches is Caltrans confirming there are none.
+func (s *Service) ChainRequirements(ctx context.Context, areas []config.HazardArea, held func(id string, signIDs []string, sourceDown bool) bool) (ChainRead, error) {
 	controls, quiet, err := s.caltrans.ParseChainControlRegistry(ctx)
 	var partial *caltrans.PartialError
 	if err != nil && !errors.As(err, &partial) {
-		return nil, nil, err
+		return ChainRead{}, err
 	}
 	inScope := func(c caltrans.ChainControlData) bool {
 		if c.Coordinates == nil {
@@ -413,25 +441,37 @@ func (s *Service) ChainRequirements(ctx context.Context, areas []config.HazardAr
 	}
 	sorted := sortChainControls(controls, quiet, inScope)
 	grouped := groupChainStretches(sorted.active, sorted.quiet)
+	var read ChainRead
 	for i, st := range grouped {
+		id := chainStretchID(grouped, i)
 		if !anySign(st.Signs, inScope) {
-			continue
+			if held == nil {
+				continue
+			}
+			signIDs := make([]string, len(st.Signs))
+			for j, c := range st.Signs {
+				signIDs[j] = chainControlID(c)
+			}
+			if !held(id, signIDs, partial != nil) {
+				continue
+			}
 		}
-		if f, ok := chainStretchFeature(st, chainStretchID(grouped, i)); ok {
-			stretches = append(stretches, f)
+		if f, ok := chainStretchFeature(st, id); ok {
+			read.Stretches = append(read.Stretches, f)
 		}
+	}
+	if partial != nil {
+		read.SourceDown = partial
 	}
 	var problems []error
-	if partial != nil {
-		problems = append(problems, partial)
-	}
 	if len(sorted.unrecognized) > 0 {
 		problems = append(problems, fmt.Errorf("unrecognized chain-control status at %s", strings.Join(sorted.unrecognized, "; ")))
 	}
 	if len(sorted.unplaced) > 0 {
 		problems = append(problems, fmt.Errorf("chain-control entries without a position: %s", strings.Join(sorted.unplaced, "; ")))
 	}
-	return stretches, errors.Join(problems...), nil
+	read.Incomplete = errors.Join(problems...)
+	return read, nil
 }
 
 func (s *Service) chainControls(ctx context.Context, area config.HazardArea) ([]Feature, error) {
