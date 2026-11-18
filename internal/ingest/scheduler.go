@@ -530,7 +530,7 @@ type pollerState struct {
 //
 //   - fullReconcile — the place set changed, and the hash-equal path is what
 //     recomputes event->place attachments (refreshEventPlaces).
-//   - a carried Enhancement — enhancement and summary are EXCLUDED from the
+//   - a carried Enhancement — enhancement, summary and subhead are EXCLUDED from the
 //     content hash, so the hash-equal upsert is the ONLY thing that persists a
 //     refreshed one. Road incidents arrive already enhanced from the RoadsService
 //     pipeline and are routinely hash-equal, so skipping them would silently drop
@@ -668,7 +668,7 @@ func (s *Scheduler) tick(ctx context.Context, spec PollerSpec, st *pollerState) 
 		if result.PerSource[src] == nil {
 			polledIDs = append(polledIDs, ev.GetId())
 		}
-		s.maybeEnhance(ctx, ev, &budget)
+		s.maybeEnhance(ctx, ev, result.Events, &budget)
 		if !s.shouldUpsert(ev, fullReconcile, storedHashes, forceWrite) {
 			skipped++
 			continue
@@ -847,7 +847,14 @@ func (p *priorEvents) ForSource(sourceID string) []*gridv1.Event {
 // NeedsUpdate gates the spend: unchanged content keeps its stored summary (a
 // no-op upsert) and costs nothing. Enhancement failure is log-and-continue —
 // the alert is served raw, never blocked (spec §3.1 policy 5).
-func (s *Scheduler) maybeEnhance(ctx context.Context, ev *gridv1.Event, budget *int) {
+//
+// polled is the whole poll: the alert's siblings (alertSiblings) go to the
+// model with it, and a distinction it returns that acceptDistinction lets
+// through becomes the subhead, listed in enhancement.fields. Otherwise the
+// subhead stays what the normalizer set (the alert's own zone names, or
+// nothing for a lone alert). The trigger is unchanged: a sibling arriving or
+// leaving is not a content change and never calls the model.
+func (s *Scheduler) maybeEnhance(ctx context.Context, ev *gridv1.Event, polled []*gridv1.Event, budget *int) {
 	if s.enhancer == nil || ev.GetLayer() != gridv1.Layer_WEATHER_ALERT || *budget <= 0 {
 		return
 	}
@@ -861,17 +868,33 @@ func (s *Scheduler) maybeEnhance(ctx context.Context, ev *gridv1.Event, budget *
 		return
 	}
 	*budget-- // attempts spend budget, so failures can't loop the API
-	enh, err := s.enhancer.Enhance(ctx, ev.GetHeadline(), ev.GetDescription(), s.placeNames(ctx, ev))
+	siblings := alertSiblings(polled, ev)
+	var others []NWSSibling
+	for _, sib := range siblings {
+		others = append(others, NWSSibling{Headline: sib.GetHeadline(), Description: sib.GetDescription()})
+	}
+	enh, err := s.enhancer.Enhance(ctx, ev.GetHeadline(), ev.GetDescription(), s.placeNames(ctx, ev), others)
 	if err != nil {
 		logging.Warnw(ctx, "Ingest tick: enhancement failed; serving raw alert",
 			"event", ev.GetId(), "error", err)
 		return
 	}
 	ev.Summary = enh.Summary
+	fields := []string{"summary"}
+	// No sibling, no subhead, whatever the model returned.
+	if len(siblings) > 0 && enh.Distinction != "" {
+		if d, ok := acceptDistinction(enh.Distinction, ev); ok {
+			ev.Subhead = d
+			fields = append(fields, "subhead")
+		} else {
+			logging.Warnw(ctx, "Ingest tick: enhancer's distinction refused; using the alert's zone names",
+				"event", ev.GetId(), "distinction", enh.Distinction)
+		}
+	}
 	ev.Enhancement = &gridv1.Enhancement{
 		Model:      s.enhancerModel,
 		EnhancedAt: timestamppb.New(s.now()),
-		Fields:     []string{"summary"},
+		Fields:     fields,
 		Request:    enh.Request,
 		Response:   enh.Response,
 	}

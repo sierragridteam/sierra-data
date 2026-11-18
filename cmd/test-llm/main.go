@@ -354,6 +354,7 @@ func nwsRequest(model string) openai.ChatCompletionRequest {
 	input, _ := json.Marshal(map[string]any{
 		"headline": nwsHeadline, "description": nwsDescription,
 		"place_names": []string{"Ebbetts Pass Corridor"},
+		"siblings":    []ingest.NWSSibling{},
 	})
 	return openai.ChatCompletionRequest{
 		Model: model,
@@ -431,18 +432,23 @@ func (p *probe) chatModel(r *report, model string, runs int) {
 		r.details("raw response", port.content)
 	}
 
-	// 2. The one-field NWS schema.
+	// 2. The NWS schema: the summary, and the distinction (empty here: the
+	// fixture alert has no siblings).
 	r.h3("Strict json_schema: NWS summary")
 	nws := p.chat(p.tuned(nwsRequest(model)))
 	p.describeResult(r, nws)
 	if nws.err == nil {
 		var o struct {
-			Summary string `json:"summary"`
+			Summary     string `json:"summary"`
+			Distinction string `json:"distinction"`
 		}
 		if err := json.Unmarshal([]byte(nws.content), &o); err != nil {
 			r.li("**Parse: FAIL** — " + err.Error())
 		} else {
 			scoreNWS(r, o.Summary)
+			if o.Distinction != "" {
+				r.li(fmt.Sprintf("**Distinction without siblings** %q (rule 14 asks for an empty string)", o.Distinction))
+			}
 		}
 		r.details("raw response", nws.content)
 	}

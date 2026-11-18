@@ -241,7 +241,7 @@ requests, plus the occasional 503.
 **Three cases still take the write path, and all three are load-bearing:**
 
 - **`fullReconcile`** — see below.
-- **A carried `Enhancement`.** `enhancement` and `summary` are EXCLUDED from the
+- **A carried `Enhancement`.** `enhancement`, `summary` and `subhead` are EXCLUDED from the
   content hash, so the hash-equal upsert (`refreshEventPlaces`' `enhChanged`
   branch) is the ONLY thing that persists them. Road incidents arrive already
   enhanced from the `RoadsService` pipeline and are routinely hash-equal —
@@ -951,6 +951,36 @@ render a Watch as a Warning — the product name is copied from `Event`.
 Both consumers use it: the event card (`weather_alert.go`) and the fire-weather
 banner (`nws.fireWeatherFromAlert`, which does not go through the store).
 
+## Weather-alert subhead: telling alerts of one product apart (2026-11-18)
+
+NWS issues one product as several alerts, one per group of zones (here, one per
+elevation band), and the deterministic headline is the same line on each: on
+2026-11-17 two events read "Winter Storm Warning" (CAZ138 and CAZ139).
+`Event.subhead` says what is particular to each. It is outside the content hash
+like `summary`, and `alert_subhead.go` holds the rules:
+
+- **Siblings** are the other alerts in the same poll with the same NWS event
+  name (`alertSiblings`, on `Event.category`). No sibling, no subhead.
+- **The normalizer sets the deterministic one on every poll**
+  (`zoneNamesSubhead`): the alert's own `areaDesc` entries for the zones in
+  `weather.nws.zones`, joined with "; ". areaDesc and `geocode.UGC` are parallel
+  lists and nothing else ties a name to a code, so if their lengths differ the
+  subhead is empty: an out-of-area zone's name is worse than none.
+- **The enhancer may replace it** when it runs anyway (see the budget section):
+  it gets the siblings' headline and description and returns a second required
+  string, `distinction` (at most 60 characters, from this alert's own text).
+  `acceptDistinction` refuses one that is over the cap, multi-line, names the
+  product, a zone code or a day-relative word, or carries a number that is not
+  in this alert's text (the sibling's amounts); a refusal leaves the zone
+  names. Only an accepted one puts `subhead` in `enhancement.fields`.
+- **A stored AI subhead is never overwritten by the zone names**: the store
+  keeps it on every hash-equal write that carries no fresh enhancement
+  (`refreshEventPlaces`), and the normalizer lists an alert in `ForceWrite`
+  only when its stored subhead is not a model's and differs from the poll's.
+  That is the tick a sibling arrives or leaves; every other tick lists nothing.
+  A sibling arriving or leaving is not a content change and never calls the
+  model, so an alert enhanced alone keeps zone names when a sibling appears.
+
 ## Weather-alert geometry: the zones' own boundaries
 
 An NWS alert names zones, not a shape. `attachArea` asks the weather service
@@ -1011,7 +1041,9 @@ closures are deliberately never enhanced, see above).
 - **`NeedsUpdate` gates the spend**: unchanged content keeps its stored `summary`
   (a hash-equal no-op upsert) and costs nothing. Because `summary`/`enhancement`
   are excluded from the content hash, they carry forward across polls untouched —
-  this is exactly the "no per-poll regeneration" property.
+  this is exactly the "no per-poll regeneration" property. The same call returns
+  the `distinction` behind `subhead` (section above): one request per content
+  change, never a request of its own.
 - **Budget counts attempts, not successes** (`*budget--` before the call), so a
   failing enhancer can't loop the API within a tick. Alerts deferred by an
   exhausted budget are picked up on their next content change.
