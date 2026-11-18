@@ -21,6 +21,34 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-18
+
+### `Event.subhead`: what tells two events with one headline apart
+
+Additive; nothing existing changes, and a client on an older SDK is
+unaffected (it does not read the field).
+
+The weather service issues one product as several alerts, typically one per
+elevation band, and their `headline` is the same line: on 2026-11-17 two
+`WEATHER_ALERT` events for Ebbetts Pass both read "Winter Storm Warning", one
+for 3000 to 5000 ft and one above 5000 ft. `headline` stays as it is.
+
+- **`Event.subhead`** (string, always present) is a short line saying what is
+  particular to this event among events with the same headline, and `""` when
+  there is nothing to add. Show it beside the headline in any list.
+- Today only NWS alerts carry one, and only while another alert of the same
+  product (`category`) is in effect. It is AI-written when
+  `enhancement.fields` lists `subhead` (at most 60 characters, for example
+  `1 to 3 ft above 5,000 ft`), and otherwise the alert's own zone names for the
+  zones the Grid covers (for example `Sierra Nevada of Calaveras and Tuolumne
+  Counties Between 3000-5000 ft`, up to 160 characters).
+- It is derived text, like `summary`: a change to it alone does not create a
+  revision or move `observedAt`. It does move the ETag of the event and of
+  lists of its layer.
+- **`properties.subhead`** carries the same value on `weather_alert` map
+  features, beside `summary`; the key is absent when the event has none.
+- Search matches it.
+
 ## 2026-11-17 (later still)
 
 ### Monitored roads are recorded
