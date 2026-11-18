@@ -396,6 +396,7 @@ func baseProps(ev *gridv1.Event, layer, kind string) hazards.Properties {
 		Headline:     ev.GetHeadline(),
 		AreaLabel:    ev.GetAreaLabel(),
 		Summary:      ev.GetSummary(),
+		Subhead:      ev.GetSubhead(),
 		// Provenance only labels a summary that exists: an enhancement that
 		// produced no summary has nothing on the feature to badge.
 		SummaryEnhanced: summaryEnhanced(ev),

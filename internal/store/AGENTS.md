@@ -47,6 +47,12 @@ hash differs from the stored one. Zeroed fields and the reason each is excluded:
   to spend AI-enhancement budget **before** enhancing. If enhancement were hashed,
   an enhanced event would differ from the next raw poll and loop forever, and the
   spec §6 "enhancement regenerated per poll" bug would come back.
+- `subhead` — derived text beside the headline (2026-11-18): for an NWS alert,
+  the enhancer's `distinction` or the alert's own zone names, and only while
+  another alert of the same product is in the poll. Excluded for the summary's
+  two reasons and a third: it depends on which OTHER alerts are listed, so a
+  sibling arriving or leaving would otherwise mint a revision on an alert whose
+  own content did not move.
 - `mesh.telemetry` (MESH events only) — the MeshCore per-advert signal state
   (SNR/RSSI/hop count/path/gateways/last-advert time). A mesh node re-adverts
   constantly and every packet carries fresh signal metrics; hashing them would mint
@@ -65,7 +71,10 @@ hash differs from the stored one. Zeroed fields and the reason each is excluded:
 kept**, and either way it needs a way back into the blob, or it freezes at
 whatever was current the last time something hashed changed. The hash-equal
 path (`refreshEventPlaces`) persists, without a revision: place_ids (derived),
-a fresh enhancement/summary (derived text), mesh telemetry (`mesh_telemetry`
+a fresh enhancement/summary/subhead (derived text; without a fresh enhancement
+the incoming subhead replaces the stored one only when
+`stored.enhancement.fields` does not list `subhead`, so a model's line is never
+overwritten by a poll's zone names), mesh telemetry (`mesh_telemetry`
 is its archive), CAL FIRE's `calfire_observed_at` (a stamp with no content;
 an outage shows as source health) and `fetched_at`. A burn line's observation
 is a reading: see "Revision kinds" below. With readings off
@@ -73,7 +82,9 @@ is a reading: see "Revision kinds" below. With readings off
 observations and moves the burn event's `observed_at`, as it did before. The
 scheduler skips hash-equal events entirely unless the poller lists them in
 `PollResult.ForceWrite`, so a poller with such a field must list them — mesh
-does (coalesced), burn does (every event; two an hour). Burn status shipped
+does (coalesced), burn does (every event; two an hour), weather alerts do
+(only an alert whose stored subhead is not a model's and differs from the
+poll's: the tick a sibling arrives or leaves). Burn status shipped
 without this and served its first observation from 2026-10-09 to 10-12 while
 daily readings landed; burnday.ersn.net read the frozen call time and told
 residents the data was stale. If you exclude a new field from the hash, add it

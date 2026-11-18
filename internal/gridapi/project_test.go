@@ -280,6 +280,34 @@ func TestProjectEvents_SummaryOnFeature(t *testing.T) {
 	assert.NotContains(t, got.Properties, "summaryEnhanced")
 }
 
+// The subhead rides beside the summary in the same envelope: it is what tells
+// two weather_alert features with one headline apart in a popup or a list. An
+// event without one omits the key.
+func TestProjectEvents_SubheadOnFeature(t *testing.T) {
+	alert := func(id, subhead string) *gridv1.Event {
+		return &gridv1.Event{
+			Id: id, Layer: gridv1.Layer_WEATHER_ALERT, Status: gridv1.EventStatus_ACTIVE,
+			Headline: "Winter Storm Warning", Subhead: subhead,
+			Detail: &gridv1.Event_WeatherAlert{WeatherAlert: &gridv1.WeatherAlertDetail{}},
+		}
+	}
+	feats := ProjectEvents(hazards.LayerWeatherAlert, []*gridv1.Event{
+		alert("wx:above", "1 to 3 ft above 5,000 ft"), alert("wx:alone", ""),
+	})
+	require.Len(t, feats, 2)
+
+	var got struct {
+		Properties map[string]any `json:"properties"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(featJSON(t, feats[0])), &got))
+	assert.Equal(t, "1 to 3 ft above 5,000 ft", got.Properties["subhead"])
+	assert.Equal(t, "Winter Storm Warning", got.Properties["headline"])
+
+	got.Properties = nil
+	require.NoError(t, json.Unmarshal([]byte(featJSON(t, feats[1])), &got))
+	assert.NotContains(t, got.Properties, "subhead")
+}
+
 func TestProjectEvents_Earthquake_UpdatedAtRule(t *testing.T) {
 	const point = `{"type":"Point","coordinates":[-120.45,38.2]}`
 	revised := &gridv1.Event{

@@ -293,6 +293,22 @@ message Event {
   // text is always kept in `description`.
   string summary = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"Reported traffic hazard on SR 4 at Country Club Drive. CHP responded. No lanes reported blocked.\""}];
 
+  // A short line saying what is particular to this event among events with the
+  // same headline. Empty string when there is nothing to add. Show it beside
+  // the headline wherever two such events can sit in one list. Today only NWS
+  // alerts carry one: the weather service issues one product as several alerts
+  // (one per elevation band, for example), and their headlines are identical.
+  // For such an alert it is AI-written when `enhancement.fields` lists
+  // `subhead` (at most 60 characters, built only from the alert's own text,
+  // such as `1 to 3 ft above 5,000 ft`), and otherwise taken from the alert's
+  // own zone names (`weatherAlert.areaDesc`, the zones the Grid covers; up to
+  // 160 characters). An alert with no other alert of the same product beside
+  // it has none.
+  //
+  // (-- Zeroed in store.ContentHash beside summary: it never mints a revision
+  // by itself, and the hash-equal path persists it. --)
+  string subhead = 37 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"1 to 3 ft above 5,000 ft\""}];
+
   // Long-form original text from the upstream (CHP log, NWS product body,
   // evacuation instructions, closure description). May contain newlines. Empty
   // string when the source has none, or when it would only repeat the headline.
@@ -606,7 +622,7 @@ message Enhancement {
   // When the text was generated.
   google.protobuf.Timestamp enhanced_at = 2;
   // Which Event fields the model wrote, by JSON name: any of `headline`,
-  // `summary`, `severity`.
+  // `summary`, `subhead`, `severity`.
   repeated string fields = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "[\"headline\", \"summary\", \"severity\"]"}];
   // The incident-specific prompt sent to the model (the static system prompt is
   // not included). Empty string unless the request set `enhancementIo=true`.
