@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	api "github.com/sierragridteam/sierra-data/api/v1"
 	"github.com/dpup/prefab/logging"
+	api "github.com/sierragridteam/sierra-data/api/v1"
 
 	"github.com/sierragridteam/sierra-data/internal/cache"
 	"github.com/sierragridteam/sierra-data/internal/clients/nws"

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	gridv1 "github.com/sierragridteam/sierra-data/api/grid/v1"
 	"github.com/sierragridteam/sierra-data/internal/clients/nws"
 	"github.com/sierragridteam/sierra-data/internal/config"
 )
@@ -73,7 +74,7 @@ size and intensity.`,
 	}
 
 	out, err := enh.Enhance(context.Background(), alert.ShortHeadline(), alert.Description,
-		[]string{"Ebbetts Pass Corridor"})
+		[]string{"Ebbetts Pass Corridor"}, nil)
 	if err != nil {
 		t.Fatalf("enhance: %v", err)
 	}
@@ -152,7 +153,7 @@ burning is not recommended.`,
 
 	enh := NewNWSEnhancer(config.OpenAIClient{APIKey: key, Model: model, Timeout: 60 * time.Second})
 	out, err := enh.Enhance(context.Background(), alert.ShortHeadline(), alert.Description,
-		[]string{"Ebbetts Pass Corridor"})
+		[]string{"Ebbetts Pass Corridor"}, nil)
 	if err != nil {
 		t.Fatalf("enhance: %v", err)
 	}
@@ -167,5 +168,68 @@ burning is not recommended.`,
 	// Policy 9: the alert's own qualifier on the single-digit humidity.
 	if strings.Contains(lower, "single digit") && !strings.Contains(lower, "possible") {
 		t.Errorf("summary dropped the alert's \"possible\" qualifier: %s", out.Summary)
+	}
+}
+
+// TestNWSEnhancerLiveDistinction runs the pair of Winter Storm Warnings that
+// prompted rules 11-14 (see alert_subhead_test.go), each with the other as its
+// sibling, and one of them alone. What it asserts is what the scheduler will
+// accept: a distinction acceptDistinction refuses becomes the alert's zone
+// names in production, so a refusal here is the prompt not doing its job.
+func TestNWSEnhancerLiveDistinction(t *testing.T) {
+	if os.Getenv("NWS_ENHANCE_LIVE") != "1" {
+		t.Skip("set NWS_ENHANCE_LIVE=1 to run the live enhancer check")
+	}
+	key := os.Getenv("PF__OPENAI__API_KEY")
+	if key == "" {
+		t.Skip("PF__OPENAI__API_KEY not set")
+	}
+	model := os.Getenv("PF__OPENAI__MODEL")
+	if model == "" {
+		model = "gpt-5-mini"
+	}
+	enh := NewNWSEnhancer(config.OpenAIClient{APIKey: key, Model: model, Timeout: 60 * time.Second})
+
+	above := alertEvent("wx:above", "Winter Storm Warning")
+	above.Description = wswAboveDesc
+	between := alertEvent("wx:between", "Winter Storm Warning")
+	between.Description = wswBetweenDesc
+	places := []string{"Ebbetts Pass Corridor"}
+
+	var got []string
+	for _, c := range []struct{ ev, sibling *gridv1.Event }{{above, between}, {between, above}} {
+		out, err := enh.Enhance(context.Background(), c.ev.GetHeadline(), c.ev.GetDescription(), places,
+			[]NWSSibling{{Headline: c.sibling.GetHeadline(), Description: c.sibling.GetDescription()}})
+		if err != nil {
+			t.Fatalf("enhance %s: %v", c.ev.GetId(), err)
+		}
+		t.Logf("%s distinction (%d chars): %q", c.ev.GetId(), len(out.Distinction), out.Distinction)
+		t.Logf("%s summary: %s", c.ev.GetId(), out.Summary)
+		d, ok := acceptDistinction(out.Distinction, c.ev)
+		if !ok {
+			t.Errorf("%s: distinction %q would be refused", c.ev.GetId(), out.Distinction)
+		}
+		for _, timing := range []string{"Tuesday", "Friday", " PM", " AM"} {
+			if strings.Contains(d, timing) {
+				t.Errorf("%s: distinction carries timing (%q): %s", c.ev.GetId(), timing, d)
+			}
+		}
+		got = append(got, d)
+	}
+	if len(got) == 2 && got[0] == got[1] {
+		t.Errorf("the two alerts got the same distinction: %q", got[0])
+	}
+	// The upper alert's own amounts, not the band it shares with the lower.
+	if len(got) > 0 && !strings.Contains(got[0], "3") {
+		t.Errorf("the above-5000 ft alert's distinction does not give its 1 to 3 feet: %q", got[0])
+	}
+
+	// Rule 14: no siblings, nothing to distinguish.
+	out, err := enh.Enhance(context.Background(), above.GetHeadline(), above.GetDescription(), places, nil)
+	if err != nil {
+		t.Fatalf("enhance alone: %v", err)
+	}
+	if out.Distinction != "" {
+		t.Errorf("a lone alert got a distinction: %q", out.Distinction)
 	}
 }

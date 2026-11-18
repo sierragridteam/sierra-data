@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
@@ -61,8 +62,10 @@ func TestNWSEnhance(t *testing.T) {
 	enh, err := e.Enhance(testCtx(),
 		"Red Flag Warning until 8 PM PDT",
 		"* WHAT...Gusty winds and low humidity.",
-		[]string{"Calaveras County", "Arnold, CA"})
+		[]string{"Calaveras County", "Arnold, CA"}, nil)
 	require.NoError(t, err)
+	assert.Empty(t, enh.Distinction, "a response without the field is no distinction")
+	assert.Contains(t, enh.Request, `"siblings":[]`, "a lone alert says so, with an empty list")
 	assert.Equal(t, "Gusty winds and low humidity near Arnold through Friday evening.", enh.Summary)
 	// I/O captured for transparency: the user prompt sent and the raw response.
 	assert.Contains(t, enh.Request, "Summarize this NWS alert:")
@@ -84,7 +87,7 @@ func TestNWSEnhanceNonReasoningModelOmitsEffort(t *testing.T) {
 	rt := &fakeRoundTripper{resp: chatCompletionJSON(`"{\"summary\":\"ok\"}"`)}
 	e := newFakeNWSOpenAI("gpt-4o-mini", rt)
 
-	_, err := e.Enhance(testCtx(), "h", "d", nil)
+	_, err := e.Enhance(testCtx(), "h", "d", nil, nil)
 	require.NoError(t, err)
 	assert.NotContains(t, rt.lastBody, "reasoning_effort")
 }
@@ -92,23 +95,53 @@ func TestNWSEnhanceNonReasoningModelOmitsEffort(t *testing.T) {
 func TestNWSEnhanceErrors(t *testing.T) {
 	// Transport failure.
 	e := newFakeNWSOpenAI("gpt-5-mini", &fakeRoundTripper{err: assert.AnError})
-	_, err := e.Enhance(testCtx(), "h", "d", nil)
+	_, err := e.Enhance(testCtx(), "h", "d", nil, nil)
 	assert.Error(t, err)
 
 	// Well-formed response with an empty summary.
 	e = newFakeNWSOpenAI("gpt-5-mini", &fakeRoundTripper{resp: chatCompletionJSON(`"{\"summary\":\"  \"}"`)})
-	_, err = e.Enhance(testCtx(), "h", "d", nil)
+	_, err = e.Enhance(testCtx(), "h", "d", nil, nil)
 	assert.ErrorContains(t, err, "empty summary")
 
 	// Content that isn't the schema'd JSON.
 	e = newFakeNWSOpenAI("gpt-5-mini", &fakeRoundTripper{resp: chatCompletionJSON(`"not json"`)})
-	_, err = e.Enhance(testCtx(), "h", "d", nil)
+	_, err = e.Enhance(testCtx(), "h", "d", nil, nil)
 	assert.ErrorContains(t, err, "parsing response")
 
 	// No choices at all.
 	e = newFakeNWSOpenAI("gpt-5-mini", &fakeRoundTripper{
 		resp: `{"id":"chatcmpl-1","object":"chat.completion","choices":[]}`,
 	})
-	_, err = e.Enhance(testCtx(), "h", "d", nil)
+	_, err = e.Enhance(testCtx(), "h", "d", nil, nil)
 	assert.ErrorContains(t, err, "no choices")
+}
+
+// With siblings: their headline and text go to the model beside the alert's
+// own, the schema requires both outputs, and the distinction comes back
+// trimmed. Whether it is USED is the scheduler's decision (acceptDistinction).
+func TestNWSEnhanceSiblingsAndDistinction(t *testing.T) {
+	rt := &fakeRoundTripper{
+		resp: chatCompletionJSON(`"{\"summary\":\"Heavy snow near Arnold.\",\"distinction\":\" 1 to 3 ft above 5,000 ft \"}"`),
+	}
+	e := newFakeNWSOpenAI("gpt-5-mini", rt)
+
+	enh, err := e.Enhance(testCtx(), "Winter Storm Warning", "1 to 3 feet above 5000 feet.", nil,
+		[]NWSSibling{{Headline: "Winter Storm Warning", Description: "Up to a foot between 4000 and 5000 feet."}})
+	require.NoError(t, err)
+	assert.Equal(t, "Heavy snow near Arnold.", enh.Summary)
+	assert.Equal(t, "1 to 3 ft above 5,000 ft", enh.Distinction)
+	assert.Contains(t, enh.Request,
+		`"siblings":[{"headline":"Winter Storm Warning","description":"Up to a foot between 4000 and 5000 feet."}]`)
+
+	// The policy for the second output, and the schema that requires it.
+	assert.Contains(t, rt.lastBody, "Never paraphrase directives", "the summary rules are intact")
+	assert.Contains(t, rt.lastBody, "what differs in THIS alert from its siblings")
+	assert.Contains(t, rt.lastBody, "Up to a foot between 4000 and 5000 feet.")
+	var schema struct {
+		Properties map[string]any `json:"properties"`
+		Required   []string       `json:"required"`
+	}
+	require.NoError(t, json.Unmarshal(NWSSummarySchema.Schema.(json.RawMessage), &schema))
+	assert.Equal(t, []string{"summary", "distinction"}, schema.Required)
+	assert.Contains(t, schema.Properties, "distinction")
 }

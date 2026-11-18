@@ -26,8 +26,8 @@ type UpsertResult struct {
 
 // ContentHash returns the SHA-256 hex of a deterministic marshal of ev with
 // volatile fields zeroed: revision, readings, ingested_at, observed_at,
-// provenance.fetched_at, enhancement, summary, place_ids, and (for MESH
-// events) mesh.telemetry. Upstream re-stamps without content change produce
+// provenance.fetched_at, enhancement, summary, subhead, place_ids, and (for
+// MESH events) mesh.telemetry. Upstream re-stamps without content change produce
 // the same hash (no revision), and enhancement output never causes hash churn
 // — the scheduler decides whether to spend enhancement budget via NeedsUpdate
 // BEFORE enhancing. The MESH exclusion is what keeps the MeshCore advert
@@ -46,6 +46,10 @@ func ContentHash(ev *gridv1.Event) string {
 	}
 	c.Enhancement = nil
 	c.Summary = ""
+	// Derived text like the summary: written by the enhancer, or composed from
+	// which OTHER alerts are in the poll (a sibling arriving or leaving changes
+	// it while this alert's own content has not moved).
+	c.Subhead = ""
 	c.PlaceIds = nil
 	if n := c.GetMesh(); n != nil {
 		n.Telemetry = nil
@@ -651,7 +655,7 @@ func (s *Store) refreshEventPlaces(tx *sql.Tx, ev *gridv1.Event, pre *storedForR
 	placesChanged := !slices.Equal(want, have)
 
 	// The stored blob, to compare the hash-excluded fields (place_ids and the
-	// AI enhancement/summary) against the incoming event.
+	// AI enhancement/summary/subhead) against the incoming event.
 	blob := pre.blob
 	stored := &gridv1.Event{}
 	if err := proto.Unmarshal(blob, stored); err != nil {
@@ -666,7 +670,18 @@ func (s *Store) refreshEventPlaces(tx *sql.Tx, ev *gridv1.Event, pre *storedForR
 	// (weather alerts don't re-enhance on hash-equal ticks, so ev.Enhancement is
 	// nil then and must not overwrite the stored one).
 	enhChanged := ev.GetEnhancement() != nil &&
-		(!proto.Equal(stored.GetEnhancement(), ev.GetEnhancement()) || stored.GetSummary() != ev.GetSummary())
+		(!proto.Equal(stored.GetEnhancement(), ev.GetEnhancement()) || stored.GetSummary() != ev.GetSummary() ||
+			stored.GetSubhead() != ev.GetSubhead())
+
+	// subhead is the third hash-excluded text field. With a fresh enhancement
+	// it travels with it (enhChanged above). Without one, the incoming subhead
+	// is the poller's deterministic one (for an NWS alert: its own zone names
+	// while another alert of the same product is in the poll, else empty), and
+	// it replaces the stored one ONLY when no model wrote the stored one. A
+	// stored AI subhead follows the stored summary's rule: a plain hash-equal
+	// poll never overwrites it.
+	subChanged := !enhChanged && ev.GetEnhancement() == nil &&
+		stored.GetSubhead() != ev.GetSubhead() && !EnhancementWrote(stored, "subhead")
 
 	// Mesh telemetry is the other hash-excluded field, and it is excluded for the
 	// opposite reason from enhancement: not because it is expensive to recompute,
@@ -708,7 +723,7 @@ func (s *Store) refreshEventPlaces(tx *sql.Tx, ev *gridv1.Event, pre *storedForR
 			!proto.Equal(ev.GetProvenance().GetFetchedAt(), stored.GetProvenance().GetFetchedAt())
 	}
 
-	if !placesChanged && !enhChanged && !telChanged && !burnChanged {
+	if !placesChanged && !enhChanged && !subChanged && !telChanged && !burnChanged {
 		return false, nil
 	}
 	if placesChanged {
@@ -722,6 +737,10 @@ func (s *Store) refreshEventPlaces(tx *sql.Tx, ev *gridv1.Event, pre *storedForR
 	if enhChanged {
 		stored.Enhancement = ev.GetEnhancement()
 		stored.Summary = ev.GetSummary()
+		stored.Subhead = ev.GetSubhead()
+	}
+	if subChanged {
+		stored.Subhead = ev.GetSubhead()
 	}
 	if telChanged {
 		stored.GetMesh().Telemetry = ev.GetMesh().GetTelemetry()
@@ -756,12 +775,12 @@ func (s *Store) refreshEventPlaces(tx *sql.Tx, ev *gridv1.Event, pre *storedForR
 	} else if _, err := tx.Exec(`UPDATE events SET proto = $1, refreshes = refreshes + 1 WHERE id = $2`, newBlob, ev.GetId()); err != nil {
 		return false, fmt.Errorf("store: update event %s for refresh: %w", ev.GetId(), err)
 	}
-	// Of everything this path rewrites, only the AI summary is search text
-	// (search.Build leaves telemetry, observations and place ids out), so a
-	// telemetry refresh costs no search write. After the UPDATE, so the row
+	// Of everything this path rewrites, only the AI summary and the subhead
+	// are search text (search.Build leaves telemetry, observations and place
+	// ids out), so a telemetry refresh costs no search write. After the UPDATE, so the row
 	// records the refreshes count it was built from. History is not touched:
 	// the revision's snapshot row keeps the text it was stored with.
-	if enhChanged {
+	if enhChanged || subChanged {
 		if err := putSearch(context.Background(), tx, []searchRow{newSearchRow(stored, stored.GetRevision(), 0)}, false); err != nil {
 			return false, err
 		}
@@ -769,6 +788,12 @@ func (s *Store) refreshEventPlaces(tx *sql.Tx, ev *gridv1.Event, pre *storedForR
 	// Same transaction as the rewrite: a reader can never pair the new
 	// version with the old blob.
 	return true, bumpVersion(tx, refreshKey(ev.GetLayer()), 1)
+}
+
+// EnhancementWrote reports whether ev's enhancement lists field (an Event
+// field's JSON name) among those a model wrote.
+func EnhancementWrote(ev *gridv1.Event, field string) bool {
+	return slices.Contains(ev.GetEnhancement().GetFields(), field)
 }
 
 // storedForRefresh is what the hash-equal path compares an incoming event

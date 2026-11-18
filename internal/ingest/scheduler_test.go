@@ -39,19 +39,27 @@ func (f *fakeNormalizer) Poll(ctx context.Context, prior Prior) (*PollResult, er
 }
 
 type fakeNWSEnhancer struct {
-	calls      int
-	lastPlaces []string
-	summary    string
-	err        error
+	calls        int
+	lastPlaces   []string
+	lastSiblings []NWSSibling
+	summary      string
+	// distinction answers by the alert's description (the fake's key for
+	// "which alert is this"); a missing one is the empty string.
+	distinction map[string]string
+	err         error
 }
 
-func (f *fakeNWSEnhancer) Enhance(ctx context.Context, headline, description string, placeNames []string) (NWSEnhancement, error) {
+func (f *fakeNWSEnhancer) Enhance(ctx context.Context, headline, description string, placeNames []string, siblings []NWSSibling) (NWSEnhancement, error) {
 	f.calls++
 	f.lastPlaces = placeNames
+	f.lastSiblings = siblings
 	if f.err != nil {
 		return NWSEnhancement{}, f.err
 	}
-	return NWSEnhancement{Summary: f.summary, Request: "req:" + headline, Response: `{"summary":"` + f.summary + `"}`}, nil
+	return NWSEnhancement{
+		Summary: f.summary, Distinction: f.distinction[description],
+		Request: "req:" + headline, Response: `{"summary":"` + f.summary + `"}`,
+	}, nil
 }
 
 func newSchedStore(t *testing.T) *store.Store {
@@ -973,4 +981,158 @@ func TestSchedulerStopReportsAGoroutineThatWillNotStop(t *testing.T) {
 func TestSchedulerStopBeforeStart(t *testing.T) {
 	s := NewScheduler(newSchedStore(t), SchedulerConfig{})
 	require.NoError(t, s.Stop(0, 0))
+}
+
+// The whole path for the two alerts this field was added for (the real pair,
+// see alert_subhead_test.go): normalizer, enhancer, scheduler, store.
+//
+// One product arrives as two alerts with one headline. The model is asked
+// once per alert (their content is new), with the other as its sibling; one
+// distinction is usable and becomes that alert's subhead, the other is too
+// long and that alert gets its own zone names. After that nothing here calls
+// the model or mints a revision: not a hash-equal tick, not a full reconcile
+// (which sends every event down the write path with the zone-name subhead
+// and no enhancement), not a sibling leaving and coming back.
+func TestTickAlertSubhead(t *testing.T) {
+	ctx := testCtx()
+	st := newSchedStore(t)
+	seedSchedSources(t, st, "nws")
+	now := time.Now().UTC().Truncate(time.Second) // the scheduler sweeps on the real clock
+	cfg := testConfig()
+	cfg.Weather.NWS.Zones = ourZones
+	pair := wswPair(now)
+	api := &fakeWeatherAPI{alerts: pair, fetchedAt: now}
+	n := NewWeatherAlertNormalizer(cfg, api)
+	n.now = func() time.Time { return now }
+
+	const written = "1 to 3 ft above 5,000 ft"
+	const aboveZone = "Sierra Nevada of Calaveras-Tuolumne-Southern Alpine Counties Above 5000 ft"
+	const betweenZone = "Sierra Nevada of Calaveras and Tuolumne Counties Between 3000-5000 ft"
+	fe := &fakeNWSEnhancer{summary: "Heavy snow.", distinction: map[string]string{
+		wswAboveDesc:   written,
+		wswBetweenDesc: "Up to a foot of snow between 4000 and 5000 feet, with light flurries lower down",
+	}}
+	sched := NewScheduler(st, SchedulerConfig{
+		Tuning:        map[string]config.SourceTuning{"nws": {Disappearance: store.DisappearanceExpire, ExpireAfter: 24 * time.Hour}},
+		Enhancer:      fe,
+		EnhancerModel: "gpt-5-mini",
+		BudgetPerTick: 5,
+	})
+	spec := PollerSpec{Normalizer: n, Interval: time.Minute}
+	ps := &pollerState{}
+	aboveID, betweenID := "wx:"+pair[0].ID, "wx:"+pair[1].ID
+	get := func(id string) *gridv1.Event {
+		ev, err := st.GetEvent(ctx, id)
+		require.NoError(t, err)
+		return ev
+	}
+	stamp := func(id string) store.EventStamp {
+		s, ok, err := st.EventVersion(ctx, id)
+		require.NoError(t, err)
+		require.True(t, ok)
+		return s
+	}
+
+	sched.tick(ctx, spec, ps)
+	require.Equal(t, 2, fe.calls)
+	require.Len(t, fe.lastSiblings, 1, "the other alert of the product goes to the model")
+	assert.Equal(t, NWSSibling{Headline: "Winter Storm Warning", Description: wswAboveDesc}, fe.lastSiblings[0])
+
+	above, between := get(aboveID), get(betweenID)
+	assert.Equal(t, above.GetHeadline(), between.GetHeadline())
+	assert.Equal(t, written, above.GetSubhead())
+	assert.Equal(t, []string{"summary", "subhead"}, above.GetEnhancement().GetFields())
+	assert.Equal(t, betweenZone, between.GetSubhead(), "a distinction over the cap is discarded for the zone names")
+	assert.Equal(t, []string{"summary"}, between.GetEnhancement().GetFields(), "and is not claimed as AI text")
+	assert.Equal(t, "Heavy snow.", between.GetSummary(), "the summary of the same response is kept")
+	a0, b0 := stamp(aboveID), stamp(betweenID)
+	require.Equal(t, int64(1), a0.Revision)
+
+	// Hash-equal tick: no model call, no write at all.
+	sched.tick(ctx, spec, ps)
+	assert.Equal(t, 2, fe.calls, "an unchanged alert never calls the model")
+	assert.Equal(t, a0, stamp(aboveID))
+	assert.Equal(t, b0, stamp(betweenID))
+
+	// A full reconcile (a restarted poller) writes every event, with the
+	// zone-name subhead and no enhancement. The stored AI subhead survives.
+	sched.tick(ctx, spec, &pollerState{})
+	assert.Equal(t, 2, fe.calls)
+	assert.Equal(t, written, get(aboveID).GetSubhead(), "the model's subhead is not overwritten by the zone names")
+	assert.Equal(t, a0, stamp(aboveID))
+
+	// The upper alert leaves the list: the lower one is alone, and its
+	// zone-name subhead goes. In place, with no revision and no model call.
+	api.alerts = pair[1:]
+	sched.tick(ctx, spec, ps)
+	between = get(betweenID)
+	assert.Empty(t, between.GetSubhead(), "a lone alert has no subhead")
+	assert.Equal(t, "Heavy snow.", between.GetSummary())
+	assert.Equal(t, uint32(1), between.GetRevision())
+	assert.Greater(t, stamp(betweenID).Refreshes, b0.Refreshes, "the served body changed")
+
+	// And comes back (still ACTIVE: inside the expire grace).
+	api.alerts = pair
+	sched.tick(ctx, spec, ps)
+	assert.Equal(t, betweenZone, get(betweenID).GetSubhead())
+	assert.Equal(t, written, get(aboveID).GetSubhead())
+	assert.Equal(t, 2, fe.calls, "a sibling arriving is not a content change")
+	for _, id := range []string{aboveID, betweenID} {
+		assert.Equal(t, uint32(1), get(id).GetRevision(), id)
+		hist, _, err := st.EventHistory(ctx, id, 50, "")
+		require.NoError(t, err)
+		assert.Len(t, hist, 1, "one revision: %s", id)
+	}
+}
+
+// Alerts stored before the field existed (every alert in production on the
+// day it ships) get the zone-name subhead on the first tick: in place, keeping
+// the summary they have, with no revision and no model call.
+func TestTickAlertSubheadReachesStoredAlerts(t *testing.T) {
+	ctx := testCtx()
+	st := newSchedStore(t)
+	seedSchedSources(t, st, "nws")
+	now := time.Now().UTC().Truncate(time.Second) // the scheduler sweeps on the real clock
+	cfg := testConfig()
+	cfg.Weather.NWS.Zones = ourZones
+	pair := wswPair(now)
+	n := NewWeatherAlertNormalizer(cfg, &fakeWeatherAPI{alerts: pair, fetchedAt: now})
+	n.now = func() time.Time { return now }
+
+	// As the previous release stored them: enhanced, no subhead.
+	old, err := n.Poll(ctx, nil)
+	require.NoError(t, err)
+	for _, ev := range old.Events {
+		ev.Subhead = ""
+		ev.Summary = "Stored summary."
+		ev.Enhancement = &gridv1.Enhancement{Model: "gpt-5-mini", Fields: []string{"summary"}}
+		_, err := st.UpsertEvent(ctx, ev)
+		require.NoError(t, err)
+	}
+
+	fe := &fakeNWSEnhancer{summary: "never asked"}
+	sched := NewScheduler(st, SchedulerConfig{
+		Tuning:        map[string]config.SourceTuning{"nws": {Disappearance: store.DisappearanceExpire}},
+		Enhancer:      fe,
+		BudgetPerTick: 5,
+	})
+	// Not a poller's first tick, which writes everything: only ForceWrite
+	// can reach a hash-equal event here.
+	pv, err := st.PlacesVersion(ctx)
+	require.NoError(t, err)
+	ps := &pollerState{placesVersion: pv, reconciled: true}
+	sched.tick(ctx, PollerSpec{Normalizer: n, Interval: time.Minute}, ps)
+
+	assert.Zero(t, fe.calls, "their content did not change")
+	for id, want := range map[string]string{
+		"wx:" + pair[0].ID: "Sierra Nevada of Calaveras-Tuolumne-Southern Alpine Counties Above 5000 ft",
+		"wx:" + pair[1].ID: "Sierra Nevada of Calaveras and Tuolumne Counties Between 3000-5000 ft",
+	} {
+		ev, err := st.GetEvent(ctx, id)
+		require.NoError(t, err)
+		assert.Equal(t, want, ev.GetSubhead())
+		assert.Equal(t, "Stored summary.", ev.GetSummary())
+		assert.Equal(t, []string{"summary"}, ev.GetEnhancement().GetFields())
+		assert.Equal(t, uint32(1), ev.GetRevision())
+	}
 }

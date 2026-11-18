@@ -49,12 +49,18 @@ type Properties struct {
 	// alongside it when a model wrote it, so a client can label it as such.
 	Summary         string           `json:"summary,omitempty"`
 	SummaryEnhanced *SummaryEnhanced `json:"summaryEnhanced,omitempty"`
-	Status          string           `json:"status,omitempty"`
-	Effective       string           `json:"effective,omitempty"`
-	Expires         string           `json:"expires,omitempty"`
-	UpdatedAt       string           `json:"updatedAt,omitempty"`
-	AreaLabel       string           `json:"areaLabel,omitempty"`
-	Source          Source           `json:"source"`
+	// Subhead is Event.subhead: what is particular to this event among events
+	// with the same headline (today only on weather_alert, where one NWS
+	// product arrives as several alerts). Omitted (never "") when the event
+	// has none. A model wrote it when the event's enhancement.fields lists
+	// `subhead` (/api/v1/events/{id}); the feature does not carry that.
+	Subhead   string `json:"subhead,omitempty"`
+	Status    string `json:"status,omitempty"`
+	Effective string `json:"effective,omitempty"`
+	Expires   string `json:"expires,omitempty"`
+	UpdatedAt string `json:"updatedAt,omitempty"`
+	AreaLabel string `json:"areaLabel,omitempty"`
+	Source    Source `json:"source"`
 
 	// Per-kind typed blocks (exactly one populated).
 	Incident     *IncidentProps     `json:"incident,omitempty"`

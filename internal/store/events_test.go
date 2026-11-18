@@ -1124,3 +1124,105 @@ func TestWeatherAlertNeedsRealOverlap(t *testing.T) {
 	assert.ElementsMatch(t, []string{"county:tuolumne", "county:mariposa"}, got.GetPlaceIds(),
 		"perimeters keep the over-attach rule")
 }
+
+// subhead is outside the content hash, like summary: it is derived text (a
+// model's, or composed from which OTHER alerts are in the poll), so a change
+// to it alone never mints a revision. The hash-equal path persists it, and
+// keeps a model-written one over the deterministic one of a later poll: the
+// same rule the stored summary follows.
+func TestUpsertSubheadNeverMintsARevision(t *testing.T) {
+	ctx := context.Background()
+	s := searchStore(t)
+	const id = "wx:above"
+	const zoneNames = "Sierra Nevada of Calaveras-Tuolumne-Southern Alpine Counties Above 5000 ft"
+	const written = "1 to 3 ft above 5,000 ft"
+
+	ev := testEvent(id, gridv1.Severity_SEVERE, gridv1.EventStatus_ACTIVE, "Winter Storm Warning")
+	ev.Layer, ev.Category = gridv1.Layer_WEATHER_ALERT, "Winter Storm Warning"
+	_, err := s.UpsertEvent(ctx, ev)
+	require.NoError(t, err)
+
+	stamp := func() EventStamp {
+		st, ok, err := s.EventVersion(ctx, id)
+		require.NoError(t, err)
+		require.True(t, ok)
+		return st
+	}
+	stored := func() *gridv1.Event {
+		got, err := s.GetEvent(ctx, id)
+		require.NoError(t, err)
+		return got
+	}
+	st0 := stamp()
+
+	// A sibling arrived: the poller's event now carries the zone-name subhead
+	// and nothing else changed.
+	withZones := proto.Clone(ev).(*gridv1.Event)
+	withZones.Subhead = zoneNames
+	assert.Equal(t, ContentHash(ev), ContentHash(withZones), "subhead is not hashed")
+	changed, err := s.NeedsUpdate(ctx, withZones)
+	require.NoError(t, err)
+	assert.False(t, changed, "so it never asks for an enhancement")
+	res, err := s.UpsertEvent(ctx, withZones)
+	require.NoError(t, err)
+	assert.Equal(t, UpsertResult{Changed: false, Revision: 1}, res)
+	assert.Equal(t, 1, revisionCount(t, s, id))
+	assert.Equal(t, zoneNames, stored().GetSubhead(), "persisted in place")
+	st1 := stamp()
+	assert.Greater(t, st1.Refreshes, st0.Refreshes, "the served body changed, so the validator moves")
+	assert.Equal(t, []string{id}, searchIDs(t, s, "Tuolumne"), "and it is searchable")
+
+	// The same again writes nothing.
+	_, err = s.UpsertEvent(ctx, proto.Clone(withZones).(*gridv1.Event))
+	require.NoError(t, err)
+	assert.Equal(t, st1, stamp())
+
+	// The enhancer's subhead arrives with its enhancement, still hash-equal.
+	enhanced := proto.Clone(ev).(*gridv1.Event)
+	enhanced.Summary, enhanced.Subhead = "Heavy snow.", written
+	enhanced.Enhancement = &gridv1.Enhancement{Model: "m", EnhancedAt: timestamppb.New(baseTime), Fields: []string{"summary", "subhead"}}
+	res, err = s.UpsertEvent(ctx, enhanced)
+	require.NoError(t, err)
+	assert.Equal(t, UpsertResult{Changed: false, Revision: 1}, res)
+	assert.Equal(t, written, stored().GetSubhead())
+	st2 := stamp()
+	assert.Greater(t, st2.Refreshes, st1.Refreshes)
+
+	// Every later poll carries the deterministic subhead and no enhancement
+	// (the model is only asked when content changes). The stored AI subhead
+	// stays, with its summary; so does it when the sibling has gone and the
+	// poll's subhead is empty. Neither poll writes anything.
+	for _, poll := range []string{zoneNames, ""} {
+		plain := proto.Clone(ev).(*gridv1.Event)
+		plain.Subhead = poll
+		res, err = s.UpsertEvent(ctx, plain)
+		require.NoError(t, err)
+		assert.Equal(t, UpsertResult{Changed: false, Revision: 1}, res)
+		got := stored()
+		assert.Equal(t, written, got.GetSubhead(), "poll subhead %q must not replace the model's", poll)
+		assert.Equal(t, "Heavy snow.", got.GetSummary())
+		assert.Equal(t, []string{"summary", "subhead"}, got.GetEnhancement().GetFields())
+		assert.Equal(t, st2, stamp())
+	}
+	assert.Equal(t, 1, revisionCount(t, s, id))
+
+	// A re-run enhancement whose distinction was refused carries the
+	// zone names and does not list subhead: the fresh enhancement wins.
+	rerun := proto.Clone(ev).(*gridv1.Event)
+	rerun.Summary, rerun.Subhead = "Heavy snow.", zoneNames
+	rerun.Enhancement = &gridv1.Enhancement{Model: "m", EnhancedAt: timestamppb.New(baseTime), Fields: []string{"summary"}}
+	_, err = s.UpsertEvent(ctx, rerun)
+	require.NoError(t, err)
+	assert.Equal(t, zoneNames, stored().GetSubhead())
+
+	// With no model's claim on it, the stored subhead follows the poll: the
+	// sibling leaves and it is cleared.
+	alone := proto.Clone(ev).(*gridv1.Event)
+	_, err = s.UpsertEvent(ctx, alone)
+	require.NoError(t, err)
+	got := stored()
+	assert.Empty(t, got.GetSubhead())
+	assert.Equal(t, "Heavy snow.", got.GetSummary(), "the summary is untouched")
+	assert.Equal(t, 1, revisionCount(t, s, id), "none of this was a revision")
+	assert.Equal(t, uint32(1), got.GetRevision())
+}

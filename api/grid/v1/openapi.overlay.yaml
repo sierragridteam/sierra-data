@@ -486,6 +486,9 @@ spec:
             description: Present with `summary` when a model wrote it, so a UI can label it as machine-written.
             properties:
               enhancedAt: {type: string, format: date-time}
+          subhead:
+            type: string
+            description: What is particular to this event among events with the same headline (same as Event.subhead), e.g. the elevation band of one of several NWS alerts for one storm. Today only on `weather_alert`. Absent when the event has none.
           status:
             type: string
             description: |

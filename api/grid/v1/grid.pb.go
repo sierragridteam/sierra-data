@@ -1197,6 +1197,21 @@ type Event struct {
 	// incidents and NWS alerts. Empty string when none was generated. The original
 	// text is always kept in `description`.
 	Summary string `protobuf:"bytes,7,opt,name=summary,proto3" json:"summary,omitempty"`
+	// A short line saying what is particular to this event among events with the
+	// same headline. Empty string when there is nothing to add. Show it beside
+	// the headline wherever two such events can sit in one list. Today only NWS
+	// alerts carry one: the weather service issues one product as several alerts
+	// (one per elevation band, for example), and their headlines are identical.
+	// For such an alert it is AI-written when `enhancement.fields` lists
+	// `subhead` (at most 60 characters, built only from the alert's own text,
+	// such as `1 to 3 ft above 5,000 ft`), and otherwise taken from the alert's
+	// own zone names (`weatherAlert.areaDesc`, the zones the Grid covers; up to
+	// 160 characters). An alert with no other alert of the same product beside
+	// it has none.
+	//
+	// (-- Zeroed in store.ContentHash beside summary: it never mints a revision
+	// by itself, and the hash-equal path persists it. --)
+	Subhead string `protobuf:"bytes,37,opt,name=subhead,proto3" json:"subhead,omitempty"`
 	// Long-form original text from the upstream (CHP log, NWS product body,
 	// evacuation instructions, closure description). May contain newlines. Empty
 	// string when the source has none, or when it would only repeat the headline.
@@ -1358,6 +1373,13 @@ func (x *Event) GetHeadline() string {
 func (x *Event) GetSummary() string {
 	if x != nil {
 		return x.Summary
+	}
+	return ""
+}
+
+func (x *Event) GetSubhead() string {
+	if x != nil {
+		return x.Subhead
 	}
 	return ""
 }
@@ -1979,7 +2001,7 @@ type Enhancement struct {
 	// When the text was generated.
 	EnhancedAt *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=enhanced_at,json=enhancedAt,proto3" json:"enhanced_at,omitempty"`
 	// Which Event fields the model wrote, by JSON name: any of `headline`,
-	// `summary`, `severity`.
+	// `summary`, `subhead`, `severity`.
 	Fields []string `protobuf:"bytes,3,rep,name=fields,proto3" json:"fields,omitempty"`
 	// The incident-specific prompt sent to the model (the static system prompt is
 	// not included). Empty string unless the request set `enhancementIo=true`.
@@ -10026,7 +10048,7 @@ var File_grid_proto protoreflect.FileDescriptor
 const file_grid_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"grid.proto\x12\agrid.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\x1a.protoc-gen-openapiv2/options/annotations.proto\"\xac\x0f\n" +
+	"grid.proto\x12\agrid.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\x1a.protoc-gen-openapiv2/options/annotations.proto\"\xe7\x0f\n" +
 	"\x05Event\x12'\n" +
 	"\x02id\x18\x01 \x01(\tB\x17\x92A\x14J\x12\"chp:261106ST0341\"R\x02id\x12:\n" +
 	"\x05layer\x18\x02 \x01(\x0e2\x0e.grid.v1.LayerB\x14\x92A\x11J\x0f\"ROAD_INCIDENT\"R\x05layer\x12+\n" +
@@ -10036,7 +10058,8 @@ const file_grid_proto_rawDesc = "" +
 	"\x06status\x18\x05 \x01(\x0e2\x14.grid.v1.EventStatusB\r\x92A\n" +
 	"J\b\"ACTIVE\"R\x06status\x12]\n" +
 	"\bheadline\x18\x06 \x01(\tBA\x92A>J<\"Traffic hazard causing near-miss incidents; CHP responding\"R\bheadline\x12\x81\x01\n" +
-	"\asummary\x18\a \x01(\tBg\x92AdJb\"Reported traffic hazard on SR 4 at Country Club Drive. CHP responded. No lanes reported blocked.\"R\asummary\x12 \n" +
+	"\asummary\x18\a \x01(\tBg\x92AdJb\"Reported traffic hazard on SR 4 at Country Club Drive. CHP responded. No lanes reported blocked.\"R\asummary\x129\n" +
+	"\asubhead\x18% \x01(\tB\x1f\x92A\x1cJ\x1a\"1 to 3 ft above 5,000 ft\"R\asubhead\x12 \n" +
 	"\vdescription\x18\b \x01(\tR\vdescription\x12@\n" +
 	"\n" +
 	"area_label\x18\t \x01(\tB!\x92A\x1eJ\x1c\"SR 4 at Country Club Drive\"R\tareaLabel\x12.\n" +

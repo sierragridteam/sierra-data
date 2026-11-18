@@ -16,9 +16,14 @@ import (
 // NWSEnhancement is the model output plus the I/O captured for transparency
 // (what was sent / what came back), mirroring the incident enhancer.
 type NWSEnhancement struct {
-	Summary  string
-	Request  string // the incident-specific user prompt sent to the model
-	Response string // the raw structured JSON returned
+	Summary string
+	// Distinction is what differs in this alert from its siblings, as the
+	// model returned it (trimmed, otherwise unchecked): empty when it had
+	// nothing to say. The scheduler decides whether it becomes Event.subhead
+	// (acceptDistinction).
+	Distinction string
+	Request     string // the incident-specific user prompt sent to the model
+	Response    string // the raw structured JSON returned
 }
 
 // NWSEnhancer condenses an NWS alert into a short plain-language summary,
@@ -29,8 +34,20 @@ type NWSEnhancement struct {
 // `headline` is the composed card line (nws.Alert.ShortHeadline) — the product
 // name and its reason — not CAP's issuance boilerplate. The model is told it
 // is displayed above the summary and must not repeat it.
+//
+// `siblings` are the other alerts of the same NWS product in the same poll
+// (nil for a lone alert). They are context for the distinction only.
 type NWSEnhancer interface {
-	Enhance(ctx context.Context, headline, description string, placeNames []string) (NWSEnhancement, error)
+	Enhance(ctx context.Context, headline, description string, placeNames []string, siblings []NWSSibling) (NWSEnhancement, error)
+}
+
+// NWSSibling is another alert of the same product in the same poll, as the
+// enhancer sees it: NWS issues one product as several alerts (one per
+// elevation band), and the model is asked what differs in the alert it is
+// summarizing.
+type NWSSibling struct {
+	Headline    string `json:"headline"`
+	Description string `json:"description"`
 }
 
 // NWSSystemPrompt enforces the spec §3.1 enhancement policy: the model
@@ -56,6 +73,17 @@ type NWSEnhancer interface {
 // for the life of the alert, so day-relative words go wrong the next morning.
 // Timing stays in the alert's own weekday words rather than model-computed
 // clock times: computing them would be the model asserting a fact (rule 1).
+//
+// Rules 11-14 (2026-11-18) add the second output, `distinction`, which becomes
+// Event.subhead. The headline is the product name and stays deterministic, so
+// two alerts of one product (one per elevation band) had the same card line.
+// The model is the only thing here that can read "1 to 3 feet above 5000
+// feet" out of one body and "up to a foot between 4000 and 5000 feet" out of
+// the other and say which is which in a few words. It gets the siblings to
+// see what differs, and is held to this alert's own text for what it writes;
+// acceptDistinction checks what code can (length, one line, product name,
+// zone codes, day-relative words, numbers not in this alert) and refuses the
+// rest, and the alert's own zone names are the subhead then.
 const NWSSystemPrompt = `You condense National Weather Service alerts for a local hazard dashboard.
 
 Policy — enhancement translates, never asserts:
@@ -68,10 +96,17 @@ Policy — enhancement translates, never asserts:
 7. The headline, which names the product, is displayed directly above your summary. Do not open with the product's name or restate the headline — start with the hazard itself, and add what the headline does not say.
 8. Add no advice, speculation, or urgency the alert does not itself state.
 9. Keep the alert's qualifiers ("possible", "up to", "portions of", "locally"): never widen a number, an area, or a likelihood beyond what the alert says.
-10. Write plain sentences for the general public. Spell out abbreviations and jargon ("relative humidity", not "RH"). No exclamation marks.`
+10. Write plain sentences for the general public. Spell out abbreviations and jargon ("relative humidity", not "RH"). No exclamation marks.
 
-// NWSSummarySchema is the structured-output contract: exactly one required
-// string field, so a well-formed response can never be missing the summary.
+The input may also carry "siblings": other alerts of the same product in effect at the same time. The weather service issues one product as several alerts, typically one per elevation band, and they are displayed under the same headline. Siblings are context for your second output, "distinction", and for nothing else: rules 1-10 govern your summary, "the alert" in them is the alert you are summarizing, and nothing from a sibling may appear in your summary.
+11. "distinction" is a noun phrase of at most 60 characters saying what differs in THIS alert from its siblings, typically its elevation band and amounts ("1 to 3 ft above 5,000 ft"). It is displayed beside the headline so a reader can tell the alerts apart at a glance. No sentence, no trailing period.
+12. It may contain only facts present in this alert's own text. Never take a number, an elevation, or a place from a sibling, and never describe a sibling ("lower than the other warning" is wrong). Keep this alert's qualifiers ("up to", "possible"). You may shorten units ("ft", "in", "mph").
+13. Never include the product name or any part of the headline, forecast-zone or fire-zone identifiers, words relative to the current day, or timing of any kind (no weekdays, dates, or clock times).
+14. Return an empty string for "distinction" when there are no siblings, or when nothing in this alert's own text differs from them. Do not invent a difference.`
+
+// NWSSummarySchema is the structured-output contract: two required string
+// fields, so a well-formed response can never be missing the summary, and
+// always says (possibly with an empty string) what the distinction is.
 var NWSSummarySchema = openai.ChatCompletionResponseFormatJSONSchema{
 	Name:   "nws_alert_summary",
 	Strict: true,
@@ -81,9 +116,13 @@ var NWSSummarySchema = openai.ChatCompletionResponseFormatJSONSchema{
 			"summary": {
 				"type": "string",
 				"description": "At most 2 sentences and at most 320 characters, condensing the alert per the policy. No zone identifiers, no timestamps, no day-relative words, no instructions, no repetition of the headline."
+			},
+			"distinction": {
+				"type": "string",
+				"description": "At most 60 characters: a noun phrase saying what differs in this alert from its siblings, from this alert's own text only (typically elevation band and amounts). No product name, no zone identifiers, no day-relative words, no timing. Empty string when there are no siblings or nothing differs."
 			}
 		},
-		"required": ["summary"],
+		"required": ["summary", "distinction"],
 		"additionalProperties": false
 	}`),
 }
@@ -111,7 +150,7 @@ func NewNWSEnhancer(cfg config.OpenAIClient) NWSEnhancer {
 }
 
 // Enhance implements NWSEnhancer.
-func (e *openaiNWSEnhancer) Enhance(ctx context.Context, headline, description string, placeNames []string) (NWSEnhancement, error) {
+func (e *openaiNWSEnhancer) Enhance(ctx context.Context, headline, description string, placeNames []string, siblings []NWSSibling) (NWSEnhancement, error) {
 	if e.timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, e.timeout)
@@ -120,11 +159,17 @@ func (e *openaiNWSEnhancer) Enhance(ctx context.Context, headline, description s
 
 	// The user prompt is data-only; all policy lives in the system prompt.
 	// JSON-encode the untrusted alert text so it cannot masquerade as
-	// instructions or break the prompt structure.
+	// instructions or break the prompt structure. "siblings" is always
+	// present (an empty list for a lone alert), so the model never has to
+	// infer from a missing key that there are none.
+	if siblings == nil {
+		siblings = []NWSSibling{}
+	}
 	input, err := json.Marshal(map[string]any{
 		"headline":    headline,
 		"description": description,
 		"place_names": placeNames,
+		"siblings":    siblings,
 	})
 	if err != nil {
 		return NWSEnhancement{}, fmt.Errorf("nws enhancer: encoding input: %w", err)
@@ -161,7 +206,8 @@ func (e *openaiNWSEnhancer) Enhance(ctx context.Context, headline, description s
 
 	rawResponse := resp.Choices[0].Message.Content
 	var out struct {
-		Summary string `json:"summary"`
+		Summary     string `json:"summary"`
+		Distinction string `json:"distinction"`
 	}
 	if err := json.Unmarshal([]byte(rawResponse), &out); err != nil {
 		return NWSEnhancement{}, fmt.Errorf("nws enhancer: parsing response: %w", err)
@@ -169,7 +215,12 @@ func (e *openaiNWSEnhancer) Enhance(ctx context.Context, headline, description s
 	if strings.TrimSpace(out.Summary) == "" {
 		return NWSEnhancement{}, errors.New("nws enhancer: empty summary in response")
 	}
-	return NWSEnhancement{Summary: out.Summary, Request: userPrompt, Response: rawResponse}, nil
+	return NWSEnhancement{
+		Summary:     out.Summary,
+		Distinction: strings.TrimSpace(out.Distinction),
+		Request:     userPrompt,
+		Response:    rawResponse,
+	}, nil
 }
 
 // isReasoningModel reports whether the model accepts reasoning_effort (gpt-5

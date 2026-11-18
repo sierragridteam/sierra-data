@@ -185,6 +185,11 @@ func (n *WeatherAlertNormalizer) Poll(ctx context.Context, prior Prior) (*PollRe
 		events = append(events, ev)
 	}
 	res := &PollResult{Events: events, PerSource: perSource}
+	// The subhead that tells alerts of one product apart: this alert's own
+	// zone names, while it has a sibling. Outside the content hash, so the
+	// alerts whose stored one it should replace are listed for the write
+	// path (see alert_subhead.go).
+	res.ForceWrite = applyAlertSubheads(events, n.cfg.Weather.NWS.Zones, prior)
 	// Only from a clean fetch: a stale-served list proves nothing about
 	// what is still current, and the scheduler would not act on it anyway.
 	if perSource == nil {

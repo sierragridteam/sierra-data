@@ -70,7 +70,9 @@ func (d Doc) Text() string {
 func Build(ev *gridv1.Event) Doc {
 	var a, b, c, d parts
 	a.add(ev.GetHeadline(), ev.GetAreaLabel())
-	b.add(ev.GetSummary(), ev.GetCategory())
+	// The subhead is empty on every event stored before it existed, so adding
+	// it changed no existing event's text (no DocVersion bump).
+	b.add(ev.GetSummary(), ev.GetSubhead(), ev.GetCategory())
 	c.add(ev.GetDescription())
 	d.add(ev.GetProvenance().GetSourceName(), ev.GetProvenance().GetAttribution())
 
