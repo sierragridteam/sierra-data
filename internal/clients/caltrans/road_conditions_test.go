@@ -299,6 +299,13 @@ func TestMatchSeasonalClosure_Rule(t *testing.T) {
 		{"Is closed from 0.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/ to the Jct of SR 89 /Ebbetts Pass/ (Alpine Co) - Due to snow- Motorists are advised to use an alternate route", CONDITION_CLOSURE, true},
 		{"Is closed from the Jct of SR 207 /Mt Reba Turnoff/ to the Jct of SR 89 /Ebbetts Pass/ (Alpine Co) - For the winter", CONDITION_CLOSURE, true},
 		{"Is closed from 2 miles east of the Mt Reba Turnoff to Ebbetts Pass", CONDITION_CLOSURE, true},
+		// Caltrans's wording on 2026-11-18, verbatim: an abbreviation's period
+		// and no junction name. Missed, it closed Arnold to Bear Valley.
+		{"Is closed from the Mt. Reba turnoff to the Jct of SR 89 /Ebbetts Pass/ (Alpine Co) - Due to snow - Motorists are advised to use an alternate route", CONDITION_CLOSURE, true},
+		{"Is closed from 0.5 mi. east of the Jct. of SR 207 /Mt. Reba Turnoff/ to the Jct. of SR 89 /Ebbetts Pass/ (Alpine Co.) - Due to snow.", CONDITION_CLOSURE, true},
+		// The period does not let another place through.
+		{"Is closed from the Mt. Reba turnoff to the Jct of SR 89 /Ebbetts Pass/ (Alpine Co) - Due to snow. Also closed at Cottage Springs", CONDITION_CLOSURE, false},
+		{"Is closed from Cottage Springs. to the Jct of SR 89 /Ebbetts Pass/", CONDITION_CLOSURE, false},
 		{"IS CLOSED FROM 0.5 MI EAST OF THE JCT OF SR 207 /MT REBA TURNOFF/ TO THE JCT OF SR 89 /EBBETTS PASS/", CONDITION_CLOSURE, true},
 
 		// The tail Caltrans closes it with, in any case and spacing.

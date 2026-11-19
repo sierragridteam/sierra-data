@@ -296,7 +296,8 @@ type SeasonalClosure struct {
 }
 
 var (
-	conditionOffset = regexp.MustCompile(`^(\d+(?:\.\d+)?)\s*(?:mi|mile|miles)\.?\s+(north|south|east|west)\s+of\s+`)
+	abbreviationPeriod = regexp.MustCompile(`([a-z])\.([ )])`)
+	conditionOffset    = regexp.MustCompile(`^(\d+(?:\.\d+)?)\s*(?:mi|mile|miles)\.?\s+(north|south|east|west)\s+of\s+`)
 	// seasonalClosureHead is how a closure with a span starts.
 	seasonalClosureHead = regexp.MustCompile(`^(?:is |are )?closed from `)
 	// seasonalClosureTail is everything that may follow the closure's end:
@@ -317,6 +318,7 @@ var (
 //	[24 hrs a day] [- Due to snow] [- For the winter]
 //	[- Motorists are advised to use an alternate route][.]
 //
+// A period after an abbreviation is ignored ("Mt. Reba" is "Mt Reba").
 // The start and the end are made of the configured names and nothing else;
 // the start's offset must be in the configured direction and no longer than
 // the configured maximum; the end has no offset. After the end only the
@@ -330,6 +332,12 @@ func MatchSeasonalClosure(condition RoadCondition, closure SeasonalClosure) bool
 		return false
 	}
 	text := strings.ToLower(strings.Join(strings.Fields(condition.Description), " "))
+	// An abbreviation's period is not part of a name: Caltrans writes both
+	// "Mt Reba Turnoff" and "the Mt. Reba turnoff". On 2026-11-18 the second
+	// form missed here, and Arnold to Bear Valley read CLOSED for a day while
+	// chains were required on it. Only a period between a letter and a space
+	// or a closing bracket goes; "0.5 mi" and the sentence's last period are left alone.
+	text = abbreviationPeriod.ReplaceAllString(text, "$1$2")
 	head := seasonalClosureHead.FindString(text)
 	if head == "" {
 		return false
