@@ -654,9 +654,10 @@ spec:
 
               A stretch is on the road when it is on the same highway and one
               of its signs stands within 250 m of the road's line, or when
-              none does but its signs stand past both ends of the road. Where
-              two monitored roads meet, a sign within 250 m of the junction is
-              on both. An entry is the whole stretch, not the part on this
+              none does but its signs stand past both ends of the road. A
+              stretch that runs on past one end of the road and covers less
+              than 1 km of it is not on it (chains from just above a town are
+              not on the road that ends in the town). An entry is the whole stretch, not the part on this
               road, so `from` and `to` can lie past the road's ends. It is the
               `chain_control` feature with the same id, which lists the signs.
               The two are read from Caltrans separately, each at most every 5

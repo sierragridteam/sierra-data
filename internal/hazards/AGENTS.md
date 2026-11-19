@@ -203,9 +203,14 @@ through an R2 storm).
   signs stand past both ends (off the path, each nearer one end). Nothing
   else attaches. The 250 m is a judgment: against the routes Google returned
   on 2026-11-19 every checkpoint on a configured road sat within 30 m of its
-  path. **Known edge:** where two monitored roads meet, a sign within 250 m
-  of the junction is on both (Blue Lake Springs westbound, 170 m short of
-  where Murphys to Arnold ends and Arnold to Bear Valley begins). **Known
+  path. **A stretch that only reaches a road's end is not on it**
+  (`roadChainMinReachKm`, 1 km): when the rest of the stretch lies past one
+  end, it must cover at least that much of the road from that end. On
+  2026-11-18 Hwy 4 was under R2 from Blue Lake Springs up, and Blue Lake
+  Springs westbound stands 170 m short of where Murphys to Arnold ends and
+  Arnold to Bear Valley begins; the stretch is the upper road's alone.
+  **Known edge:** a stretch of one sign within 250 m of such a junction is
+  on both roads. **Known
   limits:** the last sign in a direction covers road past it that no sign
   marks, so a lone westbound sign above a road is not on that road by this
   rule; and "nearer one end" is a straight line, not a milepost.

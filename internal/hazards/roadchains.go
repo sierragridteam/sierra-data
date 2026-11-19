@@ -28,11 +28,21 @@ import (
 // cuts a corner; the nearest checkpoint that is NOT on a road is Murphys
 // eastbound, 670 m past the end of Angels Camp to Murphys.
 //
-// The known edge: where two monitored roads meet, a sign within 250 m of the
-// junction is on both. Blue Lake Springs westbound stands 170 m short of
-// where Murphys to Arnold ends and Arnold to Bear Valley begins, so a
-// stretch that reaches down to it is reported on both roads.
+// The edge that is left: a stretch of a single sign standing within 250 m of
+// where two monitored roads meet is on both (roadChainMinReachKm covers a
+// longer stretch that only reaches a road's end).
 const roadChainMaxOffsetMeters = 250
+
+// roadChainMinReachKm is how much of a road a stretch must cover to be on it
+// when the rest of the stretch lies past one of the road's ends. Without it
+// a stretch belongs to the road below as well as to its own: on 2026-11-18
+// Hwy 4 was under R2 "Blue Lake Springs to Mount Reba Road" for hours, and
+// Blue Lake Springs westbound stands 170 m short of where Murphys to Arnold
+// ends and Arnold to Bear Valley begins. "Chains R2" on Murphys to Arnold
+// would have been true of its last 170 m and wrong for anyone driving it.
+// A judgment: more than the spacing of a checkpoint's two signs across a
+// junction, less than any distance a driver would call part of the road.
+const roadChainMinReachKm = 1.0
 
 // chainStretchOnRoad reports whether a chain-control stretch lies on a road,
 // given the road's highway as its name writes it ("Hwy 4") and its path.
@@ -42,7 +52,11 @@ const roadChainMaxOffsetMeters = 250
 //     "Highway 49".
 //   - A sign is on the road when it has a position within
 //     roadChainMaxOffsetMeters of the path. A stretch with a sign on the
-//     road is on the road.
+//     road is on the road, unless it only reaches the road's end: the rest
+//     of it lies past one end, and from there it covers less than
+//     roadChainMinReachKm of the road. A stretch with nothing past either
+//     end (one checkpoint, or all of it on this road) is on the road however
+//     short it is.
 //   - A stretch with no sign on the road still lies on it when it spans it:
 //     its signs run from the low end to the high end, and two that follow one
 //     another stand one past the road's origin and the other past its
@@ -65,14 +79,18 @@ func chainStretchOnRoad(roadHighway string, path []LatLng, st chainStretch) bool
 		return false
 	}
 	origin, destination := path[0], path[len(path)-1]
-	var pastOrigin, pastDestination bool
+	length, _ := alongPath(path, destination.Lat, destination.Lng)
+	var pastOrigin, pastDestination, onRoad bool
+	lo, hi := length, 0.0 // km along the path of the lowest and highest sign on the road
 	for _, c := range st.Signs {
 		if c.Coordinates == nil {
 			continue
 		}
 		lat, lng := c.Coordinates.Latitude, c.Coordinates.Longitude
-		if signOnPath(path, lat, lng) {
-			return true
+		if km, off := alongPath(path, lat, lng); off <= roadChainMaxOffsetMeters {
+			onRoad = true
+			lo, hi = min(lo, km), max(hi, km)
+			continue
 		}
 		if metersFromPoint(origin, lat, lng) <= metersFromPoint(destination, lat, lng) {
 			pastOrigin = true
@@ -80,7 +98,20 @@ func chainStretchOnRoad(roadHighway string, path []LatLng, st chainStretch) bool
 			pastDestination = true
 		}
 	}
-	return pastOrigin && pastDestination
+	if !onRoad {
+		return pastOrigin && pastDestination
+	}
+	if !pastOrigin && !pastDestination {
+		return true
+	}
+	// The stretch runs on past an end: it covers the road from that end.
+	if pastOrigin {
+		lo = 0
+	}
+	if pastDestination {
+		hi = length
+	}
+	return hi-lo >= roadChainMinReachKm
 }
 
 func signOnPath(path []LatLng, lat, lng float64) bool {

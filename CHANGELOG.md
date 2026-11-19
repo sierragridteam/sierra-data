@@ -56,8 +56,11 @@ stored events.
   never as "none".
 - **Which stretch is on which road.** Same highway (Hwy 4 is never Hwy 49),
   and either one of the stretch's signs stands within 250 m of the road's
-  line, or none does but its signs stand past both ends of the road. Where
-  two monitored roads meet, a sign within 250 m of the junction is on both.
+  line, or none does but its signs stand past both ends of the road. A
+  stretch that runs on past one end of a road and covers less than 1 km of
+  it is not on it: R2 from Blue Lake Springs up is on Arnold to Bear Valley
+  and not on the last 170 m of Murphys to Arnold. A single sign within 250 m
+  of where two monitored roads meet is on both.
 - The entry and the `chain_control` layer are separate reads of Caltrans,
   each kept for up to 5 minutes, so one can show a change up to 5 minutes
   before the other.

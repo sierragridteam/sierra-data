@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -53,6 +54,12 @@ func TestChainStretchOnRoad(t *testing.T) {
 		{"a sign 278 m off the path", "Hwy 4", stretchOf("Highway 4", placedSign("Highway 4", beyond250m, onRoad)), false},
 		{"one sign on the road is enough", "Hwy 4", stretchOf("Highway 4",
 			placedSign("Highway 4", 38, onRoad), placedSign("Highway 4", 38, farPastDest)), true},
+		{"reaches only the last 200 m of the road", "Hwy 4", stretchOf("Highway 4",
+			placedSign("Highway 4", 38, -120.0023), placedSign("Highway 4", 38, pastDest)), false},
+		{"reaches only the first 200 m of the road", "Hwy 4", stretchOf("Highway 4",
+			placedSign("Highway 4", 38, pastOrigin), placedSign("Highway 4", 38, eastWest[0].Lng+0.0023)), false},
+		{"two signs at one end and nothing past it", "Hwy 4", stretchOf("Highway 4",
+			placedSign("Highway 4", 38, -120.0023), placedSign("Highway 4", 38, -120.0040)), true},
 
 		{"Highway 49 is not Hwy 4", "Hwy 4", stretchOf("Highway 49", placedSign("Highway 49", 38, onRoad)), false},
 		{"Hwy 4 is not Highway 49", "Hwy 49", stretchOf("Highway 4", placedSign("Highway 4", 38, onRoad)), false},
@@ -334,6 +341,41 @@ func TestRoadChains_MillCreekToMountRebaRoad(t *testing.T) {
 	assert.Equal(t, "Hwy 4 chains required, Mill Creek to Mount Reba Road (R2)", got.Headline)
 	assert.Equal(t, "Mill Creek", got.From)
 	assert.Equal(t, "Mount Reba Road", got.To)
+	for _, id := range []string{"hwy4-murphys-arnold", "hwy4-angels-murphys", "hwy49-angels-sonora"} {
+		require.NotNil(t, chains[id], id)
+		assert.Empty(t, *chains[id], id)
+	}
+}
+
+// The storm of 2026-11-18: R2 from Blue Lake Springs up. Blue Lake Springs
+// westbound stands on Murphys to Arnold, 170 m short of its end. The stretch
+// is Arnold to Bear Valley's; it only reaches the end of the road below
+// (roadChainMinReachKm), which stays clear.
+func TestRoadChains_StretchReachingTheRoadBelowIsNotOnIt(t *testing.T) {
+	cps := loadCheckpoints(t, stormCWWP2)
+	var from float64
+	for _, c := range cps {
+		if c.ID == "10-CAL-4-42.53-W-07W" {
+			from = c.Milepost
+		}
+	}
+	require.NotZero(t, from, "Blue Lake Springs westbound is in the capture")
+	var set int
+	for _, c := range cps {
+		// Every Hwy 4 checkpoint in Calaveras from Blue Lake Springs up.
+		if strings.HasPrefix(c.ID, "10-CAL-4-") && c.HasMilepost && c.Milepost >= from {
+			cps = setLevel(t, cps, c.ID, cwwp2.LevelR2, "R-2")
+			set++
+		}
+	}
+	require.Greater(t, set, 2)
+	chains, _ := roadChainsByID(t, roadService(t, kmlDoer{200, loadKML(t, stormKML)}, fixtureSource{cps}, cps))
+
+	require.NotNil(t, chains["hwy4-arnold-bearvalley"])
+	require.Len(t, *chains["hwy4-arnold-bearvalley"], 1)
+	got := (*chains["hwy4-arnold-bearvalley"])[0]
+	assert.Equal(t, "cc:hwy4:r2", got.EventID)
+	assert.Equal(t, "Blue Lake Springs", got.From)
 	for _, id := range []string{"hwy4-murphys-arnold", "hwy4-angels-murphys", "hwy49-angels-sonora"} {
 		require.NotNil(t, chains[id], id)
 		assert.Empty(t, *chains[id], id)
