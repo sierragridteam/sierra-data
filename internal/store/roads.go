@@ -8,6 +8,12 @@ import (
 	"time"
 )
 
+// RoadSampleInterval is how often the road sampler reads the roads service's
+// current set (ingest.RoadSampling.Interval, wired in cmd/server). It follows
+// the roads refresh (15 min); a year of samples is ~35k rows per segment.
+// Readers of the series use it to tell a missed sample from a quiet road.
+const RoadSampleInterval = 15 * time.Minute
+
 // RoadSample is one monitored road segment at one roads refresh.
 type RoadSample struct {
 	RoadID     string
@@ -86,6 +92,22 @@ func (s *Store) RoadSamples(ctx context.Context, roadID string, from, to time.Ti
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+// RoadSampleCoverage is what [from, to) holds for one road: how many samples,
+// and the first and last (zero times when n is 0). One index-only read of the
+// primary key: it is the validator of the samples endpoint, and a new sample
+// in the window changes n and last.
+func (s *Store) RoadSampleCoverage(ctx context.Context, roadID string, from, to time.Time) (first, last time.Time, n int, err error) {
+	var lo, hi sql.NullInt64
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*), MIN(at), MAX(at) FROM road_samples
+		WHERE road_id = $1 AND at >= $2 AND at < $3`, roadID, from.Unix(), to.Unix()).Scan(&n, &lo, &hi); err != nil {
+		return time.Time{}, time.Time{}, 0, fmt.Errorf("store: road sample coverage %s: %w", roadID, err)
+	}
+	if n == 0 {
+		return time.Time{}, time.Time{}, 0, nil
+	}
+	return time.Unix(lo.Int64, 0).UTC(), time.Unix(hi.Int64, 0).UTC(), n, nil
 }
 
 // RoadStatusSince is when road's latest sample's status began: the first

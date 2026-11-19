@@ -196,6 +196,10 @@ func hotCalls(ids hotIDs) []planTarget {
 			_, err := s.RoadSamples(ctx, ids.road, long, time.Now())
 			return err
 		}, []string{"road_samples_pkey"}},
+		{"road sample coverage", func(ctx context.Context, s *Store) error {
+			_, _, _, err := s.RoadSampleCoverage(ctx, ids.road, long, time.Now())
+			return err
+		}, []string{"road_samples_pkey"}},
 		{"road status since", func(ctx context.Context, s *Store) error {
 			_, _, _, _, err := s.RoadStatusSince(ctx, ids.road)
 			return err

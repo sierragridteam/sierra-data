@@ -50,6 +50,37 @@ func TestRoadSamplesAndStatusSince(t *testing.T) {
 	assert.True(t, atStart)
 }
 
+// RoadSampleCoverage is the samples endpoint's validator: [from, to), per
+// road, and zero times for an empty window.
+func TestRoadSampleCoverage(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	t0 := time.Date(2026, 11, 10, 8, 0, 0, 0, time.UTC)
+	var batch []RoadSample
+	for i := range 5 {
+		batch = append(batch, RoadSample{RoadID: "hwy4", At: t0.Add(time.Duration(i) * RoadSampleInterval), Status: roadOpen})
+	}
+	batch = append(batch, RoadSample{RoadID: "hwy108", At: t0.Add(-time.Hour), Status: roadOpen})
+	require.NoError(t, s.InsertRoadSamples(ctx, batch))
+
+	first, last, n, err := s.RoadSampleCoverage(ctx, "hwy4", t0.Add(-24*time.Hour), t0.Add(time.Hour))
+	require.NoError(t, err)
+	assert.Equal(t, 4, n, "to is exclusive, and another road's samples are not counted")
+	assert.Equal(t, t0, first)
+	assert.Equal(t, t0.Add(45*time.Minute), last)
+
+	first, last, n, err = s.RoadSampleCoverage(ctx, "hwy4", t0.Add(time.Minute), t0.Add(31*time.Minute))
+	require.NoError(t, err)
+	assert.Equal(t, 2, n)
+	assert.Equal(t, t0.Add(15*time.Minute), first)
+	assert.Equal(t, t0.Add(30*time.Minute), last)
+
+	first, last, n, err = s.RoadSampleCoverage(ctx, "hwy4", t0.Add(-24*time.Hour), t0)
+	require.NoError(t, err)
+	assert.Zero(t, n)
+	assert.True(t, first.IsZero() && last.IsZero())
+}
+
 func TestTypicalRoadMinutes(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
