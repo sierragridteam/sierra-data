@@ -633,6 +633,46 @@ spec:
                 reason: {type: string, example: snow, description: "snow, ice, winter_closure, seasonal_closure, construction, rockslide, mudslide, fire, flooding, accident. Absent when the text gives none."}
                 from: {type: string, example: "0.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/", description: "Where it starts, in the source's words."}
                 to: {type: string, example: "the Jct of SR 89 /Ebbetts Pass/", description: "Where it ends, in the source's words."}
+          chains:
+            type: array
+            description: |
+              The chain requirements on this road: one entry per chain-control
+              stretch (R1, R2 or R3) that lies on it, highest level first,
+              then by `eventId`. Closures and truck or hold levels are not
+              listed. Chains do not change the road: its `status`, `severity`
+              and `headline` are the same with or without them, so a road
+              under R2 is OPEN.
+
+              **Absent and empty are different answers.** Absent means not
+              known: Caltrans's chain-control data could not be read, came
+              from only one of its two sources, or has a sign on this highway
+              whose status or position could not be read; or the road has no
+              measured route yet (its line is the two-point fallback). Show
+              "unknown", not "none"; the `chain_control` layer says what is
+              known. `[]` means Caltrans reports no chain requirement on this
+              road.
+
+              A stretch is on the road when it is on the same highway and one
+              of its signs stands within 250 m of the road's line, or when
+              none does but its signs stand past both ends of the road. Where
+              two monitored roads meet, a sign within 250 m of the junction is
+              on both. An entry is the whole stretch, not the part on this
+              road, so `from` and `to` can lie past the road's ends. It is the
+              `chain_control` feature with the same id, which lists the signs.
+              The two are read from Caltrans separately, each at most every 5
+              minutes, so one can show a change up to 5 minutes before the
+              other.
+            items:
+              type: object
+              required: [level, eventId, headline, from, to, inferred]
+              properties:
+                level: {type: string, enum: [R1, R2, R3], example: R2}
+                eventId: {type: string, example: "cc:hwy4:r2", description: "The stretch's id: the id of its `chain_control` feature, and of its event (`/api/v1/events/{id}`) when the stretch has a sign inside a coverage area."}
+                headline: {type: string, example: "Hwy 4 chains required, Mill Creek to Mount Reba Road (R2)", description: "The stretch's headline, as on the `chain_control` layer."}
+                from: {type: string, example: Mill Creek, description: "The low end of the whole stretch (west, or south): `chainControl.from.place`."}
+                to: {type: string, example: Mount Reba Road, description: "The high end of the whole stretch: `chainControl.to.place`. Equal to `from` when the stretch is one place."}
+                since: {type: string, format: date-time, description: "When the stretch's earliest sign entered the level. Absent when no sign reports a time."}
+                inferred: {type: boolean, example: false, description: "The stretch's `chainControl.inferred`: true when it was put together from signs lying near each other and nothing reports the road between them. Always present."}
       MapChainControlProps:
         type: object
         description: |
@@ -1051,7 +1091,7 @@ spec:
           |---|---|---|
           | `road_incident` | Points: CHP incidents (category `incident`) and Caltrans planned lane closures (`closure`, SCHEDULED until set up) | events |
           | `chain_control` | Points: one per stretch of highway under R1/R2/R3 (at its low end, the signs listed in `chainControl.signs`), one per seasonal pass closure | live Caltrans |
-          | `road_segment` | LineStrings: configured routes with travel time; `status` OPEN/CLOSED/RESTRICTED/MAINTENANCE | live Google Routes + Caltrans |
+          | `road_segment` | LineStrings: configured routes with travel time; `status` OPEN/CLOSED/RESTRICTED/MAINTENANCE; the chain requirements on each in `road.chains` | live Google Routes + Caltrans |
           | `message_sign` | Points: Caltrans message signs and their text; always INFO | live Caltrans |
           | `weather_alert` | null geometry: NWS zone watches/warnings/advisories | events |
           | `fire_weather` | one null-geometry region banner (`fw:region`) plus forecast Points | live NWS |
@@ -1111,7 +1151,7 @@ spec:
                   road_segment:
                     summary: road_segment - an OPEN route (coordinates trimmed)
                     value: {"type": "FeatureCollection", "features": [
-                      {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[-120.54006, 38.0675], [-120.54015, 38.06759], [-120.54017, 38.06779]]}, "properties": {"id": "road:hwy4-angels-murphys", "layer": "ROAD_SEGMENT", "kind": "Road segment", "severity": "INFO", "severityRank": 0, "headline": "Hwy 4 — Angels Camp to Murphys", "status": "OPEN", "areaLabel": "Angels Camp to Murphys", "source": {"id": "google", "name": "Google Routes + Caltrans", "attribution": "Google · quickmap.dot.ca.gov"}, "road": {"roadId": "hwy4-angels-murphys", "congestion": "CLEAR", "delayMinutes": 0, "durationMinutes": 11, "distanceKm": 13}}}],
+                      {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[-120.54006, 38.0675], [-120.54015, 38.06759], [-120.54017, 38.06779]]}, "properties": {"id": "road:hwy4-angels-murphys", "layer": "ROAD_SEGMENT", "kind": "Road segment", "severity": "INFO", "severityRank": 0, "headline": "Hwy 4 — Angels Camp to Murphys", "status": "OPEN", "areaLabel": "Angels Camp to Murphys", "source": {"id": "google", "name": "Google Routes + Caltrans", "attribution": "Google · quickmap.dot.ca.gov"}, "road": {"roadId": "hwy4-angels-murphys", "congestion": "CLEAR", "delayMinutes": 0, "durationMinutes": 11, "distanceKm": 13, "chains": []}}}],
                       "metadata": {"layer": "road_segment", "area": "ebbetts-pass", "generatedAt": "2026-11-07T04:03:23Z", "sourceStatus": "OK", "attribution": "cwwp2.dot.ca.gov · quickmap.dot.ca.gov", "schemaVersion": 1}}
                   message_sign:
                     summary: message_sign - a two-page sign and a blank one

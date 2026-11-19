@@ -67,7 +67,8 @@ healthy, currently reports nothing). Status resolution:
 Caching uses the shared `internal/cache`; `layerTTL` returns 0 for layers already
 cached by their underlying service (no double-caching — `road_segment` is the
 example: `ListRoads` is cached by the roads service, so a layer TTL here would be
-a second copy of the same data).
+a second copy of the same data). What `road_segment` reads beyond the roads
+service has to keep itself: see `road.chains` below.
 
 **Clean empties ARE cached, except for `evacuation`.** Non-empty successes are
 always cached; `cacheEmptyResults` governs the "source healthy, reports nothing"
@@ -166,6 +167,60 @@ sign in `chainControl.signs`. A stretch is on the map of every area it has a
 sign in, whole. Keep the geometry a Point: straight lines between
 checkpoints are not the road, and consumers that take only Points from this
 layer would show no chain controls at all for anything else.
+
+## `road_segment`: the chain requirements on a road (`road.chains`)
+
+A road under a chain requirement is OPEN, and that is decided: chains never
+change a road's `status`, `severity` or headline. Since 2026-11-19 each
+`road_segment` feature says which chain-control stretches lie on it, so no
+client has to match stretches to roads itself (`roadchains.go`; the website,
+matching on a road id the stretches never carried, printed "Chains: None"
+through an R2 storm).
+
+- **The entry is the stretch's own.** `RoadChainProps` is read off
+  `chainStretchFeature` for a stretch grouped and numbered over everything
+  Caltrans reported (`newRoadChainRead`, the grouping the layer and
+  `ChainRequirements` use), so `eventId` is that stretch's id in every area
+  and `from`/`to`/`since`/`inferred`/`headline` cannot differ from the
+  `chain_control` feature of the same read. `from` and `to` are the whole
+  stretch's ends, not clipped to the road. R1, R2 and R3 only: gates and
+  truck or hold levels are not stretches. Sorted by level descending, then id.
+- **Absent is not empty** (`RoadProps.Chains` is a pointer to a slice).
+  Absent: not known. `[]`: Caltrans reports no chain requirement on this
+  road. It is absent when the registry read failed; when it came from one
+  source only (`caltrans.PartialError`, either way round); when a sign on the
+  road's highway, or one with no readable highway, has an unreadable status
+  or no position (the layer's `STALE` cases, scoped by highway where the
+  layer scopes by area); when a requirement with no readable highway stands
+  on the road's path; when the road's name gives no highway number; and when
+  the road has only the two-point fallback line, on which nothing can be
+  placed. Never write an empty list on any of those paths.
+- **Which stretch is on which road** (`chainStretchOnRoad`, pure, tested on
+  the 2026-11-13 captures and the configured roads). Same highway by
+  `highwayKey` (Hwy 4 is never Hwy 49). A sign is on the road within
+  `roadChainMaxOffsetMeters` (250) of the road's path; a stretch with a sign
+  on the road is on it. A stretch with no sign on the road is on it when its
+  signs stand past both ends (off the path, each nearer one end). Nothing
+  else attaches. The 250 m is a judgment: against the routes Google returned
+  on 2026-11-19 every checkpoint on a configured road sat within 30 m of its
+  path. **Known edge:** where two monitored roads meet, a sign within 250 m
+  of the junction is on both (Blue Lake Springs westbound, 170 m short of
+  where Murphys to Arnold ends and Arnold to Bear Valley begins). **Known
+  limits:** the last sign in a direction covers road past it that no sign
+  marks, so a lone westbound sign above a road is not on that road by this
+  rule; and "nearer one end" is a straight line, not a milepost.
+- **Cost: one registry read per 5 minutes per process, not per request.**
+  `road_segment` has no layer TTL, so `roadChainRegistry` keeps its read for
+  `layerTTL(chain_control)`, and a failed read for `roadChainRetry` (1
+  minute), bounded by `roadChainReadTimeout` (10 s). The `chain_control`
+  layer's cache cannot be borrowed: it is one area's features, and a road
+  needs the whole registry and which signs were unreadable. This is a third
+  reader of Caltrans beside the layer and `ChainRequirements`; the three
+  agree per read and can differ by a TTL. A failed read is never answered
+  from an older good one.
+- The repository holds no route polyline for the configured roads (Google's
+  are not ours to commit), so the tests build each road's path from the
+  capture's checkpoints (`roadCheckpoints`).
 
 ## `message_sign` — context, never a hazard
 
