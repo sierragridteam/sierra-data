@@ -7,7 +7,10 @@
 // pair may be, and judges each candidate pair, returning a reason and a
 // confidence. The engine applies every rule from whichever side the subject is
 // on, so a fire lists its evacuations and an evacuation points back to its
-// fire. To add a relation, add a Rule to Rules; nothing else changes.
+// fire. To add a relation, add a Rule to Rules; nothing else changes. Two
+// relations are not Rules, because they rest on one event naming another and
+// not on time and place: mesh nodes (mesh.go) and a monitored road with the
+// events that set its status (roads.go).
 //
 // Rules state what the sources say or how events coincide, never cause the
 // sources do not state: "near" and "during", not "because of".
@@ -152,6 +155,15 @@ func (e *Engine) Related(ctx context.Context, subject *gridv1.Event) ([]Relation
 		// Mesh nodes relate through the monitor that reads them, not through
 		// time and place; see mesh.go.
 		return e.meshRelated(ctx, subject)
+	}
+	// A road and the events its status was read from name each other
+	// outright; see roads.go.
+	named, err := e.roadCauseRelated(ctx, subject)
+	if err != nil {
+		return nil, err
+	}
+	for _, m := range named {
+		keep(m)
 	}
 	for _, rule := range e.Rules {
 		if rule.A.has(subject) {
