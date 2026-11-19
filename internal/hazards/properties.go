@@ -153,13 +153,16 @@ type RoadBeyondProps struct {
 	Status string `json:"status"` // CLOSED
 	// Side: END (past the segment's destination) or START (before its origin).
 	Side string `json:"side"`
-	// Severity is the closure's own (SEVERE for CLOSED); the segment's
-	// severity does not include it.
+	// Seasonal says this is a closure that recurs every year at this place
+	// and is expected at this time of year: a standing condition, to show as
+	// context and not as a hazard. Always true today.
+	Seasonal bool `json:"seasonal"`
+	// Severity is the closure's own: INFO, because it is seasonal. The
+	// segment's severity does not include it.
 	Severity     string `json:"severity"`
 	SeverityRank int    `json:"severityRank"`
 	// Headline says it in one line without calling the segment closed: "Hwy
-	// 4: Ebbetts Pass winter closure (past Bear Valley) — snow". It is the
-	// roads headline in the place summary.
+	// 4: Ebbetts Pass winter closure (past Bear Valley) — snow".
 	Headline    string `json:"headline"`
 	Source      string `json:"source"` // road_condition
 	Description string `json:"description,omitempty"`

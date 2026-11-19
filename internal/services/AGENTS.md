@@ -232,10 +232,13 @@ this into a general "past the end" rule: one was built and reviewed on
 pointing back onto the road, read as "past the end"). A false all-clear is the
 one outcome this code must not produce; a false closure is the fallback.
 
-`internal/hazards` gives each `beyond` entry a severity and a headline
-("Hwy 4: Ebbetts Pass winter closure (past Bear Valley) — snow"), and
-`internal/gridapi/summary.go` (`beyondItems`) adds it to the roads domain of
-the place summary, since the segment itself stays INFO.
+`internal/hazards` gives each `beyond` entry a headline
+("Hwy 4: Ebbetts Pass winter closure (past Bear Valley) — snow"),
+`seasonal: true` and severity INFO: it is the road's yearly state, not
+today's news. `internal/gridapi/summary.go` (`beyondItems`) still builds a
+roads item for it, but an INFO condition is baseline, so the place summary
+does not count or list it. Until 2026-11-19 it was SEVERE and led the roads
+domain all winter, and each client had to rank it down.
 
 "Chains or snow tires are required" (R1) is a chain requirement like the R2
 and R3 wordings (`classifyCondition`, `requiresChains`); all three set

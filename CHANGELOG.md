@@ -21,6 +21,28 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-19 (seasonal closures)
+
+### Changed: a seasonal closure past a road's end is INFO and marked `seasonal`
+
+`road.beyond[]` on the `road_segment` map layer (the Ebbetts Pass winter
+closure past Bear Valley) was rated `SEVERE`, so it led the place summary's
+roads domain, and every client's "highest severity" list, from November to
+May. It is the road's yearly state, not today's news.
+
+- `road.beyond[].severity` is now `INFO` (`severityRank` 0), and each entry
+  has `seasonal: true`. Its `status` is still `CLOSED`.
+- The place summary no longer counts or lists it: the roads domain's
+  `activeCount`, `highestSeverity` and `headlines`, and with them
+  `severityCounts` and `mode`. The headline id `road:{segment}:beyond-{index}`
+  no longer appears while the closure is seasonal.
+- Still reported: `road.beyond[]` on the map layer, and the monitored road's
+  event (`roadSegment.beyond`, headline "...: open; Ebbetts Pass winter
+  closure in effect").
+
+Migration: a client that ranked this closure down or worded it specially can
+stop; a client that wants to show it reads `road.beyond[]` and `seasonal`.
+
 ## 2026-11-19 (later still)
 
 ### Monitored roads say what set their status: `roadSegment.causes`, the description, related events

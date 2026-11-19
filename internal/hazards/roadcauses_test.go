@@ -97,7 +97,7 @@ func TestRoadBeyond(t *testing.T) {
 	got := roadBeyond(rd, arnoldBearValley)
 	require.Len(t, got, 1)
 	assert.Equal(t, RoadBeyondProps{
-		Name: "Ebbetts Pass winter closure", Status: "CLOSED", Side: "END", Severity: SevSevere, SeverityRank: 3,
+		Name: "Ebbetts Pass winter closure", Status: "CLOSED", Side: "END", Seasonal: true, Severity: SevInfo, SeverityRank: 0,
 		Headline: "Hwy 4: Ebbetts Pass winter closure (past Bear Valley) — snow",
 		Source:   "road_condition", Reason: "snow",
 		Description: ebbettsText, From: rd.Beyond[0].From, To: rd.Beyond[0].To}, got[0])
@@ -136,7 +136,7 @@ func TestRoadSegments_ClosurePastTheEnd(t *testing.T) {
 		"source": {"id": "google", "name": "Google Routes + Caltrans", "attribution": "Google · quickmap.dot.ca.gov"},
 		"road": {"roadId": "hwy4-arnold-bearvalley", "congestion": "CLEAR", "delayMinutes": 0, "durationMinutes": 28, "distanceKm": 38,
 			"beyond": [{"name": "Ebbetts Pass winter closure", "status": "CLOSED", "side": "END",
-				"severity": "SEVERE", "severityRank": 3,
+				"seasonal": true, "severity": "INFO", "severityRank": 0,
 				"headline": "Hwy 4: Ebbetts Pass winter closure (past Bear Valley) — snow",
 				"source": "road_condition", "reason": "snow",
 				"description": "`+ebbettsText+`",

@@ -466,10 +466,13 @@ func featureItems(features []hazards.Feature) []mergedItem {
 }
 
 // beyondItems are the seasonal closures past the end of the place's road
-// segments (road.beyond). The segment itself is open and INFO, so without
-// these "Ebbetts Pass is closed" would be missing from the roads domain. Each
-// counts at the closure's own severity, under its own headline, which names
-// the closure and not the segment. The id is the segment feature's id plus
+// segments (road.beyond). Each counts at the closure's own severity, under
+// its own headline, which names the closure and not the segment. A seasonal
+// closure is INFO (hazards.roadBeyond), so like every other baseline
+// condition it is not an active item and not a headline: the pass being shut
+// for the winter is on the road_segment layer and the road's event, and no
+// longer leads the roads domain all winter. The items are still built here,
+// so a closure past a road's end that is ever rated above INFO is listed. The id is the segment feature's id plus
 // ":beyond-<index into road.beyond>" (URL-safe, like every other id here; it
 // is not a road id, and /roads/{road}/history answers 404 for it).
 func beyondItems(features []hazards.Feature) []mergedItem {
