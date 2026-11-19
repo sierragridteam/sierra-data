@@ -58,6 +58,9 @@ ul.list, ul.links { list-style: none; padding: 0; }
 ul.list li { padding-left: 2ch; text-indent: -2ch; margin-bottom: 0.5em; }
 ul.list li::before { content: "> "; color: var(--brass); }
 ul.links li { margin-bottom: 0.3em; }
+ol.steps { padding-left: 4ch; }
+ol.steps li { margin-bottom: 0.3em; }
+ol.steps li::marker { color: var(--brass); }
 ul.links span { color: var(--muted); }
 ul.links span::before { content: " # "; color: var(--brass); }
 pre, .term {

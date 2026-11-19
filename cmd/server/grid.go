@@ -325,7 +325,10 @@ func (a *gridApp) Serve(ctx context.Context) error {
 			gatewayMux.h = mux
 			return nil
 		}),
-		prefab.WithHTTPHandlerFunc("/mcp", gate.HandlerFunc(mcpHandler.ServeHTTP)),
+		// A browser asking for HTML gets the setup instructions; everything
+		// else is the MCP endpoint (mcpRoute in site.go). The page is static,
+		// so it stays outside the admission gate.
+		prefab.WithHTTPHandlerFunc("/mcp", mcpRoute(gate.HandlerFunc(mcpHandler.ServeHTTP))),
 		// Publish the OpenAPI spec (generated from grid.proto plus the hand-written
 		// overlay; see api/grid/v1/openapi.go). A route mounted by hand here or in
 		// gridapi needs a path in openapi.overlay.yaml, or

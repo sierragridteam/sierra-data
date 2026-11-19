@@ -10,7 +10,9 @@
 // The transport is deliberately minimal: JSON-RPC 2.0 over HTTP POST with a JSON
 // response. We serve no server-initiated SSE stream (the tools are stateless
 // reads), so GET /mcp returns 405 per the Streamable HTTP spec. This mirrors the
-// project's hand-built handlers rather than pulling in an MCP SDK.
+// project's hand-built handlers rather than pulling in an MCP SDK. (The server
+// mounts this behind cmd/server's mcpRoute, which answers a browser's GET for
+// HTML with the setup instructions and passes everything else through.)
 package mcp
 
 import (
@@ -110,7 +112,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// POST request/response).
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", "POST")
-		http.Error(w, "MCP endpoint accepts POST (JSON-RPC)", http.StatusMethodNotAllowed)
+		http.Error(w, "MCP endpoint accepts POST (JSON-RPC). Setup instructions: open this URL in a browser.", http.StatusMethodNotAllowed)
 		return
 	}
 	var req rpcRequest
