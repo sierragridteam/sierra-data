@@ -9,6 +9,8 @@ caching, route classification, and AI enhancement.
 | `incidents.go`    | `RoadsService.ListIncidents`: region-wide CHP/Caltrans incident feed. |
 | `weather.go`      | `WeatherService`: current conditions + combined alerts list. |
 | `weather_nws.go`  | NWS zone alerts + fire-weather classification for `WeatherService`. |
+| `roads_lane_closures.go` | Lane closures behind per-road status (CWWP2 or `lcs2way.kml`). |
+| `roads_status_inputs.go` | CHP incidents and road conditions behind per-road status: last good read, `RoadInputHealth`. |
 | `periodic_refresh.go` | Background goroutine that warms the roads cache. |
 | `cameras.go`      | `CameraService`: the Caltrans CCTV directory behind `GET /api/v1/cameras`. Own background refresh, not the TTL cache — see below. |
 
@@ -111,6 +113,60 @@ periodic refresher keeps the last good `roads:all` instead of publishing a guess
 OPEN. Budget: one fetch per district per roads refresh (15m), the cadence
 lcs2way.kml had; it uses the shared `cwwp2.Client` from `cmd/server`
 (`UseCWWP2LaneClosures`), the one the lane-closure poller also uses.
+
+## A status input that fails (`roads_status_inputs.go`)
+
+Per-road status has three inputs that say "closed": lane closures (above),
+CHP incidents (`chp-only.kml`) and road conditions (`roads.dot.ca.gov`, one
+page per highway). **None of them may read as "nothing reported" when its
+fetch failed**, because nothing reported is OPEN. Until 2026-11-19 the last
+two did: `refreshRoadData` dropped the CHP error and logged the conditions
+one. On 2026-11-18 `road:hwy4-arnold-bearvalley` went CLOSED, OPEN, CLOSED
+for five hours (revisions 4 to 9) at 15 to 60 minute spacing. Each OPEN had
+lost the Ebbetts Pass `beyond` closure too, which Caltrans listed throughout:
+the conditions read had returned nothing for one to four refreshes in a row.
+There are no logs from that day, so whether the reads failed by HTTP error,
+timeout or a 200 with some other page is not known; all three are handled.
+
+`readStatusInput` gives both the lane-closure treatment:
+
+- A good read is cached: `chp_incidents:last_good` (the raw statewide set)
+  and `road_conditions:<highway number>`, TTL `roads.refreshInterval`.
+  **A page with no conditions is a good read and is cached as one** (Hwy 49
+  usually has none). A page that is not a conditions page is an error in the
+  client (`caltrans.ErrNotConditionsPage`).
+- A failed read serves the last good one while it is servable-stale (< 2x
+  `roads.refreshInterval`). Past that, or with nothing cached,
+  `refreshRoadData` returns an error and the periodic refresher keeps the
+  last good `roads:all`. With a 15m refresh that is one failed refresh on
+  the last good read; at the next the entry is about 30 minutes old and the
+  refresh usually fails. The road-segment poller then holds the events once
+  `roads:all` is itself older than 2x the interval.
+- `chp_incidents:last_good` is written by both CHP readers:
+  `refreshRoadData` and `refreshIncidents` (the incidents feed, on its own 5m
+  cadence), so the fallback is as fresh as the newer of the two. Neither
+  reads the other's fetch in place of its own, and no fetch was added: one
+  `chp-only.kml` and one conditions page per highway per roads refresh, as
+  before. `ListIncidents` keeps its own per-area fallback and
+  `IncidentFeedHealth`.
+
+**`RoadInputHealth()` is how anyone finds out** (the shape of
+`IncidentFeedHealth`): the inputs that failed at the last refresh, each with
+the time its run of failures began, the latest error and whether the last
+good read was used. `refreshRoadData` records it before it returns, failed or
+not, and reads every input before failing on any. The road-segment poller
+puts `RoadInputFailure.Describe` on the `roads` source:
+
+    road conditions for Hwy 4 unavailable since 17:05Z; last good read used (HTTP error 503 ...)
+    CHP incidents unavailable since 17:05Z; no last good read to use, road status not refreshed (...)
+
+Lane closures are not in it: a CWWP2 failure already degrades the `caltrans`
+source through the lane-closure poller, and the `lcs2way.kml` path (no
+`laneClosureDistricts`) still swallows its errors. Chain controls
+(`ParseChainControlsDetailed`) are logged and tolerated as before; they set
+`chain_control`, never a road's status.
+
+## Incident enhancement, de-duplication and ids (`incidents.go`)
 
 **Every incident is AI-enhanced** (`enhanceIncident`), via the same
 content-hash 24h cache as road alerts (`enhanceRawAlert` in `roads.go` —

@@ -49,6 +49,15 @@ type RoadsService struct {
 	incidentFeedLaneErr error
 	incidentFeedAt      time.Time
 
+	// Outcome of the status inputs (CHP incidents, road conditions per
+	// highway) at the most recent refreshRoadData: which failed, and since
+	// when. Guarded by roadInputMu; see RoadInputHealth in
+	// roads_status_inputs.go.
+	roadInputMu     sync.Mutex
+	roadInputSince  map[string]time.Time
+	roadInputFailed []RoadInputFailure
+	roadInputAt     time.Time
+
 	// laneClosureSource feeds segment-status closures when
 	// roads.caltransFeeds.cwwp2.laneClosureDistricts is set; see
 	// segmentLaneClosures. now is the clock closure phases are taken at
@@ -185,16 +194,33 @@ func (s *RoadsService) GetProcessingMetrics(ctx context.Context, req *api.GetPro
 	return nil, status.Error(codes.Unimplemented, "processing metrics are not yet implemented")
 }
 
-// refreshRoadData fetches fresh data from all external sources
+// refreshRoadData fetches fresh data from all external sources.
+//
+// A status input that cannot be read never reads as "nothing reported": lane
+// closures (segmentLaneClosures), CHP incidents and road conditions each
+// serve their last good read while it is servable-stale, and past that fail
+// the refresh, so the caller keeps the last good road set. What failed is
+// recorded for RoadInputHealth before any of them fails the refresh.
 func (s *RoadsService) refreshRoadData(ctx context.Context) ([]*api.Road, error) {
 	// Fetch Caltrans data once for all roads. Lane closures come from CWWP2
 	// when laneClosureDistricts is set (lcs2way.kml otherwise); an unknown
 	// CWWP2 closure state fails the refresh rather than reading as OPEN.
-	laneClosures, err := s.segmentLaneClosures(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("lane closures: %w", err)
+	laneClosures, laneErr := s.segmentLaneClosures(ctx)
+	chpIncidents, chpOutcome := s.statusCHPIncidents(ctx)
+
+	// Fetch road conditions from roads.dot.ca.gov for each unique highway
+	roadConditionsByHighway, conditionOutcomes := s.fetchRoadConditions(ctx)
+
+	inputs := append([]roadInputOutcome{chpOutcome}, conditionOutcomes...)
+	s.recordRoadInputHealth(inputs)
+	if laneErr != nil {
+		return nil, fmt.Errorf("lane closures: %w", laneErr)
 	}
-	chpIncidents, _ := s.caltransClient.ParseCHPIncidents(ctx)
+	for _, in := range inputs {
+		if in.err != nil && !in.lastGoodUsed {
+			return nil, fmt.Errorf("%s (no servable last good read): %w", in.input, in.err)
+		}
+	}
 	allIncidents := append(laneClosures, chpIncidents...)
 
 	// Fetch chain control data once for all roads
@@ -208,9 +234,6 @@ func (s *RoadsService) refreshRoadData(ctx context.Context) ([]*api.Road, error)
 			chainControls = nil
 		}
 	}
-
-	// Fetch road conditions from roads.dot.ca.gov for each unique highway
-	roadConditionsByHighway := s.fetchRoadConditions(ctx)
 
 	logging.Infow(ctx, "Retrieved Caltrans incidents for all roads",
 		"lane_closures", len(laneClosures),
@@ -959,37 +982,6 @@ func (s *RoadsService) mapRoutingToAPIClassification(classification routing.Aler
 	default:
 		return api.AlertClassification_ALERT_CLASSIFICATION_UNSPECIFIED
 	}
-}
-
-// fetchRoadConditions fetches road conditions for each unique highway in the monitored roads
-func (s *RoadsService) fetchRoadConditions(ctx context.Context) map[string][]caltrans.RoadCondition {
-	result := make(map[string][]caltrans.RoadCondition)
-
-	// Collect unique highway numbers
-	seen := make(map[string]bool)
-	for _, road := range s.config.Roads.MonitoredRoads {
-		hwNum := extractHighwayNumber(road.Name)
-		if hwNum == "" || seen[hwNum] {
-			continue
-		}
-		seen[hwNum] = true
-
-		conditions, err := s.caltransClient.ParseRoadConditions(ctx, hwNum)
-		if err != nil {
-			logging.Errorw(ctx, "Failed to fetch road conditions",
-				"highway", hwNum, "error", err)
-			continue
-		}
-
-		if len(conditions) > 0 {
-			result[hwNum] = conditions
-			logging.Infow(ctx, "Fetched road conditions",
-				"highway", hwNum,
-				"conditions", len(conditions))
-		}
-	}
-
-	return result
 }
 
 // applyRoadConditions processes road conditions from roads.dot.ca.gov and

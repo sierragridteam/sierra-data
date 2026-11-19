@@ -148,6 +148,11 @@ func (s *RoadsService) refreshIncidents(ctx context.Context, area config.Inciden
 		laneClosures, lcErr = s.caltransClient.ParseLaneClosures(ctx)
 	}
 	s.recordIncidentFeedHealth(chpErr, lcErr)
+	if chpErr == nil {
+		// The roads refresh falls back to the last good CHP read when its own
+		// fetch fails; this one is as good as its own (see chpIncidentsKey).
+		s.cacheCHPIncidents(ctx, chpIncidents)
+	}
 	if chpErr != nil && (lcErr != nil || !kmlClosures) {
 		return nil, fmt.Errorf("incident feeds failed: chp=%v lanes=%v", chpErr, lcErr)
 	}

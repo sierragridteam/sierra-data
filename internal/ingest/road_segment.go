@@ -11,6 +11,7 @@ import (
 	api "github.com/sierragridteam/sierra-data/api/v1"
 	"github.com/sierragridteam/sierra-data/internal/config"
 	"github.com/sierragridteam/sierra-data/internal/hazards"
+	"github.com/sierragridteam/sierra-data/internal/services"
 	"github.com/sierragridteam/sierra-data/internal/store"
 )
 
@@ -22,8 +23,15 @@ const RoadSegmentSourceID = "roads"
 // RoadLister is the roads service's current set. ListRoads serves it from
 // the service's cache when it has one; with a cold or evicted cache it runs
 // the service's own refresh, as any other reader of the roads service does.
+//
+// RoadInputHealth is what ListRoads cannot say: which of the service's
+// status inputs (CHP incidents, road conditions per highway) failed at its
+// last refresh. The service then serves the last good read of that input, or
+// past its stale window the road set of an earlier refresh, and either looks
+// like a clean answer from here.
 type RoadLister interface {
 	ListRoads(context.Context, *api.ListRoadsRequest) (*api.ListRoadsResponse, error)
+	RoadInputHealth() (failed []services.RoadInputFailure, at time.Time)
 }
 
 // RoadSegmentNormalizer records each monitored road's STATE as an event
@@ -46,15 +54,23 @@ type RoadLister interface {
 // incident or a lane closure the event keeps which one it is, never the
 // service's words for it.
 //
-// Three rules keep the history honest, because the roads service does not
-// say when its own inputs failed (a failed CHP or road-conditions fetch
-// reads as "nothing reported", which is OPEN):
+// Four rules keep the history honest about the roads service's own inputs:
 //
+//   - An input the service could not read is reported, not recorded. The
+//     service serves the last good read of a failed CHP or road-conditions
+//     fetch while it is servable, then fails its refresh and keeps its last
+//     road set (RoadInputHealth). The events go on being written from that
+//     data; the roads source says which input failed and since when. Until
+//     2026-11-19 a failed fetch read as "nothing reported", which is OPEN
+//     and no seasonal closure: on 2026-11-18 Hwy 4 Arnold to Bear Valley
+//     went CLOSED, OPEN, CLOSED for five hours (revisions 4 to 9).
 //   - A change that EASES a road (to open, a seasonal closure gone, or a
-//     cause no longer reported) is held until a second refresh says the same. One refresh of good news
-//     after bad is what a failed upstream fetch looks like; production
-//     samples show a restricted road reading open for exactly one refresh.
-//     A change that restricts is recorded at once.
+//     cause no longer reported) is held until a second refresh says the same.
+//     It was the only guard against a failed fetch, and covered one refresh
+//     of it. It stays for what the service cannot report: a read that
+//     succeeds and is wrong for one refresh, and lcs2way.kml, whose failures
+//     are still swallowed when CWWP2 lane closures are not configured. A
+//     change that restricts is recorded at once.
 //   - A set older than twice the refresh interval is the service serving its
 //     last good answer: the events keep their state and the source says so.
 //   - observed_at is the set's own refresh time, not the time of this poll.
@@ -151,6 +167,14 @@ func (n *RoadSegmentNormalizer) Poll(ctx context.Context, prior Prior) (*PollRes
 		delete(n.pending, id)
 		res.Events = append(res.Events, ev)
 	}
+	// Inputs the service could not read at its last refresh. The events above
+	// stand: they come from the last good read of each (or, with the refresh
+	// failing, from the set of an earlier one, which the age check covers).
+	// Only the source is marked, so the failure is on record without logs.
+	failed, _ := n.roads.RoadInputHealth()
+	for _, f := range failed {
+		problems = append(problems, f.Describe(now))
+	}
 	if len(problems) > 0 {
 		res.PerSource = map[string]error{RoadSegmentSourceID: fmt.Errorf("road segments: %s", strings.Join(problems, "; "))}
 	}
@@ -179,9 +203,9 @@ func roadRank(status string) int {
 // cause while its source, event and text are the same, so reworded condition
 // text is one cause gone and another added: recorded at once.
 //
-// A cause gone is held like a reopening for the same reason: a failed CHP or
-// road-conditions fetch reads as "nothing reported", and while another cause
-// holds the status up, the lost one is all that fetch would change.
+// A cause gone is held like a reopening for the same reason: while another
+// cause holds the status up, the lost one is all that one bad read of its
+// feed would change.
 func eases(was, now *gridv1.RoadSegmentDetail) bool {
 	if was == nil {
 		return false

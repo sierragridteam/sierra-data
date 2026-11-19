@@ -956,9 +956,20 @@ holds the state, a table holds the series.** The road sampler
   `description` is the `road_condition` texts joined; the headline carries
   no reason. `internal/related/roads.go` links a road and the stored events
   its causes name, both ways (`road-status-cause`).
-- **Easing waits for a second refresh.** The roads service does not say when
-  its inputs failed: a failed CHP or road-conditions fetch reads as "nothing
-  reported", which is OPEN and no seasonal closure. So a change that only
+- **A failed status input is reported, never recorded** (2026-11-19). The
+  roads service serves the last good read of a failed CHP or road-conditions
+  fetch while it is servable-stale, then fails its refresh and keeps its last
+  road set (`services.RoadsService.RoadInputHealth`, "A status input that
+  fails" in `internal/services/AGENTS.md`). `Poll` reads that health after
+  `ListRoads` and puts each failed input on `PerSource["roads"]`, e.g.
+  "road conditions for Hwy 4 unavailable since 17:05Z; last good read used
+  (HTTP error 503 ...)". The events are still returned and written, from the
+  last good data; only the source is degraded, which also skips the sweep.
+  Before this a failed fetch read as "nothing reported": OPEN, and no
+  seasonal closure. On 2026-11-18 Hwy 4 Arnold to Bear Valley alternated
+  CLOSED and OPEN for five hours (revisions 4 to 9), each OPEN one to four
+  refreshes long and missing the Ebbetts Pass closure Caltrans was listing.
+- **Easing waits for a second refresh.** A change that only
   eases (a lower status, a closure gone, a cause gone, or a cause that sets
   a lower status than it did) is recorded when a second refresh
   agrees (`pending`, poller-local); a change that restricts anything (a
@@ -966,10 +977,12 @@ holds the state, a table holds the series.** The road sampler
   status) is recorded at once, whatever else it eases. A cause is the same
   cause while its source, event id and text match, so reworded condition
   text is a cause gone and one added: at once. A cause gone while another
-  holds the status is held because it is all a failed CHP fetch would
+  holds the status is held because it is all one bad read of its feed would
   change on a road also closed for snow. Production samples had a restricted Hwy 49 reading open
-  for exactly one refresh on 2026-11-12. The proper fix is the roads service
-  reporting its inputs' health; until then this is the guard.
+  for exactly one refresh on 2026-11-12. This was the only guard against a
+  failed fetch and covered one refresh of it; it stays for a read that
+  succeeds and is wrong for one refresh, and for `lcs2way.kml`, whose
+  failures the service still swallows when CWWP2 closures are off.
 - **A stale set is not a reading.** `ListRoads` serves its last set while
   its refresh fails. Older than twice `roads.refreshInterval`, the events
   keep their state and `roads` is a `PerSource` failure. `observed_at` is
