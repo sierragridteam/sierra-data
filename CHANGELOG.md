@@ -48,6 +48,26 @@ read was treated the same way.
 No field or value changed. The revisions recorded on 2026-11-18 stay in the
 event's history.
 
+### Fixed: a CHP incident on a road beside a highway no longer sets the highway's status
+
+On 2026-11-18 `road:hwy49-angels-sonora` read `RESTRICTED` and then `CLOSED`
+for 75 minutes (revisions 6 and 7) because of CHP incident `chp:261118MR0292`,
+"21151 Old Sonora Columbia Rd": a county road, closed for a downed power pole,
+82 m from the Hwy 49 line. Any CHP incident within 100 m of a monitored road
+counted as on it.
+
+A CHP incident now sets a monitored road's status, and is listed in
+`road.statusCauses[]` / `roadSegment.causes[]`, only when it is on the highway
+itself: CHP's own location text names the route ("Sr49 / Reynolds Ferry Rd"),
+or its point is within 25 m of the road's line. Any other incident within
+100 m is near the road and sets nothing. The incident's own event
+(`layer=road_incident`) is unchanged. Lane closures and Caltrans road
+conditions are unaffected.
+
+One consequence to know: a CHP incident on the highway that CHP locates by a
+street address without the route number, and places more than 25 m off the
+line, no longer sets the road's status.
+
 ## 2026-11-19 (seasonal closures)
 
 ### Changed: a seasonal closure past a road's end is INFO and marked `seasonal`

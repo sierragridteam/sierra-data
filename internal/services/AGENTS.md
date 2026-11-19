@@ -11,6 +11,7 @@ caching, route classification, and AI enhancement.
 | `weather_nws.go`  | NWS zone alerts + fire-weather classification for `WeatherService`. |
 | `roads_lane_closures.go` | Lane closures behind per-road status (CWWP2 or `lcs2way.kml`). |
 | `roads_status_inputs.go` | CHP incidents and road conditions behind per-road status: last good read, `RoadInputHealth`. |
+| `roads_on_highway.go` | `chpIncidentOnHighway`: when a CHP incident near a road may set its status. |
 | `periodic_refresh.go` | Background goroutine that warms the roads cache. |
 | `cameras.go`      | `CameraService`: the Caltrans CCTV directory behind `GET /api/v1/cameras`. Own background refresh, not the TTL cache — see below. |
 
@@ -165,6 +166,49 @@ source through the lane-closure poller, and the `lcs2way.kml` path (no
 `laneClosureDistricts`) still swallows its errors. Chain controls
 (`ParseChainControlsDetailed`) are logged and tolerated as before; they set
 `chain_control`, never a road's status.
+
+## A CHP incident sets a road's status only on the highway (`roads_on_highway.go`)
+
+The route matcher (`internal/lib/routing`) calls any alert within 100 m of a
+road's line ON_ROUTE, and an ON_ROUTE alert the model reads as "closed" or
+"restricted" sets the road's status and is a cause. For CHP incidents 100 m
+takes in the roads beside the highway. On 2026-11-18
+`road:hwy49-angels-sonora` read RESTRICTED, then CLOSED, for 75 minutes
+(revisions 6 and 7) on CHP incident 261118MR0292, "21151 Old Sonora Columbia
+Rd": a power pole down on that county road, 82 m from the Hwy 49 line. The
+five CHP incidents measured that afternoon that were on the monitored
+highways ("Sr49 / Reynolds Ferry Rd", "Sr4 / Avery Sheep Ranch Rd", ...) were
+1 to 7 m from the line.
+
+`chpIncidentOnHighway(locationText, highwayNumber, distanceMeters)` is the
+whole rule, applied in `processGlobalAlerts` to a CHP incident the matcher
+put ON_ROUTE. It stays ON_ROUTE only when EITHER
+
+- **its location text names the road's highway number as a route**
+  (`namesHighway`): "Sr49", "SR 49", "SR-49", "State Route 49", "Hwy 49",
+  "Highway 49", "CA-49", and "I5" / "I-5" / "Us50" / "US 50" for those. The
+  number is a whole token (4 is not in "Sr49"). The text is **CHP's raw
+  location line** from the KML description (`parseIncidentDetail(...).location`),
+  never the model's `location.description`, which rewrites it; OR
+- **its point is within 25 m of the road's line** (`chpOnHighwayMeters`).
+
+Otherwise it is downgraded to NEARBY: still an alert on the road, no status,
+no cause. Rules of use:
+
+- It only narrows ON_ROUTE. An incident farther than 100 m is never promoted
+  by its text: Hwy 49 outside the monitored section names the route too.
+- The road's number comes from `extractHighwayNumber(road name)`. California
+  numbers its routes once across SR, US and I, so the prefix is not compared.
+- Lane closures are not put through it (CWWP2 and `lcs2way.kml` rows carry
+  their route), nor are roads.dot.ca.gov conditions.
+- **The trade-off, accepted:** a CHP incident on the highway whose location
+  is a street address that does not name the route and whose point is more
+  than 25 m off the line reads as NEARBY. And the other way: a road named
+  after the highway ("Old Hwy 49") or a frontage road within 25 m still
+  counts. Change the threshold or the pattern in this one function, with a
+  measured case.
+- Without a Google polyline the road's line is the straight line between its
+  ends, and both distances are taken to that, as the matcher's always was.
 
 ## Incident enhancement, de-duplication and ids (`incidents.go`)
 

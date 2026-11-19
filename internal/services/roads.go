@@ -347,6 +347,7 @@ func (s *RoadsService) buildRouteFromMonitoredRoad(ctx context.Context, monitore
 func (s *RoadsService) processGlobalAlerts(ctx context.Context, allIncidents []caltrans.CaltransIncident, allRoutes []routing.Route) (map[string][]routing.ClassifiedAlert, error) {
 	// Convert Caltrans incidents to unclassified alerts
 	var unclassifiedAlerts []routing.UnclassifiedAlert
+	var sources []caltrans.CaltransIncident // the incident each alert came from, by index
 	for _, incident := range allIncidents {
 		unclassifiedAlert := routing.UnclassifiedAlert{
 			ID:          fmt.Sprintf("%s_%d", incident.Name, incident.LastFetched.Unix()),
@@ -367,12 +368,13 @@ func (s *RoadsService) processGlobalAlerts(ctx context.Context, allIncidents []c
 		}
 
 		unclassifiedAlerts = append(unclassifiedAlerts, unclassifiedAlert)
+		sources = append(sources, incident)
 	}
 
 	// Classify each alert against all routes to find the best classification
 	var globalClassifications []globalAlertClassification
 
-	for _, unclassifiedAlert := range unclassifiedAlerts {
+	for i, unclassifiedAlert := range unclassifiedAlerts {
 		for _, route := range allRoutes {
 			classifiedAlert, err := s.routeMatcher.ClassifyAlert(ctx, unclassifiedAlert, []routing.Route{route})
 			if err != nil {
@@ -381,6 +383,21 @@ func (s *RoadsService) processGlobalAlerts(ctx context.Context, allIncidents []c
 					"route_id", route.ID,
 					"error", err)
 				continue
+			}
+
+			// A CHP incident within the matcher's 100 m of a road is on it
+			// only when it is on the highway itself; one on a road beside
+			// it stays a NEARBY alert and sets no status (chpIncidentOnHighway).
+			if classifiedAlert.Classification == routing.OnRoute && sources[i].FeedType == caltrans.CHP_INCIDENT {
+				location := parseIncidentDetail(sources[i]).location
+				if !chpIncidentOnHighway(location, extractHighwayNumber(route.Name), classifiedAlert.DistanceToRoute) {
+					logging.Infow(ctx, "CHP incident is near the road but not on the highway: NEARBY, sets no status",
+						"alert_title", unclassifiedAlert.Title,
+						"route_id", route.ID,
+						"chp_location", location,
+						"distance_m", classifiedAlert.DistanceToRoute)
+					classifiedAlert.Classification = routing.Nearby
+				}
 			}
 
 			// Only include relevant alerts (ON_ROUTE and NEARBY)
