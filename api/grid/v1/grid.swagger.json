@@ -464,7 +464,7 @@
     "/api/v1/events/{id}/related": {
       "get": {
         "summary": "List events related to one event.",
-        "description": "Events about the same situation, each with the rule that matched, a\nplain reason and a confidence: a fire's evacuation zones (named in the\nCal OES notes, or the nearest fire to a zone issued soon after it\nstarted), outages PG\u0026E attributes to it, shutoffs and road reports near\nit; shutoffs, outages and road reports inside a wind, fire-weather or\nwinter storm product's area while it is in effect. Works from either\nside: an evacuation lists its fire. Relations state what the sources say\nor how events coincide, never a cause the sources do not state.\n\nMesh nodes relate differently, by structure, not by situation: along the\nreads an operator-run monitor states (`mesh.telemetry.readVia`), whatever\nthe nodes' status. A gateway (a companion radio a monitor listens through)\nlists the repeaters read through it and they list it\n(`mesh-monitor-gateway`); repeaters read through the same gateway, and\ngateways that read the same repeater, list each other\n(`mesh-monitor-peer`). Nothing is followed further, so parts of the mesh\nthat share no gateway and no repeater share no relations, even under one\nmonitor. The nodes of a monitor that states no gateways (it reads them\nall from one place; `mesh.telemetry.admin.reporterId`) are each other's\n`mesh-monitor-peer`. A node no monitor reads has none, and\na mesh node is never related to a fire, outage or road report. For radio\nlinks between nodes use `GET /api/v1/mesh/links`. Computed\nat read time from the stored events (every status), so rules can change\nwithout a migration. Related events carry no shapes (as\n`geometryFormat=NONE`); fetch one for its geometry.",
+        "description": "Events about the same situation, each with the rule that matched, a\nplain reason and a confidence: a fire's evacuation zones (named in the\nCal OES notes, or the nearest fire to a zone issued soon after it\nstarted), outages PG\u0026E attributes to it, shutoffs and road reports near\nit; shutoffs, outages and road reports inside a wind, fire-weather or\nwinter storm product's area while it is in effect. Works from either\nside: an evacuation lists its fire. Relations state what the sources say\nor how events coincide, never a cause the sources do not state.\n\nA monitored road (`road:{id}`) lists the events its status was read from\n(`roadSegment.causes[].eventId`), and each of them lists the road\n(`road-status-cause`, HIGH): the road closed by a CHP incident and that\nincident. It follows the road's current causes, so the link ends when the\ncause does; a cause whose event is not stored is not listed.\n\nMesh nodes relate differently, by structure, not by situation: along the\nreads an operator-run monitor states (`mesh.telemetry.readVia`), whatever\nthe nodes' status. A gateway (a companion radio a monitor listens through)\nlists the repeaters read through it and they list it\n(`mesh-monitor-gateway`); repeaters read through the same gateway, and\ngateways that read the same repeater, list each other\n(`mesh-monitor-peer`). Nothing is followed further, so parts of the mesh\nthat share no gateway and no repeater share no relations, even under one\nmonitor. The nodes of a monitor that states no gateways (it reads them\nall from one place; `mesh.telemetry.admin.reporterId`) are each other's\n`mesh-monitor-peer`. A node no monitor reads has none, and\na mesh node is never related to a fire, outage or road report. For radio\nlinks between nodes use `GET /api/v1/mesh/links`. Computed\nat read time from the stored events (every status), so rules can change\nwithout a migration. Related events carry no shapes (as\n`geometryFormat=NONE`); fetch one for its geometry.",
         "operationId": "GridService_ListRelatedEvents",
         "responses": {
           "200": {
@@ -3344,7 +3344,7 @@
         "rule": {
           "type": "string",
           "example": "fire-evacuation-named",
-          "description": "The rule that matched, e.g. `fire-evacuation-named`,\n`fire-evacuation-near`, `fire-outage-cause`, `fire-shutoff-near`,\n`fire-road-named`, `weather-shutoff`, `weather-outage`, `weather-road`,\n`mesh-monitor-gateway`, `mesh-monitor-peer`.\nNew rules may appear; treat unknown names generically."
+          "description": "The rule that matched, e.g. `fire-evacuation-named`,\n`fire-evacuation-near`, `fire-outage-cause`, `fire-shutoff-near`,\n`fire-road-named`, `weather-shutoff`, `weather-outage`, `weather-road`,\n`road-status-cause`, `mesh-monitor-gateway`, `mesh-monitor-peer`.\nNew rules may appear; treat unknown names generically."
         },
         "confidence": {
           "$ref": "#/definitions/v1RelationConfidence"
@@ -3637,6 +3637,31 @@
       },
       "description": "RoadSegmentBeyond is a named seasonal closure past a segment's end."
     },
+    "v1RoadSegmentCause": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "CLOSED",
+          "description": "What this item set: `CLOSED` or `RESTRICTED`."
+        },
+        "source": {
+          "type": "string",
+          "example": "incident",
+          "description": "`incident` (a CHP incident), `lane_closure` (a Caltrans lane closure) or\n`road_condition` (an entry of Caltrans's highway conditions, which is\ntext with no position)."
+        },
+        "eventId": {
+          "type": "string",
+          "example": "chp:261118ST0331",
+          "description": "The Grid event this cause is, when it is one: read it with\n`GET /api/v1/events/{id}` for what happened and where. Set for a CHP\nincident (`chp:{log number}`), the same id as `road.statusCauses[].eventId`\non the `road_segment` map layer. Empty otherwise. The event can be\nmissing from the store (an incident outside the incident areas); the\nroad's related events list only the ones that are there."
+        },
+        "text": {
+          "type": "string",
+          "description": "The source's own words, and only those: for a `road_condition`,\nCaltrans's condition text as published. Empty for an incident or a lane\nclosure, whose wording on the roads service is written by a model and\nchanges between refreshes: read the linked event instead."
+        }
+      },
+      "description": "RoadSegmentCause is one item a monitored road's status was read from."
+    },
     "v1RoadSegmentDetail": {
       "type": "object",
       "properties": {
@@ -3666,9 +3691,17 @@
             "$ref": "#/definitions/v1RoadSegmentBeyond"
           },
           "description": "Named seasonal closures in effect past one of the segment's ends (the\nEbbetts Pass winter closure past Bear Valley). They do not change\n`status`: the segment itself is open up to its end. Empty when none."
+        },
+        "causes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1RoadSegmentCause"
+          },
+          "description": "What set a `CLOSED` or `RESTRICTED` status: the CHP incidents, Caltrans\nlane closures and Caltrans highway-conditions entries the status was read\nfrom. Empty when the road is open, and when nothing is known. Ordered\nclosures first, then by `source`, `eventId` and `text`; the order of the\nsources never changes it. A change of causes is a revision even when\n`status` stays the same (closed for a fire, then closed for snow). A\ncause that is no longer reported is dropped once a second refresh\nagrees, like any change that eases the road."
         }
       },
-      "description": "RoadSegmentDetail is one monitored road's state (layer ROAD_SEGMENT, event\nid `road:{road id}`, the id of its feature on the `road_segment` map\nlayer). The event holds the state and is revised when it changes: the\nroad's status, and the seasonal closures past its ends. What moves at\nevery refresh (travel time, delay, congestion level) is in the samples:\n`GET /api/v1/events/{id}/samples`.\n\nA change that eases the road (reopened, a closure lifted) is recorded once\na second refresh, about 15 minutes later, agrees; a change that restricts\nit is recorded at once. `observedAt` is the refresh the state was read at."
+      "description": "RoadSegmentDetail is one monitored road's state (layer ROAD_SEGMENT, event\nid `road:{road id}`, the id of its feature on the `road_segment` map\nlayer). The event holds the state and is revised when it changes: the\nroad's status, what set it (`causes`), and the seasonal closures past its\nends. The event's `description` is Caltrans's highway-conditions text when\nthat is a cause, else empty; an incident that set the status is a related\nevent (`GET /api/v1/events/{id}/related`). What moves at\nevery refresh (travel time, delay, congestion level) is in the samples:\n`GET /api/v1/events/{id}/samples`.\n\nA change that eases the road (reopened, a closure lifted, a cause no\nlonger reported) is recorded once a second refresh, about 15 minutes\nlater, agrees; a change that restricts it, or adds a cause, is recorded\nat once. `observedAt` is the refresh the state was read at."
     },
     "v1SampleCoverage": {
       "type": "object",

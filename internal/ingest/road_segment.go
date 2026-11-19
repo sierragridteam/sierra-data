@@ -28,9 +28,9 @@ type RoadLister interface {
 
 // RoadSegmentNormalizer records each monitored road's STATE as an event
 // (layer ROAD_SEGMENT, id "road:<road id>", the id of its road_segment map
-// feature): its status and the seasonal closures in effect past its ends.
-// The event is revised when one of those changes, so its history is when
-// the road closed and reopened.
+// feature): its status, what set that status (causes) and the seasonal
+// closures in effect past its ends. The event is revised when one of those
+// changes, so its history is when the road closed and reopened, and for what.
 //
 // This is the mesh-node pattern. Everything that moves at each refresh
 // (travel time, delay, congestion level) is not on the event: it is a row of
@@ -42,14 +42,16 @@ type RoadLister interface {
 // Everything on the event is deterministic. The roads service's
 // status_explanation is model-written and reworded between refreshes, so it
 // is left out: hashed, it would mint a revision each time (the lane-closure
-// headline rule).
+// headline rule). The same holds for a status cause (roadCauses): of an
+// incident or a lane closure the event keeps which one it is, never the
+// service's words for it.
 //
 // Three rules keep the history honest, because the roads service does not
 // say when its own inputs failed (a failed CHP or road-conditions fetch
 // reads as "nothing reported", which is OPEN):
 //
-//   - A change that EASES a road (to open, or a seasonal closure gone) is
-//     held until a second refresh says the same. One refresh of good news
+//   - A change that EASES a road (to open, a seasonal closure gone, or a
+//     cause no longer reported) is held until a second refresh says the same. One refresh of good news
 //     after bad is what a failed upstream fetch looks like; production
 //     samples show a restricted road reading open for exactly one refresh.
 //     A change that restricts is recorded at once.
@@ -166,14 +168,43 @@ func roadRank(status string) int {
 	return 0
 }
 
-// eases reports whether now is less restrictive than was and in no way more:
-// a lower status or a seasonal closure no longer listed, with no higher
-// status and no closure added. Such a change waits for a second refresh (see
-// RoadSegmentNormalizer). A change that restricts anything is recorded at
-// once, whatever else it eases.
+// eases reports whether now is less restrictive than was and in no way more.
+// It eases when the status is lower, a seasonal closure is no longer listed,
+// a cause is no longer listed, or a cause still listed sets a lower status
+// than it did. It restricts when the status is higher, a seasonal closure
+// was added, a cause was added, or a cause still listed sets a higher
+// status. A change that eases something and restricts nothing waits for a
+// second refresh (see RoadSegmentNormalizer); a change that restricts
+// anything is recorded at once, whatever else it eases. A cause is the same
+// cause while its source, event and text are the same, so reworded condition
+// text is one cause gone and another added: recorded at once.
+//
+// A cause gone is held like a reopening for the same reason: a failed CHP or
+// road-conditions fetch reads as "nothing reported", and while another cause
+// holds the status up, the lost one is all that fetch would change.
 func eases(was, now *gridv1.RoadSegmentDetail) bool {
 	if was == nil {
 		return false
+	}
+	causeRanks := func(d *gridv1.RoadSegmentDetail) map[string]int {
+		m := map[string]int{}
+		for _, c := range d.GetCauses() {
+			k := c.GetSource() + "\x00" + c.GetEventId() + "\x00" + c.GetText()
+			m[k] = max(m[k], roadRank(c.GetStatus()))
+		}
+		return m
+	}
+	causesBefore, causesAfter := causeRanks(was), causeRanks(now)
+	causeAdded, causeLost := false, false
+	for k, r := range causesAfter {
+		prev, had := causesBefore[k]
+		causeAdded = causeAdded || !had || r > prev
+		causeLost = causeLost || (had && r < prev)
+	}
+	for k := range causesBefore {
+		if _, still := causesAfter[k]; !still {
+			causeLost = true
+		}
 	}
 	key := func(b *gridv1.RoadSegmentBeyond) string { return b.GetSide() + "|" + b.GetName() }
 	before, after := map[string]bool{}, map[string]bool{}
@@ -189,10 +220,67 @@ func eases(was, now *gridv1.RoadSegmentDetail) bool {
 	for k := range before {
 		lost = lost || !after[k]
 	}
-	if added || roadRank(now.GetStatus()) > roadRank(was.GetStatus()) {
+	if added || causeAdded || roadRank(now.GetStatus()) > roadRank(was.GetStatus()) {
 		return false
 	}
-	return lost || roadRank(now.GetStatus()) < roadRank(was.GetStatus())
+	return lost || causeLost || roadRank(now.GetStatus()) < roadRank(was.GetStatus())
+}
+
+// roadCauses is what set a road's status, as the event keeps it: for each
+// cause the roads service lists, the status it set, its source, the Grid
+// event it is (hazards.RoadCauseEventID, the map layer's rule) and the
+// source's own text. Nothing else goes on the event, because it is hashed:
+//
+//   - The service's description of an incident or a lane closure is the
+//     model's restriction_details (services.alertCause), reworded between
+//     refreshes, and its fallback is the alert's description, which the
+//     model also rewrites. So those causes carry no text: the reader has the
+//     linked event. A road condition's description is Caltrans's paragraph
+//     as parsed from roads.dot.ca.gov (services.conditionCause), with
+//     whitespace collapsed here.
+//   - Title, source id, begin and end are left out (the id is in event_id;
+//     positions are the map layer's).
+//
+// The service promises no order and can list one condition twice (Caltrans
+// repeats a paragraph per district), so the set is de-duplicated and sorted:
+// closures first, then source, event id, text. An open road has none, as on
+// the map layer.
+func roadCauses(rd *api.Road) []*gridv1.RoadSegmentCause {
+	if rd.GetStatus() == api.RoadStatus_OPEN {
+		return nil
+	}
+	var out []*gridv1.RoadSegmentCause
+	seen := map[string]bool{}
+	for _, c := range rd.GetStatusCauses() {
+		rc := &gridv1.RoadSegmentCause{
+			Status:  strings.TrimPrefix(c.GetStatus().String(), "ROAD_STATUS_"),
+			Source:  c.GetSource(),
+			EventId: hazards.RoadCauseEventID(c),
+		}
+		if c.GetSource() == "road_condition" {
+			rc.Text = strings.Join(strings.Fields(c.GetDescription()), " ")
+		}
+		k := rc.GetStatus() + "\x00" + rc.GetSource() + "\x00" + rc.GetEventId() + "\x00" + rc.GetText()
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, rc)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if ra, rb := roadRank(a.GetStatus()), roadRank(b.GetStatus()); ra != rb {
+			return ra > rb
+		}
+		if a.GetSource() != b.GetSource() {
+			return a.GetSource() < b.GetSource()
+		}
+		if a.GetEventId() != b.GetEventId() {
+			return a.GetEventId() < b.GetEventId()
+		}
+		return a.GetText() < b.GetText()
+	})
+	return out
 }
 
 func (n *RoadSegmentNormalizer) event(ctx context.Context, mr config.MonitoredRoad, rd *api.Road, refreshed, now time.Time) (*gridv1.Event, error) {
@@ -213,6 +301,10 @@ func (n *RoadSegmentNormalizer) event(ctx context.Context, mr config.MonitoredRo
 		return d.Beyond[i].GetName() < d.Beyond[j].GetName()
 	})
 
+	d.Causes = roadCauses(rd)
+
+	// The headline says the status and no reason: an incident's wording is a
+	// model's, and the causes are on the detail.
 	headline := strings.TrimSpace(mr.Name+" "+mr.Section) + ": " + roadStatusWord(status)
 	for _, b := range d.Beyond {
 		if b.GetName() != "" {
@@ -229,6 +321,15 @@ func (n *RoadSegmentNormalizer) event(ctx context.Context, mr config.MonitoredRo
 	ev.Provenance = NewProvenance(RoadSegmentSourceID, "Road conditions", "Google · quickmap.dot.ca.gov", "")
 	ev.Provenance.FetchedAt = tsProto(now)
 	ev.Detail = &gridv1.Event_RoadSegment{RoadSegment: d}
+	// Caltrans's condition text, when that is a cause; an incident's words
+	// are on its own event.
+	var conditions []string
+	for _, c := range d.Causes {
+		if c.GetSource() == "road_condition" && c.GetText() != "" {
+			conditions = append(conditions, c.GetText())
+		}
+	}
+	ev.Description = strings.Join(conditions, "\n\n")
 
 	own := "corridor:" + mr.ID
 	places := map[string]bool{own: true}

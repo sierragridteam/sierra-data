@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -12,7 +13,9 @@ import (
 	gridv1 "github.com/sierragridteam/sierra-data/api/grid/v1"
 	api "github.com/sierragridteam/sierra-data/api/v1"
 	"github.com/sierragridteam/sierra-data/internal/config"
+	"github.com/sierragridteam/sierra-data/internal/hazards"
 	"github.com/sierragridteam/sierra-data/internal/store"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -260,4 +263,226 @@ func TestRoadSegmentLifecycle(t *testing.T) {
 	assert.Equal(t, "OPEN", revs[0].GetEvent().GetRoadSegment().GetStatus())
 	assert.Equal(t, "CLOSED", revs[1].GetEvent().GetRoadSegment().GetStatus())
 	assert.Equal(t, gridv1.EventStatus_ACTIVE, revs[1].GetEvent().GetStatus(), "the event is the road; closed is its state")
+}
+
+// modelText is what the roads service says of an incident or a lane
+// closure: a model's words, different at every refresh.
+func modelText() string { return "Roadway fully closed, as a model put it at " + time.Now().String() }
+
+func incidentCause(status api.RoadStatus, logNumber string) *api.RoadStatusCause {
+	return &api.RoadStatusCause{Status: status, Source: "incident", SourceId: logNumber,
+		Title: "CHP Incident " + logNumber, Description: modelText(),
+		Begin: &api.Coordinates{Latitude: 38.19 + float64(time.Now().Nanosecond())*1e-12, Longitude: -120.37}}
+}
+
+func conditionCause(status api.RoadStatus, text string) *api.RoadStatusCause {
+	return &api.RoadStatusCause{Status: status, Source: "road_condition", Description: text}
+}
+
+func oneRoadNormalizer(lister *fakeRoadLister) *RoadSegmentNormalizer {
+	cfg := roadSegmentConfig()
+	cfg.Roads.MonitoredRoads = cfg.Roads.MonitoredRoads[:1]
+	return NewRoadSegmentNormalizer(cfg, lister, nil)
+}
+
+// A road closed by a CHP incident says which incident, by the id the map
+// layer gives it, and carries none of the roads service's words for it: they
+// are a model's and change between refreshes.
+func TestRoadSegmentNormalizer_IncidentCause(t *testing.T) {
+	closed := road("hwy4-arnold-bearvalley", api.RoadStatus_CLOSED, api.CongestionLevel_CLEAR, 0)
+	closed.StatusCauses = []*api.RoadStatusCause{incidentCause(api.RoadStatus_CLOSED, "261118ST0331")}
+	lister := &fakeRoadLister{roads: []*api.Road{closed}}
+	n := oneRoadNormalizer(lister)
+	res, err := n.Poll(testCtx(), &fakePrior{})
+	require.NoError(t, err)
+	ev := res.Events[0]
+
+	causes := ev.GetRoadSegment().GetCauses()
+	require.Len(t, causes, 1)
+	assert.Equal(t, "CLOSED", causes[0].GetStatus())
+	assert.Equal(t, "incident", causes[0].GetSource())
+	assert.Equal(t, "chp:261118ST0331", causes[0].GetEventId())
+	assert.Equal(t, hazards.RoadCauseEventID(closed.StatusCauses[0]), causes[0].GetEventId(), "the map layer's id")
+	assert.Empty(t, causes[0].GetText(), "an incident's wording is a model's")
+	assert.Empty(t, ev.GetDescription())
+	assert.Equal(t, "Hwy 4 Arnold to Bear Valley: closed", ev.GetHeadline(), "no reason in the headline")
+	raw, err := protojson.Marshal(ev)
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), "model", "no model text anywhere on the event")
+	assert.NotContains(t, string(raw), "CHP Incident")
+
+	// The next refresh rewords the incident and moves its point: no change.
+	closed.StatusCauses = []*api.RoadStatusCause{incidentCause(api.RoadStatus_CLOSED, "261118ST0331")}
+	again, err := n.Poll(testCtx(), &scriptedPrior{events: res.Events})
+	require.NoError(t, err)
+	assert.Equal(t, store.ContentHash(ev), store.ContentHash(again.Events[0]))
+
+	// A lane closure names no event (the map layer gives it none) and keeps
+	// no text either.
+	closed.StatusCauses = []*api.RoadStatusCause{{Status: api.RoadStatus_RESTRICTED, Source: "lane_closure", SourceId: "C4TA", Description: modelText()}}
+	closed.Status = api.RoadStatus_RESTRICTED
+	res, err = n.Poll(testCtx(), &fakePrior{})
+	require.NoError(t, err)
+	lc := res.Events[0].GetRoadSegment().GetCauses()[0]
+	assert.Equal(t, "lane_closure", lc.GetSource())
+	assert.Empty(t, lc.GetEventId())
+	assert.Empty(t, lc.GetText())
+
+	// An open road has no causes, whatever the service lists (the map
+	// layer's rule).
+	closed.Status = api.RoadStatus_OPEN
+	res, err = n.Poll(testCtx(), &fakePrior{})
+	require.NoError(t, err)
+	assert.Empty(t, res.Events[0].GetRoadSegment().GetCauses())
+}
+
+// A road restricted by Caltrans's highway conditions carries the condition
+// text, as the cause's text and as the event's description.
+func TestRoadSegmentNormalizer_RoadConditionCause(t *testing.T) {
+	const oneWay = "1-WAY CONTROLLED TRAFFIC AT VARIOUS LOCATIONS FROM ARNOLD TO DORRINGTON /CALAVERAS CO/ - DUE TO TREE WORK"
+	const snow = "IS CLOSED FROM CAMP CONNELL TO BEAR VALLEY /CALAVERAS CO/ - DUE TO SNOW"
+	r := road("hwy4-arnold-bearvalley", api.RoadStatus_RESTRICTED, api.CongestionLevel_CLEAR, 40)
+	r.StatusCauses = []*api.RoadStatusCause{conditionCause(api.RoadStatus_RESTRICTED, "1-WAY CONTROLLED TRAFFIC  AT VARIOUS LOCATIONS FROM ARNOLD TO DORRINGTON /CALAVERAS CO/ - DUE TO TREE WORK\n")}
+	lister := &fakeRoadLister{roads: []*api.Road{r}}
+	n := oneRoadNormalizer(lister)
+	res, err := n.Poll(testCtx(), &fakePrior{})
+	require.NoError(t, err)
+	ev := res.Events[0]
+	causes := ev.GetRoadSegment().GetCauses()
+	require.Len(t, causes, 1)
+	assert.Equal(t, "RESTRICTED", causes[0].GetStatus())
+	assert.Equal(t, "road_condition", causes[0].GetSource())
+	assert.Empty(t, causes[0].GetEventId())
+	assert.Equal(t, oneWay, causes[0].GetText(), "Caltrans's text, whitespace collapsed")
+	assert.Equal(t, oneWay, ev.GetDescription())
+	assert.Equal(t, "Hwy 4 Arnold to Bear Valley: restricted", ev.GetHeadline(), "the headline is unchanged")
+
+	// With an incident beside two conditions, the description is the
+	// conditions only, closures first.
+	r.Status = api.RoadStatus_CLOSED
+	r.StatusCauses = []*api.RoadStatusCause{
+		conditionCause(api.RoadStatus_RESTRICTED, oneWay),
+		incidentCause(api.RoadStatus_CLOSED, "261118ST0331"),
+		conditionCause(api.RoadStatus_CLOSED, snow),
+	}
+	res, err = n.Poll(testCtx(), &fakePrior{})
+	require.NoError(t, err)
+	assert.Equal(t, snow+"\n\n"+oneWay, res.Events[0].GetDescription())
+	assert.Equal(t, "Hwy 4 Arnold to Bear Valley: closed", res.Events[0].GetHeadline())
+}
+
+// The roads service promises no order of causes and can list one twice. The
+// same causes in another order, through the scheduler, write no revision.
+func TestRoadSegmentCauses_OrderAndDuplicatesAreNotAChange(t *testing.T) {
+	ctx := testCtx()
+	cfg := roadSegmentConfig()
+	cfg.Roads.MonitoredRoads = cfg.Roads.MonitoredRoads[:1]
+	st := newSchedStore(t)
+	seedSchedSources(t, st, RoadSegmentSourceID)
+	causes := func() []*api.RoadStatusCause {
+		return []*api.RoadStatusCause{
+			conditionCause(api.RoadStatus_RESTRICTED, "CHAINS OR SNOW TIRES ARE REQUIRED"),
+			incidentCause(api.RoadStatus_CLOSED, "261118ST0331"),
+			incidentCause(api.RoadStatus_RESTRICTED, "261118ST0007"),
+			conditionCause(api.RoadStatus_CLOSED, "IS CLOSED DUE TO SNOW"),
+		}
+	}
+	r := road("hwy4-arnold-bearvalley", api.RoadStatus_CLOSED, api.CongestionLevel_CLEAR, 0)
+	r.StatusCauses = causes()
+	t0 := time.Now().Add(-40 * time.Minute)
+	lister := &fakeRoadLister{at: t0, roads: []*api.Road{r}}
+	sched := NewScheduler(st, SchedulerConfig{
+		Tuning: map[string]config.SourceTuning{RoadSegmentSourceID: {Disappearance: store.DisappearanceResolve}},
+	})
+	ps := &pollerState{}
+	spec := PollerSpec{Normalizer: NewRoadSegmentNormalizer(cfg, lister, nil), Interval: time.Minute}
+	const id = "road:hwy4-arnold-bearvalley"
+	sched.tick(ctx, spec, ps)
+	require.Equal(t, uint32(1), eventRevision(t, st, id))
+
+	for i, at := range []time.Duration{15 * time.Minute, 30 * time.Minute} {
+		c := causes()
+		slices.Reverse(c)
+		if i == 1 {
+			c = append(c[2:], append(causes(), c[:2]...)...) // rotated, and every cause twice
+		}
+		lister.at, r.StatusCauses = t0.Add(at), c
+		sched.tick(ctx, spec, ps)
+		assert.Equal(t, uint32(1), eventRevision(t, st, id), "the same causes, reordered and reworded")
+	}
+
+	got, err := st.GetEvent(ctx, id)
+	require.NoError(t, err)
+	var order []string
+	for _, c := range got.GetRoadSegment().GetCauses() {
+		order = append(order, c.GetStatus()+" "+c.GetSource()+" "+c.GetEventId()+c.GetText())
+	}
+	assert.Equal(t, []string{
+		"CLOSED incident chp:261118ST0331",
+		"CLOSED road_condition IS CLOSED DUE TO SNOW",
+		"RESTRICTED incident chp:261118ST0007",
+		"RESTRICTED road_condition CHAINS OR SNOW TIRES ARE REQUIRED",
+	}, order, "closures first, then source, event, text")
+}
+
+// A cause that is no longer listed while the status holds is what a failed
+// CHP or conditions fetch looks like: it waits for a second refresh, like a
+// reopening. A cause appearing, or anything more restrictive, is recorded at
+// once.
+func TestRoadSegmentNormalizer_CauseEasing(t *testing.T) {
+	t0 := time.Now().Add(-100 * time.Minute).Truncate(time.Second)
+	fire := func() *api.RoadStatusCause { return incidentCause(api.RoadStatus_CLOSED, "261118ST0331") }
+	snow := func() *api.RoadStatusCause { return conditionCause(api.RoadStatus_CLOSED, "IS CLOSED DUE TO SNOW") }
+	r := road("hwy4-arnold-bearvalley", api.RoadStatus_CLOSED, api.CongestionLevel_CLEAR, 0)
+	r.StatusCauses = []*api.RoadStatusCause{fire(), snow()}
+	lister := &fakeRoadLister{at: t0, roads: []*api.Road{r}}
+	n := oneRoadNormalizer(lister)
+	first, err := n.Poll(testCtx(), &fakePrior{})
+	require.NoError(t, err)
+	prior := &scriptedPrior{events: first.Events}
+	poll := func(at time.Duration, status api.RoadStatus, causes ...*api.RoadStatusCause) []string {
+		t.Helper()
+		lister.at, r.Status, r.StatusCauses = t0.Add(at), status, causes
+		res, err := n.Poll(testCtx(), prior)
+		require.NoError(t, err)
+		d := res.Events[0].GetRoadSegment()
+		out := []string{d.GetStatus()}
+		for _, c := range d.GetCauses() {
+			out = append(out, c.GetStatus()+" "+c.GetSource())
+		}
+		prior = &scriptedPrior{events: res.Events} // what the store now holds
+		return out
+	}
+	both := []string{"CLOSED", "CLOSED incident", "CLOSED road_condition"}
+
+	// The incident is gone for one refresh (a failed CHP fetch); the road is
+	// still closed for snow. Held, then back: nothing was written.
+	assert.Equal(t, both, poll(15*time.Minute, api.RoadStatus_CLOSED, snow()), "held")
+	assert.Equal(t, both, poll(15*time.Minute, api.RoadStatus_CLOSED, snow()), "the same refresh again is not a second opinion")
+	assert.Equal(t, both, poll(30*time.Minute, api.RoadStatus_CLOSED, snow(), fire()))
+
+	// Gone for two refreshes: recorded at the second.
+	assert.Equal(t, both, poll(45*time.Minute, api.RoadStatus_CLOSED, snow()), "first sight")
+	assert.Equal(t, []string{"CLOSED", "CLOSED road_condition"}, poll(60*time.Minute, api.RoadStatus_CLOSED, snow()), "confirmed")
+
+	// A cause appearing is recorded at once.
+	assert.Equal(t, both, poll(75*time.Minute, api.RoadStatus_CLOSED, snow(), fire()), "at once")
+
+	// A cause that sets less than it did, the status unchanged, eases: held.
+	assert.Equal(t, both, poll(90*time.Minute, api.RoadStatus_CLOSED, snow(), incidentCause(api.RoadStatus_RESTRICTED, "261118ST0331")), "held")
+	// One cause gone and another come: recorded at once, whatever it eases.
+	assert.Equal(t, both, poll(105*time.Minute, api.RoadStatus_CLOSED, fire(), conditionCause(api.RoadStatus_CLOSED, "IS CLOSED DUE TO A ROCK SLIDE")), "a new cause")
+	assert.Equal(t, "IS CLOSED DUE TO A ROCK SLIDE", prior.events[0].GetDescription(), "snow went and the slide came: recorded at once")
+
+	// More restrictive, with a cause gone at the same refresh: at once.
+	n = oneRoadNormalizer(lister)
+	lister.at, r.Status, r.StatusCauses = t0, api.RoadStatus_RESTRICTED, []*api.RoadStatusCause{conditionCause(api.RoadStatus_RESTRICTED, "CHAINS REQUIRED"), incidentCause(api.RoadStatus_RESTRICTED, "261118ST0007")}
+	res, err := n.Poll(testCtx(), &fakePrior{})
+	require.NoError(t, err)
+	prior = &scriptedPrior{events: res.Events}
+	assert.Equal(t, []string{"CLOSED", "CLOSED incident"}, poll(15*time.Minute, api.RoadStatus_CLOSED, fire()), "closed at once, though two causes went")
+
+	// Reopening drops every cause with the status, and waits like any easing.
+	assert.Equal(t, []string{"CLOSED", "CLOSED incident"}, poll(30*time.Minute, api.RoadStatus_OPEN), "held")
+	assert.Equal(t, []string{"OPEN"}, poll(45*time.Minute, api.RoadStatus_OPEN), "confirmed")
 }

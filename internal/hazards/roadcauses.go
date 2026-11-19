@@ -14,6 +14,21 @@ import (
 // (within ~100 m), so this is generous slack for the begin/end of a closure.
 const causeMaxOffsetMeters = 1000
 
+// RoadCauseEventID is the Grid event a status cause is, "" when it is none
+// or not known: a CHP incident is `chp:{log number}`, the id the incident
+// feed gives it (services.incidentID). A lane closure's source id is
+// Caltrans's closure id, which names no one event (the road_incident layer
+// has an event per work window), and a road condition is text only. The
+// `road_segment` map layer (`road.statusCauses[].eventId`) and the road's own
+// event (`roadSegment.causes[].eventId`, internal/ingest) both call this, so
+// the two cannot name different events.
+func RoadCauseEventID(c *api.RoadStatusCause) string {
+	if c.GetSource() == "incident" && c.GetSourceId() != "" {
+		return "chp:" + c.GetSourceId()
+	}
+	return ""
+}
+
 // roadStatusCauses projects the roads service's status causes onto the
 // segment's path (internal lat/lng order, origin first).
 func roadStatusCauses(rd *api.Road, path []LatLng) []RoadStatusCauseProps {
@@ -30,9 +45,7 @@ func roadStatusCauses(rd *api.Road, path []LatLng) []RoadStatusCauseProps {
 			Description: c.GetDescription(),
 			Extent:      "UNKNOWN",
 		}
-		if c.GetSource() == "incident" && c.GetSourceId() != "" {
-			p.EventID = "chp:" + c.GetSourceId()
-		}
+		p.EventID = RoadCauseEventID(c)
 		var from, to *float64
 		if b := c.GetBegin(); b != nil {
 			p.Begin = []float64{b.GetLongitude(), b.GetLatitude()}
