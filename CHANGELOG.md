@@ -21,6 +21,55 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-19 (road status)
+
+### Fixed: a road no longer reads OPEN because a Caltrans or CHP read failed
+
+On 2026-11-18 the monitored road `road:hwy4-arnold-bearvalley` alternated
+`CLOSED` and `OPEN` for five hours (revisions 4 to 9). Each `OPEN` revision
+had also lost the Ebbetts Pass winter closure (`roadSegment.beyond`), which
+Caltrans was listing the whole time: the read of its road-conditions page had
+come back with nothing, and that counted as "no conditions". A failed CHP
+read was treated the same way.
+
+- When the road-conditions page of a highway or the CHP incident feed cannot
+  be read, road status is worked out from the last good read of it: for up to
+  two hours for road conditions (Caltrans edits them rarely, and the page was
+  unreadable for up to an hour at a time that day), and for up to twice
+  `roads.refreshInterval` (30 minutes) for CHP incidents. After that the road
+  set is not refreshed at all, and monitored-road events keep their state.
+- A response that is not a road-conditions page (an error page, an empty
+  body) is a failed read, not an empty one. A real page that lists nothing
+  for the highway is still "no conditions".
+- `GET /api/v1/sources`: the `roads` row is `STALE` or `UNAVAILABLE` while an
+  input is failing, and its `lastError` says which and since when, e.g.
+  "road segments: road conditions for Hwy 4 unavailable since 17:05Z; last
+  good read used (HTTP error 503 fetching road conditions for highway 4)".
+  Before, `roads` stayed `OK` through these failures.
+
+No field or value changed. The revisions recorded on 2026-11-18 stay in the
+event's history.
+
+### Fixed: a CHP incident on a road beside a highway no longer sets the highway's status
+
+On 2026-11-18 `road:hwy49-angels-sonora` read `RESTRICTED` and then `CLOSED`
+for 75 minutes (revisions 6 and 7) because of CHP incident `chp:261118MR0292`,
+"21151 Old Sonora Columbia Rd": a county road, closed for a downed power pole,
+82 m from the Hwy 49 line. Any CHP incident within 100 m of a monitored road
+counted as on it.
+
+A CHP incident now sets a monitored road's status, and is listed in
+`road.statusCauses[]` / `roadSegment.causes[]`, only when it is on the highway
+itself: CHP's own location text names the route ("Sr49 / Reynolds Ferry Rd"),
+or its point is within 25 m of the road's line. Any other incident within
+100 m is near the road and sets nothing. The incident's own event
+(`layer=road_incident`) is unchanged. Lane closures and Caltrans road
+conditions are unaffected.
+
+One consequence to know: a CHP incident on the highway that CHP locates by a
+street address without the route number, and places more than 25 m off the
+line, no longer sets the road's status.
+
 ## 2026-11-19 (seasonal closures)
 
 ### Changed: a seasonal closure past a road's end is INFO and marked `seasonal`

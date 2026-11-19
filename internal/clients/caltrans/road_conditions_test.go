@@ -1,8 +1,13 @@
 package caltrans
 
 import (
+	"context"
+	"errors"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -426,4 +431,82 @@ func TestConditionSpan(t *testing.T) {
 		assert.Equal(t, tt.from, from, tt.text)
 		assert.Equal(t, tt.to, to, tt.text)
 	}
+}
+
+// pageDoer answers every request with one status and body, or an error.
+type pageDoer struct {
+	status int
+	body   string
+	err    error
+}
+
+func (d pageDoer) Do(*http.Request) (*http.Response, error) {
+	if d.err != nil {
+		return nil, d.err
+	}
+	return &http.Response{StatusCode: d.status, Body: io.NopCloser(strings.NewReader(d.body))}, nil
+}
+
+// unknownHighwayPage is what roads.dot.ca.gov answers (HTTP 200) for a
+// number it has nothing for, captured 2026-11-19 with roadnumber=9999.
+const unknownHighwayPage = `<!DOCTYPE html>
+<html lang="en"><head><title>Road Conditions</title></head><body>
+<div><hr>
+<p>There is no information available for Highway Number 9999.<br />
+Please check to make sure you entered the correct number and try again.</p>
+</div></body></html>`
+
+// A 200 response that is not a conditions page is an error, not "no
+// conditions": the roads service reads no conditions as an open road.
+func TestParseRoadConditions_NotAConditionsPageIsAnError(t *testing.T) {
+	for name, body := range map[string]string{
+		"empty body":       "",
+		"maintenance page": "<html><body><h1>Service Temporarily Unavailable</h1></body></html>",
+		"unknown highway":  unknownHighwayPage,
+		// The section is there and the marker sentence is not: still not a
+		// page to trust.
+		"section without the marker": "<html><body><h3>SR 4</h3><p>Is closed at Arnold</p><hr /></body></html>",
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := &FeedParser{HTTPClient: pageDoer{status: http.StatusOK, body: body}}
+			conditions, err := p.ParseRoadConditions(context.Background(), "4")
+			require.ErrorIs(t, err, ErrNotConditionsPage)
+			assert.Nil(t, conditions)
+		})
+	}
+}
+
+func TestParseRoadConditions_ConditionsPage(t *testing.T) {
+	p := &FeedParser{HTTPClient: pageDoer{status: http.StatusOK, body: testHTML}}
+
+	conditions, err := p.ParseRoadConditions(context.Background(), "4")
+	require.NoError(t, err)
+	assert.Len(t, conditions, 4)
+
+	// A real page with no section for the highway is a good read of no
+	// conditions.
+	conditions, err = p.ParseRoadConditions(context.Background(), "49")
+	require.NoError(t, err)
+	assert.Nil(t, conditions)
+}
+
+func TestParseRoadConditions_FetchFailures(t *testing.T) {
+	_, err := (&FeedParser{HTTPClient: pageDoer{status: http.StatusServiceUnavailable, body: testHTML}}).
+		ParseRoadConditions(context.Background(), "4")
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, ErrNotConditionsPage)
+
+	_, err = (&FeedParser{HTTPClient: pageDoer{err: errors.New("connection reset")}}).
+		ParseRoadConditions(context.Background(), "4")
+	require.Error(t, err)
+}
+
+func TestIsRoadConditionsPage_RealPages(t *testing.T) {
+	for _, file := range []string{"road_conditions_sr4_20261113.html", "road_conditions_sr108_20261113.html"} {
+		b, err := os.ReadFile(filepath.Join("..", "..", "..", "tests", "testdata", "caltrans", file))
+		require.NoError(t, err)
+		assert.True(t, IsRoadConditionsPage(string(b)), file)
+	}
+	assert.True(t, IsRoadConditionsPage(testHTML))
+	assert.False(t, IsRoadConditionsPage(unknownHighwayPage))
 }

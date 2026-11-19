@@ -58,9 +58,9 @@ func (f *fakeLaneClosureFetcher) LaneClosures(_ context.Context, district int) (
 	return f.rows[district], nil
 }
 
-// roadFeedDoer serves an empty chp-only.kml and fails everything else
-// (cc.kml, roads.dot.ca.gov — both tolerated by refreshRoadData). It records
-// whether lcs2way.kml was requested.
+// roadFeedDoer serves an empty chp-only.kml and a roads.dot.ca.gov page with
+// no conditions, and fails everything else (cc.kml, tolerated by
+// refreshRoadData). It records whether lcs2way.kml was requested.
 type roadFeedDoer struct {
 	mu       sync.Mutex
 	laneHits int
@@ -80,6 +80,8 @@ func (d *roadFeedDoer) Do(req *http.Request) (*http.Response, error) {
 			return nil, errors.New("lcs2way.kml should not be read")
 		}
 		return kmlResponse(d.laneBody), nil
+	case strings.Contains(u, "roadscell.php"):
+		return kmlResponse(conditionsPage(req.URL.Query().Get("roadnumber"))), nil
 	}
 	return nil, fmt.Errorf("simulated outage: %s", u)
 }

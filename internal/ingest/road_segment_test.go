@@ -14,6 +14,7 @@ import (
 	api "github.com/sierragridteam/sierra-data/api/v1"
 	"github.com/sierragridteam/sierra-data/internal/config"
 	"github.com/sierragridteam/sierra-data/internal/hazards"
+	"github.com/sierragridteam/sierra-data/internal/services"
 	"github.com/sierragridteam/sierra-data/internal/store"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -25,6 +26,13 @@ type fakeRoadLister struct {
 	roads []*api.Road
 	at    time.Time
 	err   error
+	// failed is the service's RoadInputHealth: status inputs it could not
+	// read at its last refresh.
+	failed []services.RoadInputFailure
+}
+
+func (f *fakeRoadLister) RoadInputHealth() ([]services.RoadInputFailure, time.Time) {
+	return f.failed, f.at
 }
 
 func (f *fakeRoadLister) ListRoads(context.Context, *api.ListRoadsRequest) (*api.ListRoadsResponse, error) {
@@ -203,6 +211,70 @@ func TestRoadSegmentNormalizer_StaleSetIsNotAReading(t *testing.T) {
 	assert.Contains(t, res.PerSource[RoadSegmentSourceID].Error(), "last refreshed")
 	require.Len(t, res.Events, 1, "still listed, so nothing is swept either way")
 	assert.Equal(t, "OPEN", res.Events[0].GetRoadSegment().GetStatus(), "an old set changes nothing")
+}
+
+// A status input the roads service could not read is reported on the roads
+// source, with what failed and since when. The events are still written:
+// they come from the service's last good read of that input.
+func TestRoadSegmentNormalizer_ReportsFailedStatusInputs(t *testing.T) {
+	cfg := roadSegmentConfig()
+	cfg.Roads.RefreshInterval = 15 * time.Minute
+	now := time.Date(2026, 11, 18, 17, 21, 0, 0, time.UTC)
+	closed := road("hwy4-arnold-bearvalley", api.RoadStatus_CLOSED, api.CongestionLevel_CLEAR, 38)
+	closed.StatusCauses = []*api.RoadStatusCause{conditionCause(api.RoadStatus_CLOSED, "Is closed from Camp Connell to Lake Alpine - Due to snow")}
+	closed.Beyond = []*api.RoadBeyond{{Status: api.RoadStatus_CLOSED, Side: "END", Name: "Ebbetts Pass winter closure"}}
+	lister := &fakeRoadLister{at: now.Add(-time.Minute), roads: []*api.Road{
+		closed,
+		road("hwy49-angels-sonora", api.RoadStatus_OPEN, api.CongestionLevel_CLEAR, 25),
+	}}
+	n := NewRoadSegmentNormalizer(cfg, lister, nil)
+	n.now = func() time.Time { return now }
+
+	first, err := n.Poll(testCtx(), &fakePrior{})
+	require.NoError(t, err)
+	require.Empty(t, first.PerSource)
+	require.Len(t, first.Events, 2)
+
+	// The next refresh could not read Hwy 4's conditions or CHP, and went on
+	// with the last good read of each: the same roads, a later refresh.
+	now = now.Add(15 * time.Minute)
+	lister.at = now.Add(-time.Minute)
+	lister.failed = []services.RoadInputFailure{
+		{Input: "CHP incidents", Since: lister.at, LastGoodUsed: true, Err: errors.New("HTTP error 500 downloading KML")},
+		{Input: "road conditions for Hwy 4", Since: lister.at, LastGoodUsed: true, Err: errors.New("HTTP error 503 fetching road conditions for highway 4")},
+	}
+	res, err := n.Poll(testCtx(), &scriptedPrior{events: first.Events})
+	require.NoError(t, err, "a failed input degrades the source; it is not a failed poll")
+	require.Error(t, res.PerSource[RoadSegmentSourceID])
+	assert.Equal(t,
+		"road segments: CHP incidents unavailable since 17:35Z; last good read used (HTTP error 500 downloading KML); "+
+			"road conditions for Hwy 4 unavailable since 17:35Z; last good read used (HTTP error 503 fetching road conditions for highway 4)",
+		res.PerSource[RoadSegmentSourceID].Error())
+
+	require.Len(t, res.Events, 2, "every road is still written")
+	hwy4 := res.Events[0].GetRoadSegment()
+	assert.Equal(t, "CLOSED", hwy4.GetStatus(), "from the last good read")
+	require.Len(t, hwy4.GetBeyond(), 1)
+	assert.Equal(t, store.ContentHash(first.Events[0]), store.ContentHash(res.Events[0]), "the same state: no revision")
+	assert.Equal(t, lister.at.Unix(), res.Events[0].GetObservedAt().AsTime().Unix())
+
+	// Past the stale window the service's refresh fails and it serves the
+	// set of an earlier one. Both facts are on the source.
+	now = now.Add(45 * time.Minute)
+	lister.failed[1].LastGoodUsed = false
+	res, err = n.Poll(testCtx(), &scriptedPrior{events: first.Events})
+	require.NoError(t, err)
+	msg := res.PerSource[RoadSegmentSourceID].Error()
+	assert.Contains(t, msg, "road status last refreshed 46m0s ago")
+	assert.Contains(t, msg, "road conditions for Hwy 4 unavailable since 17:35Z; no last good read to use, road status not refreshed")
+	require.Len(t, res.Events, 2)
+	assert.Equal(t, "CLOSED", res.Events[0].GetRoadSegment().GetStatus(), "the events keep their state")
+
+	// The inputs are read again: the source is clean.
+	lister.failed, lister.at = nil, now.Add(-time.Minute)
+	res, err = n.Poll(testCtx(), &scriptedPrior{events: first.Events})
+	require.NoError(t, err)
+	assert.Empty(t, res.PerSource)
 }
 
 func TestRoadSegmentNormalizer_FailLoud(t *testing.T) {
