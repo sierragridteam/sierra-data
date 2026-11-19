@@ -21,6 +21,52 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-19 (chains on roads)
+
+### Road segments say which chain requirements are on them: `road.chains`
+
+In a storm a monitored road such as `road:hwy4-arnold-bearvalley` is `OPEN`
+while Caltrans requires chains on most of it. That is right: chains do not
+change a road's status. But nothing on the road's own feature said so, and
+each client had to work out which `chain_control` stretch lies on which road.
+The `road_segment` map layer now states it. Additive: `status`, `severity`
+and `headline` are as they were, and so are the `chain_control` layer and the
+stored events.
+
+- **`road.chains[]`**: one entry per chain-control stretch (R1, R2, R3; not
+  closures, not truck or hold levels) that lies on the road, highest level
+  first, then by `eventId`:
+
+  ```json
+  {"level": "R2", "eventId": "cc:hwy4:r2",
+   "headline": "Hwy 4 chains required, Mill Creek to Mount Reba Road (R2)",
+   "from": "Mill Creek", "to": "Mount Reba Road",
+   "since": "2026-11-18T08:53:41-08:00", "inferred": false}
+  ```
+
+  Every value is the stretch's own, the `chain_control` feature with that id
+  (`eventId` is its id, `since` its `effective`, `from` and `to` its
+  `chainControl.from.place` and `to.place`). The stretch is not clipped to the
+  road: `from` and `to` can lie past the road's ends.
+- **Absent is not empty.** `chains` is absent when it is not known: the
+  chain-control read failed, came from one of Caltrans's two sources only, or
+  has a sign on the road's highway whose status or position could not be
+  read; or the road has no measured route yet. `"chains": []` is Caltrans
+  reporting no chain requirement on this road. Render absent as "unknown",
+  never as "none".
+- **Which stretch is on which road.** Same highway (Hwy 4 is never Hwy 49),
+  and either one of the stretch's signs stands within 250 m of the road's
+  line, or none does but its signs stand past both ends of the road. A
+  stretch that runs on past one end of a road and covers less than 1 km of
+  it is not on it: R2 from Blue Lake Springs up is on Arnold to Bear Valley
+  and not on the last 170 m of Murphys to Arnold. A single sign within 250 m
+  of where two monitored roads meet is on both.
+- The entry and the `chain_control` layer are separate reads of Caltrans,
+  each kept for up to 5 minutes, so one can show a change up to 5 minutes
+  before the other.
+
+Migration: none needed. A client that matched `chain_control` features to
+roads itself can read `road.chains` instead.
 ## 2026-11-19 (road status)
 
 ### Fixed: a road no longer reads OPEN because a Caltrans or CHP read failed
