@@ -636,3 +636,46 @@ func TestRoadChains_CancelledCallerIsNotRemembered(t *testing.T) {
 	require.NotNil(t, chains["hwy4-arnold-bearvalley"])
 	assert.Len(t, *chains["hwy4-arnold-bearvalley"], 1)
 }
+
+// RoadChainsOn is what the road-segment poller writes the stored event's
+// chains from. It is the feature's read: the same stretches on the same
+// roads, unknown where the feature has no `chains`, and never an answer for
+// a road with no real path.
+func TestRoadChainsOn_IsTheFeaturesRead(t *testing.T) {
+	cps := loadCheckpoints(t, stormCWWP2)
+	roads := shippedRoads(t)
+	served := func(s *Service) map[string]*api.Road {
+		resp, err := s.roads.ListRoads(testCtx(), &api.ListRoadsRequest{})
+		require.NoError(t, err)
+		byID := map[string]*api.Road{}
+		for _, rd := range resp.GetRoads() {
+			byID[rd.GetId()] = rd
+		}
+		return byID
+	}
+
+	s := roadService(t, kmlDoer{200, loadKML(t, stormKML)}, fixtureSource{cps}, cps)
+	feature, _ := roadChainsByID(t, s)
+	on := s.RoadChainsOn(testCtx())
+	for _, mr := range roads {
+		chains, known := on(mr, served(s)[mr.ID])
+		require.True(t, known, mr.ID)
+		require.NotNil(t, feature[mr.ID], mr.ID)
+		assert.Equal(t, *feature[mr.ID], chains, mr.ID)
+	}
+
+	// The two-point fallback line is not the road.
+	_, known := on(roads[0], &api.Road{Id: roads[0].ID, Status: api.RoadStatus_OPEN})
+	assert.False(t, known)
+	_, known = on(roads[0], nil)
+	assert.False(t, known)
+
+	// A read that cannot say is unknown for every road, as on the feature.
+	down := roadService(t, kmlDoer{503, ""}, fixtureSource{cps}, cps)
+	on = down.RoadChainsOn(testCtx())
+	for _, mr := range roads {
+		chains, known := on(mr, served(down)[mr.ID])
+		assert.False(t, known, mr.ID)
+		assert.Nil(t, chains, mr.ID)
+	}
+}

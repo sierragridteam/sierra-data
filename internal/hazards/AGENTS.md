@@ -171,7 +171,12 @@ layer would show no chain controls at all for anything else.
 ## `road_segment`: the chain requirements on a road (`road.chains`)
 
 A road under a chain requirement is OPEN, and that is decided: chains never
-change a road's `status`, `severity` or headline. Since 2026-11-19 each
+change a road's `status` or `severity`, nor the map feature's headline. (The
+stored road EVENT says them beside its status: `roadSegment.chains`, the
+headline "open, chains required (R2)", category `chains`. It reads them with
+`Service.RoadChainsOn`, the function this layer writes `road.chains` with,
+so the two cannot place a stretch differently; see "Monitored roads as
+events" in `internal/ingest/AGENTS.md`.) Since 2026-11-19 each
 `road_segment` feature says which chain-control stretches lie on it, so no
 client has to match stretches to roads itself (`roadchains.go`; the website,
 matching on a road id the stretches never carried, printed "Chains: None"

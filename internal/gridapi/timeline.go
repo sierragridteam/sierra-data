@@ -372,6 +372,7 @@ func revisionChanges(a, b *gridv1.Event) []*gridv1.TimelineEntry {
 		ra, rb := a.GetRoadSegment(), b.GetRoadSegment()
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "roadStatus", roadStatusLabel(ra.GetStatus(), rb.GetStatus()), enumWord(ra.GetStatus()), enumWord(rb.GetStatus()))
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "beyond", nonEmptyOr(beyondNames(rb), "Seasonal closure lifted"), beyondNames(ra), beyondNames(rb))
+		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "chains", roadChainsLabel(rb), roadChainLevel(ra), roadChainLevel(rb))
 	case gridv1.Layer_CHAIN_CONTROL:
 		diff(gridv1.TimelineKind_TIMELINE_CHANGED, "extent", "Now "+chainExtent(b.GetChainControl()), chainExtent(a.GetChainControl()), chainExtent(b.GetChainControl()))
 	case gridv1.Layer_SOURCE_HEALTH:
@@ -400,6 +401,28 @@ func roadStatusLabel(from, to string) string {
 		return "Roadwork"
 	}
 	return nonEmptyOr(enumWord(to), "Status unknown")
+}
+
+// roadChainLevel is the highest chain level on a monitored road, or "none".
+// It is what the timeline follows: a revision that only moves the
+// requirement to another stretch id at the same level is no entry.
+func roadChainLevel(d *gridv1.RoadSegmentDetail) string {
+	rank := map[string]int{"R1": 1, "R2": 2, "R3": 3}
+	top := "none"
+	for _, c := range d.GetChains() {
+		if rank[c.GetLevel()] > rank[top] {
+			top = c.GetLevel()
+		}
+	}
+	return top
+}
+
+// roadChainsLabel words a change of a monitored road's chain requirement.
+func roadChainsLabel(to *gridv1.RoadSegmentDetail) string {
+	if level := roadChainLevel(to); level != "none" {
+		return "Chains " + level
+	}
+	return "Chains lifted"
 }
 
 // beyondNames lists the seasonal closures in effect past a road's ends.

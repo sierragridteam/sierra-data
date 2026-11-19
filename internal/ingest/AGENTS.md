@@ -932,7 +932,8 @@ holds the state, a table holds the series.** The road sampler
   outside readers (`TestRoadHistoryShapeIsFixed`). Add a layer's series to
   the samples envelope as another list beside `road`, not to that route.
 
-- **Hashed: status, its causes and the seasonal closures past its ends.** Travel time,
+- **Hashed: status, its causes, the seasonal closures past its ends and the
+  chain requirements on it.** Travel time,
   delay and congestion level are samples and never on the event. Congestion
   was on it at first; in a week of production samples 11 of Hwy 49's 14
   changes were traffic crossing the clear/light line, burying two closures.
@@ -969,9 +970,44 @@ holds the state, a table holds the series.** The road sampler
   seasonal closure. On 2026-11-18 Hwy 4 Arnold to Bear Valley alternated
   CLOSED and OPEN for five hours (revisions 4 to 9), each OPEN one to four
   refreshes long and missing the Ebbetts Pass closure Caltrans was listing.
+- **Chains are beside the status, never in it** (2026-11-19, decided with
+  the user: "closed / chains / open" is how the history should read, and a
+  fourth status value cannot carry it, because a restricted or closed road
+  can be under chains too, the level matters, and every reader that checks
+  for `OPEN` would stop calling a chained road open). `roadSegment.chains`
+  is `{level, event_id}` per stretch on the road, from
+  `hazards.Service.RoadChainsOn`: the function the `road_segment` layer
+  writes `road.chains` with, over the same memoized registry read, so the
+  event and the feature place a stretch the same way (`UseRoadChains`,
+  wired in `cmd/server/writer.go`). The headline says the highest level,
+  "Hwy 4 Arnold to Bear Valley: open, chains required (R2)", and the
+  category is `chains` while the road is OPEN under one; a restricted or
+  closed road keeps its status as the category. **Severity does not move**:
+  the stretch is its own rated event, and rating the road too would count
+  one requirement twice. Rules:
+  - **Only level and stretch id are hashed.** Where a stretch begins and
+    ends moves through a storm; that is the stretch's event's history
+    (`TestRoadSegmentChains_OpenUnderChains`). A stretch id is a slot per
+    route and level, so a renumbered stretch is a revision here with the
+    level unchanged (no timeline entry: the timeline follows the highest
+    level).
+  - **Unknown keeps the last state.** When the read cannot say (a Caltrans
+    source down, an unreadable sign on the highway, no route polyline) the
+    event carries the chains it has stored, hash-equal, for as long as that
+    lasts. Never write "none" for unknown. `roads` is not degraded for it:
+    `caltrans-cc` is the source whose read failed, and it says so.
+  - **Lifted or lowered waits for a second refresh; started or raised is
+    recorded at once** (`eases`, by the highest level). A chain change that
+    leaves the highest level alone is recorded at once.
+  - **No chains hashes as before** (`TestRoadSegmentChains_NoChainsHashesAsBefore`):
+    the deploy minted no revision, and history starts at the deploy. Earlier
+    revisions carry no chains whatever the road was under.
+  - `internal/related/roads.go` links a road and the stored stretches its
+    chains name, both ways (`road-chains`); the timeline has "Chains R2" and
+    "Chains lifted" entries (`field: chains`, `internal/gridapi/timeline.go`).
 - **Easing waits for a second refresh.** A change that only
-  eases (a lower status, a closure gone, a cause gone, or a cause that sets
-  a lower status than it did) is recorded when a second refresh
+  eases (a lower status, a closure gone, a cause gone, a cause that sets
+  a lower status than it did, or a lower highest chain level) is recorded when a second refresh
   agrees (`pending`, poller-local); a change that restricts anything (a
   higher status, a closure or a cause added, a cause setting a higher
   status) is recorded at once, whatever else it eases. A cause is the same

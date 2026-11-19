@@ -21,6 +21,55 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-19 (chains on the road event)
+
+### A monitored road's event records the chain requirements on it: `roadSegment.chains`
+
+The stored event of a monitored road (`road:{id}`, layer `ROAD_SEGMENT`)
+recorded when the road closed and reopened, and nothing about chains: through
+the storm of 2026-11-18 the event of Hwy 4 Arnold to Bear Valley read "open"
+under R2. It now records them, beside the status and not as one. Additive:
+`roadSegment.status` and the event's `severity` are as they were, and a road
+under chains is still `OPEN`.
+
+- **`roadSegment.chains[]`**: one entry per chain-control stretch on the
+  road, highest level first:
+
+  ```json
+  {"level": "R2", "eventId": "cc:hwy4:r2"}
+  ```
+
+  `eventId` is the stretch: its `chain_control` map feature and its stored
+  event, which have the extent, the signs and when it began. The stretches
+  are the ones `road.chains` lists on the `road_segment` map layer, by the
+  same rule. Empty when Caltrans reports none.
+- **`headline`** says it: "Hwy 4 Arnold to Bear Valley: open, chains required
+  (R2)" (the highest level on the road). A road with no chains reads as
+  before.
+- **`category`** of a road event is its state in one word: `open`, `chains`
+  (open, under a chain requirement), `restricted`, `maintenance` or `closed`.
+  **If you match on `category: "open"` to mean "the road is open", match on
+  `roadSegment.status` instead**: an open road under chains is now `chains`.
+  A restricted or closed road under chains keeps its status as the category
+  and has the chains on `roadSegment.chains`.
+- **Revisions.** One when a requirement starts, ends or changes level on the
+  road (or moves to another stretch id), none when a stretch only grows or
+  shrinks. Started or raised is recorded at once; lifted or lowered once a
+  second refresh agrees (about 15 minutes), like a reopening.
+- **Unknown is not "none".** While the chain-control read cannot say (one of
+  Caltrans's two sources down, an unreadable sign on the highway), the event
+  keeps the chains it has. On the map layer `road.chains` is absent then; on
+  the event the list is the last known state. The `caltrans-cc` source says
+  when that read is failing.
+- **Timeline** (`GET /api/v1/events/{id}/timeline`): entries with `field:
+  "chains"`, labelled "Chains R2" and "Chains lifted", `before` and `after`
+  the highest level or `none`.
+- **Related** (`GET /api/v1/events/{id}/related`): a road lists the stored
+  stretches it is under, and a stretch the roads it is on, under the new
+  rule `road-chains` (HIGH).
+- History starts with this release. Revisions before it carry no chains,
+  whatever the road was under: read the `chain_control` events for those.
+
 ## 2026-11-19 (forecasts after a deploy)
 
 ### Fixed: `GET /api/v1/conditions` had no forecast for minutes after each deploy

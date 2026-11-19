@@ -156,9 +156,9 @@ func (e *Engine) Related(ctx context.Context, subject *gridv1.Event) ([]Relation
 		// time and place; see mesh.go.
 		return e.meshRelated(ctx, subject)
 	}
-	// A road and the events its status was read from name each other
-	// outright; see roads.go.
-	named, err := e.roadCauseRelated(ctx, subject)
+	// A road names the events its status was read from and the chain
+	// requirements on it outright; see roads.go.
+	named, err := e.roadNamedRelated(ctx, subject)
 	if err != nil {
 		return nil, err
 	}
