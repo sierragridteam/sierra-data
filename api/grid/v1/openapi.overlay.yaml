@@ -616,16 +616,17 @@ spec:
                 toKm: {type: number}
           beyond:
             type: array
-            description: "Named seasonal closures past one of the segment's ends that are in effect now, such as the Ebbetts Pass winter closure past Bear Valley. They do not change the segment's `status` or `severity`: the segment is as open as `status` says. An entry appears only when Caltrans words the closure as the configured span; any other closure naming those places closes the segment. Absent when there are none. Each entry is also a roads headline in the place summary, with the id `road:{segment}:beyond-{index}`."
+            description: "Named seasonal closures past one of the segment's ends that are in effect now, such as the Ebbetts Pass winter closure past Bear Valley. They do not change the segment's `status` or `severity`: the segment is as open as `status` says. An entry appears only when Caltrans words the closure as the configured span; any other closure naming those places closes the segment. Absent when there are none. A seasonal closure is INFO, so it is not counted or listed in the place summary's roads domain."
             items:
               type: object
-              required: [name, status, side, severity, severityRank, headline, source]
+              required: [name, status, side, seasonal, severity, severityRank, headline, source]
               properties:
                 name: {type: string, example: "Ebbetts Pass winter closure", description: "The closure's name."}
                 status: {type: string, enum: [CLOSED], description: "What the highway is past that end."}
                 side: {type: string, enum: [END, START], description: "END - past the segment's destination (the last coordinate of its line); START - before its origin."}
-                severity: {type: string, enum: [SEVERE], description: "The closure's own severity. The segment's `severity` does not include it."}
-                severityRank: {type: integer, example: 3}
+                seasonal: {type: boolean, example: true, description: "True for a closure that recurs every year at this place and is expected at this time of year. Show it as a standing condition, not as a hazard. Always true today."}
+                severity: {type: string, enum: [INFO, MINOR, MODERATE, SEVERE, EXTREME], example: INFO, description: "The closure's own severity. A seasonal closure is INFO. The segment's `severity` does not include it."}
+                severityRank: {type: integer, example: 0}
                 headline: {type: string, example: "Hwy 4: Ebbetts Pass winter closure (past Bear Valley) — snow", description: "One line that names the closure without calling the segment closed."}
                 source: {type: string, enum: [road_condition], description: "road_condition is Caltrans highway-conditions text."}
                 description: {type: string, description: "The source text, as published."}

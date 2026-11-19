@@ -81,7 +81,9 @@ func roadStatusCauses(rd *api.Road, path []LatLng) []RoadStatusCauseProps {
 	return out
 }
 
-// roadBeyond projects the seasonal closures past the segment's ends.
+// roadBeyond projects the seasonal closures past the segment's ends. Every
+// entry is one of the road's configured seasonal closures (the roads service
+// puts nothing else in Road.beyond), so every entry is `seasonal`.
 func roadBeyond(rd *api.Road, mr config.MonitoredRoad) []RoadBeyondProps {
 	var out []RoadBeyondProps
 	for _, b := range rd.GetBeyond() {
@@ -89,11 +91,16 @@ func roadBeyond(rd *api.Road, mr config.MonitoredRoad) []RoadBeyondProps {
 		if b.GetStatus() == api.RoadStatus_RESTRICTED {
 			status = api.RoadStatus_RESTRICTED
 		}
-		sev := roadSeverity(&api.Road{Status: status})
+		// A named seasonal closure is the road's yearly state, not today's
+		// news: INFO, whatever its status. At SEVERE (until 2026-11-19) the
+		// Ebbetts Pass winter closure led every "highest severity" list from
+		// November to May, and each client had to know to rank it down.
+		sev := SevInfo
 		out = append(out, RoadBeyondProps{
 			Name:     b.GetName(),
 			Status:   strings.TrimPrefix(status.String(), "ROAD_STATUS_"),
 			Side:     b.GetSide(),
+			Seasonal: true,
 			Severity: sev, SeverityRank: severityRank(sev),
 			Headline:    beyondHeadline(b, mr),
 			Source:      b.GetSource(),
