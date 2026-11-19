@@ -33,9 +33,11 @@ come back with nothing, and that counted as "no conditions". A failed CHP
 read was treated the same way.
 
 - When the road-conditions page of a highway or the CHP incident feed cannot
-  be read, road status is worked out from the last good read of it, for up to
-  twice `roads.refreshInterval` (30 minutes). After that the road set is not
-  refreshed at all, and monitored-road events keep their state.
+  be read, road status is worked out from the last good read of it: for up to
+  two hours for road conditions (Caltrans edits them rarely, and the page was
+  unreadable for up to an hour at a time that day), and for up to twice
+  `roads.refreshInterval` (30 minutes) for CHP incidents. After that the road
+  set is not refreshed at all, and monitored-road events keep their state.
 - A response that is not a road-conditions page (an error page, an empty
   body) is a failed read, not an empty one. A real page that lists nothing
   for the highway is still "no conditions".

@@ -131,18 +131,27 @@ timeout or a 200 with some other page is not known; all three are handled.
 
 `readStatusInput` gives both the lane-closure treatment:
 
-- A good read is cached: `chp_incidents:last_good` (the raw statewide set)
-  and `road_conditions:<highway number>`, TTL `roads.refreshInterval`.
+- A good read is cached: `chp_incidents:last_good` (the raw statewide set,
+  TTL `roads.refreshInterval`) and `road_conditions:<highway number>` (TTL
+  half of `roadConditionsServableFor`, so servable for two hours).
   **A page with no conditions is a good read and is cached as one** (Hwy 49
   usually has none). A page that is not a conditions page is an error in the
   client (`caltrans.ErrNotConditionsPage`).
-- A failed read serves the last good one while it is servable-stale (< 2x
-  `roads.refreshInterval`). Past that, or with nothing cached,
-  `refreshRoadData` returns an error and the periodic refresher keeps the
-  last good `roads:all`. With a 15m refresh that is one failed refresh on
-  the last good read; at the next the entry is about 30 minutes old and the
-  refresh usually fails. The road-segment poller then holds the events once
-  `roads:all` is itself older than 2x the interval.
+- A failed read serves the last good one while it is servable. Past that,
+  or with nothing cached, `refreshRoadData` returns an error and the
+  periodic refresher keeps the last good `roads:all`; the road-segment
+  poller then holds the events once `roads:all` is itself older than 2x the
+  interval.
+- **The two windows differ on purpose.** CHP incidents turn over in minutes:
+  2x `roads.refreshInterval`, the lane-closure window (with a 15m refresh,
+  one failed refresh runs on the last good set and the next usually fails).
+  Road conditions are paragraphs Caltrans edits a few times a day at most,
+  and on 2026-11-18 the page was unreadable for up to an hour at a time:
+  `roadConditionsServableFor`, two hours. With the short window an hour's
+  outage of that one page would have stopped every road's travel times and
+  then emptied the road layer, in a storm. The cost: a closure Caltrans
+  lifts during an outage stays up to two hours (the error this code
+  prefers), and the `roads` source says the read is old the whole time.
 - `chp_incidents:last_good` is written by both CHP readers:
   `refreshRoadData` and `refreshIncidents` (the incidents feed, on its own 5m
   cadence), so the fallback is as fresh as the newer of the two. Neither

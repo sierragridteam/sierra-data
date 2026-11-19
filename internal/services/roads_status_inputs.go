@@ -18,11 +18,23 @@ import (
 // Caltrans listed throughout: the conditions read had returned nothing.
 //
 // Both now follow segmentLaneClosures: a failed read serves the last good
-// one while it is servable-stale (< 2x roads.refreshInterval); past that it
-// is an error that fails refreshRoadData, so the periodic refresher keeps
-// the last good roads:all instead of publishing a guessed OPEN. Either way
-// the failure is remembered (RoadInputHealth) and the road-segment poller
-// reports it on the roads source.
+// one while it is servable; past that it is an error that fails
+// refreshRoadData, so the periodic refresher keeps the last good roads:all
+// instead of publishing a guessed OPEN. Either way the failure is remembered
+// (RoadInputHealth) and the road-segment poller reports it on the roads
+// source.
+//
+// How long a last good read is servable differs, because the two inputs age
+// differently. CHP incidents turn over in minutes: 2x roads.refreshInterval,
+// the lane-closure window. Road conditions are paragraphs Caltrans edits a
+// few times a day at most (the winter closure stands for months), and the
+// page was unreadable for up to an hour at a time on 2026-11-18:
+// roadConditionsServableFor (two hours). An hour-old conditions read is a
+// better statement about the road than none, and with the shorter window an
+// hour's outage of that one page would stop every road's travel times too.
+// The cost is that a closure Caltrans lifts during an outage stays for up to
+// two hours, which is the error this code prefers, and that one it posts is
+// missed, which it would be anyway.
 
 const (
 	// roadConditionsKeyPrefix + a highway number ("road_conditions:4") caches
@@ -38,13 +50,25 @@ const (
 	chpIncidentsKey = "chp_incidents:last_good"
 )
 
-// statusInputTTL is the TTL of a cached status input: the roads refresh
+// roadConditionsServableFor is how long a last good roads.dot.ca.gov read
+// stands in for a failed one (see the note above). A judgment: longer than
+// the longest outage seen (an hour), far shorter than a storm.
+const roadConditionsServableFor = 2 * time.Hour
+
+// statusInputTTL is the TTL of the cached CHP set: the roads refresh
 // interval, so an entry is servable-stale until twice that.
 func (s *RoadsService) statusInputTTL() time.Duration {
 	if ttl := s.config.Roads.RefreshInterval; ttl > 0 {
 		return ttl
 	}
 	return 15 * time.Minute
+}
+
+// roadConditionsTTL is the TTL of a cached conditions read. The cache serves
+// an entry until twice its TTL, so this is half of roadConditionsServableFor,
+// and never less than the CHP set's.
+func (s *RoadsService) roadConditionsTTL() time.Duration {
+	return max(roadConditionsServableFor/2, s.statusInputTTL())
 }
 
 // RoadInputFailure is one status input that failed at the roads service's
@@ -93,15 +117,15 @@ type roadInputOutcome struct {
 }
 
 // readStatusInput reads one status input. A good read is cached under key
-// and returned. A failed one returns the last good read while it is
-// servable-stale (outcome.lastGoodUsed), and otherwise nothing: the caller
+// with ttl and returned. A failed one returns the last good read while it is
+// servable (younger than 2x ttl; outcome.lastGoodUsed), and otherwise nothing: the caller
 // must then fail the refresh rather than carry on as if nothing were
 // reported.
-func readStatusInput[T any](ctx context.Context, s *RoadsService, key, input string, fetch func() (T, error)) (T, roadInputOutcome) {
+func readStatusInput[T any](ctx context.Context, s *RoadsService, key, input string, ttl time.Duration, fetch func() (T, error)) (T, roadInputOutcome) {
 	out := roadInputOutcome{key: key, input: input}
 	v, err := fetch()
 	if err == nil {
-		if cerr := s.cache.Set(key, v, s.statusInputTTL(), "road_status_input"); cerr != nil {
+		if cerr := s.cache.Set(key, v, ttl, "road_status_input"); cerr != nil {
 			logging.Errorw(ctx, "Failed to cache road status input", "input", input, "error", cerr)
 		}
 		return v, out
@@ -122,7 +146,7 @@ func readStatusInput[T any](ctx context.Context, s *RoadsService, key, input str
 
 // statusCHPIncidents is the CHP incident set per-road status is read from.
 func (s *RoadsService) statusCHPIncidents(ctx context.Context) ([]caltrans.CaltransIncident, roadInputOutcome) {
-	return readStatusInput(ctx, s, chpIncidentsKey, "CHP incidents", func() ([]caltrans.CaltransIncident, error) {
+	return readStatusInput(ctx, s, chpIncidentsKey, "CHP incidents", s.statusInputTTL(), func() ([]caltrans.CaltransIncident, error) {
 		return s.caltransClient.ParseCHPIncidents(ctx)
 	})
 }
@@ -150,7 +174,7 @@ func (s *RoadsService) fetchRoadConditions(ctx context.Context) (map[string][]ca
 		}
 		seen[hwNum] = true
 
-		conditions, outcome := readStatusInput(ctx, s, roadConditionsKeyPrefix+hwNum, "road conditions for Hwy "+hwNum,
+		conditions, outcome := readStatusInput(ctx, s, roadConditionsKeyPrefix+hwNum, "road conditions for Hwy "+hwNum, s.roadConditionsTTL(),
 			func() ([]caltrans.RoadCondition, error) {
 				return s.caltransClient.ParseRoadConditions(ctx, hwNum)
 			})

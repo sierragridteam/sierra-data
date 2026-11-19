@@ -172,8 +172,8 @@ func requireStormState(t *testing.T, roads []*api.Road, msg string) {
 }
 
 // The 2026-11-18 defect. Whichever way the roads.dot.ca.gov read fails, the
-// road keeps the state of the last good read while that read is
-// servable-stale; past that the refresh fails, so the caller keeps its last
+// road keeps the state of the last good read while that read is servable
+// (two hours, roadConditionsServableFor); past that the refresh fails, so the caller keeps its last
 // good road set. It never reads as "no conditions", which is OPEN with no
 // seasonal closure.
 func TestRefreshRoadData_FailedConditionsReadIsNotOpen(t *testing.T) {
@@ -211,8 +211,9 @@ func TestRefreshRoadData_FailedConditionsReadIsNotOpen(t *testing.T) {
 			assert.True(t, failed[0].LastGoodUsed)
 			require.Error(t, failed[0].Err)
 
-			// Still failing; the last good read is stale and still servable.
-			c.Backdate(roadConditionsKeyPrefix+"4", 20*time.Minute)
+			// Still failing an hour on, the longest outage of 2026-11-18: the
+			// last good read is still servable (roadConditionsServableFor).
+			c.Backdate(roadConditionsKeyPrefix+"4", 60*time.Minute)
 			clock.advance(15 * time.Minute)
 			roads, err = s.refreshRoadData(testCtx())
 			require.NoError(t, err)
@@ -223,7 +224,7 @@ func TestRefreshRoadData_FailedConditionsReadIsNotOpen(t *testing.T) {
 			assert.True(t, failed[0].LastGoodUsed)
 
 			// Past the stale window: the refresh fails rather than guess.
-			c.Backdate(roadConditionsKeyPrefix+"4", 15*time.Minute) // 35m > 2x15m
+			c.Backdate(roadConditionsKeyPrefix+"4", 61*time.Minute) // 121m > roadConditionsServableFor
 			clock.advance(15 * time.Minute)
 			_, err = s.refreshRoadData(testCtx())
 			require.Error(t, err, "an unreadable Hwy 4 must not publish its roads as OPEN")
