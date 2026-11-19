@@ -905,7 +905,32 @@ stores one long-lived event per `roads.monitoredRoads` entry, layer
 `ROAD_SEGMENT`, id `road:<id>`. It is the mesh-node pattern: **the event
 holds the state, a table holds the series.** The road sampler
 (`runRoadSampling`) still writes `road_samples` every refresh, and
-`GET /api/v1/events/{id}/samples` serves them through the event.
+`GET /api/v1/events/{id}/samples` serves them through the event
+(`internal/gridapi/event_samples.go`), shaped for a chart:
+
+- **At most `maxPoints` points** (default 500, ceiling 2000). Past that the
+  rows are bucketed in Go on a fixed ladder (5m to 1d, then whole days),
+  aligned to the epoch. The window is clamped to 400 days (about 38k rows of
+  one road), which is why it reads the rows whole; do not lift that clamp
+  without moving the aggregation into SQL.
+- **A CLOSED sample has no travel time.** Google goes on routing a closed
+  segment, so the stored `duration_m` is 27 to 30 minutes on a closed pass.
+  The table keeps what the router said; the endpoint leaves closed samples
+  out of every figure and answers `null` when nothing counts.
+- **`gaps` use the sampler's cadence**, `store.RoadSampleInterval` (the
+  constant `cmd/server` wires into `RoadSampling.Interval`), or
+  `roads.refreshInterval` if that is ever slower: a sample is stamped with
+  its set's refresh time, so one refresh is at most one sample. A gap is
+  more than three of those. Change the cadence in that one constant.
+- **Its ETag is read from the rows** (`Store.RoadSampleCoverage`: count,
+  first, last of the window), not from a `versions` counter: samples are
+  written outside the revision path and bump none. A window ending now is
+  also keyed by the current sampling interval, because its bounds move with
+  the clock.
+- `GET /api/v1/roads/{road}/history` reads the same table and is **frozen**:
+  every row, unbucketed, closed travel times included, no ETag. It may have
+  outside readers (`TestRoadHistoryShapeIsFixed`). Add a layer's series to
+  the samples envelope as another list beside `road`, not to that route.
 
 - **Hashed: status and the seasonal closures past its ends.** Travel time,
   delay and congestion level are samples and never on the event. Congestion

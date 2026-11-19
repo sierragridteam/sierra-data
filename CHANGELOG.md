@@ -21,6 +21,67 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-19
+
+### BREAKING: event samples are shaped for a chart
+
+`GET /api/v1/events/{id}/samples` shipped on 2026-11-17 returning every stored
+row of a monitored road. It now answers a bounded number of points, says what
+the window holds and where it has holes, and no longer reports a travel time
+for a closed road. **`GET /api/v1/roads/{road}/history` is unchanged**: the
+same rows, the same shape, no ceiling. A client that wants the raw rows reads
+that.
+
+What moved, for a client of the 2026-11-17 shape (`eventId`, `layer`, `from`,
+`to` are as before):
+
+- **`road[]` is a list of points, not rows.** A point has `at`, `samples`,
+  `status`, `congestion`, `durationMinutes`, `durationMinutesMin`,
+  `durationMinutesMax`, `delayMinutes` and `delayMinutesMax`. `at`, `status`
+  and `congestion` read as before when a point is one sample.
+  `durationMinutes` and `delayMinutes` are now numbers with one decimal
+  (`28.4`), not integers: a generated client's type changes.
+- **New request parameter `maxPoints`** (default 500, above 2000 is read as
+  2000, below 1 or not a number is a 400). A window holding more samples than
+  that is answered in buckets, so the default week of one road (about 670
+  samples) is now about 336 half-hour points. Pass `maxPoints=2000` to get a week
+  sample by sample.
+- **`bucketSeconds`** is 0 when each point is one sample (`samples: 1`, and
+  the minimum, maximum and value are equal). Otherwise it is the width of a
+  bucket: the narrowest of 5, 15 and 30 minutes, 1, 2, 3, 6 and 12 hours and
+  1 day that brings the answer to `maxPoints` or fewer, then the fewest whole
+  days. A bucketed point's `at` is the bucket's start, `samples` how many
+  samples it holds, `durationMinutes` and `delayMinutes` their mean,
+  `status` the most restrictive among them (CLOSED, then RESTRICTED, then
+  MAINTENANCE, then OPEN) and `congestion` the worst. Buckets are aligned to
+  the Unix epoch, so a bucket starts at the same time whatever window asked
+  for it; the first point's `at` can therefore be earlier than `from`, and the
+  first and last buckets hold only the samples inside the window.
+- **A closed road has no travel time.** The router goes on answering for a
+  closed segment (27 to 30 minutes on a closed pass), and the old shape passed
+  that on. A sample taken while the status was CLOSED now contributes nothing:
+  a closed point's `durationMinutes`, its minimum and maximum, and both delay
+  fields are `null`, and a bucket averages only its samples that were not
+  closed. `null` also still means a refresh that had no travel time. Draw
+  nothing for `null`; never 0.
+- **`coverage`** `{first, last, samples}`: the first and last sample in the
+  window and how many it holds, before bucketing (`null`, `null`, `0` for an
+  empty window).
+- **`gaps`** `[{from, to}]`: stretches of the window without samples, oldest
+  first. Two consecutive samples more than 45 minutes apart (three sampling
+  intervals) are a gap; so are the stretch from `from` to the first sample and
+  from the last sample to `to` (to now, when `to` is in the future). An empty
+  window is one gap. Break the line there: before this, a chart joined across
+  an outage.
+- **Conditional GET.** The response carries an `ETag`; `If-None-Match` answers
+  304 until a sample lands in (or leaves) the window. A window ending now
+  also revalidates every 15 minutes, because its trailing gap grows.
+
+Unchanged: an event on a layer without samples, or an unknown id, is 404;
+`from` not before `to` is 400; the default window is the 7 days before `to`.
+Other layers' series will arrive as further lists beside `road`, in the same
+envelope.
+
 ## 2026-11-18
 
 ### `Event.subhead`: what tells two events with one headline apart
