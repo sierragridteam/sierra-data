@@ -21,6 +21,24 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-19 (MCP setup page)
+
+### Added: `/mcp` shows setup instructions to a browser
+
+Opening <https://data.sierragridteam.org/mcp> in a browser now returns a page
+with the steps to add the server to Claude, ChatGPT and Gemini, linked from
+the landing page and `llms.txt`. It used to answer `405`.
+
+**MCP clients see no change.** The page is served only to a `GET` (or `HEAD`)
+whose `Accept` names `text/html` and does not name `text/event-stream`. Every
+`POST`, and every `GET` that asks for an event stream, for `*/*`, or for
+nothing in particular, is answered as before: JSON-RPC over `POST`, `405` with
+`Allow: POST` otherwise. `GET` responses now carry `Vary: Accept`, and the
+`405` text also says where the instructions are.
+
+The OpenAPI description of `/mcp` gains the `GET` operation and lists the
+`grid_search`, `search` and `fetch` tools, which it had been missing.
+
 ## 2026-11-19 (chains on the road event)
 
 ### A monitored road's event records the chain requirements on it: `roadSegment.chains`

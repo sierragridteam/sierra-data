@@ -164,3 +164,101 @@ func TestRenderChangelogDropsRawHTML(t *testing.T) {
 	assert.NotContains(t, out, "<script>alert")
 	assert.NotContains(t, out, "<place>")
 }
+
+func TestMCPRoute(t *testing.T) {
+	// The stand-in for the MCP handler answers like the real one does to a GET.
+	const mcpAnswer = "mcp handler"
+	route := mcpRoute(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", "POST")
+			http.Error(w, mcpAnswer, http.StatusMethodNotAllowed)
+			return
+		}
+		_, _ = w.Write([]byte(mcpAnswer))
+	})
+	do := func(method, accept string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, "/mcp", strings.NewReader("{}"))
+		if accept != "" {
+			req.Header.Set("Accept", accept)
+		}
+		rec := httptest.NewRecorder()
+		route(rec, req)
+		return rec
+	}
+	const browser = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+
+	t.Run("a browser gets the setup page", func(t *testing.T) {
+		rec := do(http.MethodGet, browser)
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "text/html; charset=utf-8", rec.Header().Get("Content-Type"))
+		assert.Equal(t, "Accept", rec.Header().Get("Vary"))
+		assert.NotEmpty(t, rec.Header().Get("ETag"))
+		body := rec.Body.String()
+		for _, want := range []string{
+			"https://data.sierragridteam.org/mcp",
+			`id="claude"`, `id="chatgpt"`, `id="gemini"`,
+			"Add custom connector", "Add custom MCP server", "Add a custom app",
+			`href="/style.css"`, `href="/"`,
+		} {
+			assert.Contains(t, body, want)
+		}
+	})
+
+	t.Run("the page makes no external requests and runs no script", func(t *testing.T) {
+		body := do(http.MethodGet, browser).Body.String()
+		for _, attr := range []string{`src="`, `href="//`, `@import`, "<script"} {
+			assert.NotContains(t, body, attr)
+		}
+	})
+
+	t.Run("HEAD and a conditional GET behave like the other pages", func(t *testing.T) {
+		head := do(http.MethodHead, browser)
+		assert.Equal(t, http.StatusOK, head.Code)
+		assert.Empty(t, head.Body.String())
+
+		req := httptest.NewRequest(http.MethodGet, "/mcp", nil)
+		req.Header.Set("Accept", browser)
+		req.Header.Set("If-None-Match", head.Header().Get("ETag"))
+		rec := httptest.NewRecorder()
+		route(rec, req)
+		assert.Equal(t, http.StatusNotModified, rec.Code)
+	})
+
+	t.Run("every MCP client request reaches the MCP handler", func(t *testing.T) {
+		// What the Streamable HTTP spec has a client send on GET, what SDKs and
+		// curl send, and no Accept at all: none of them may be given HTML.
+		for _, accept := range []string{
+			"text/event-stream",
+			"application/json, text/event-stream",
+			"text/event-stream, text/html",
+			"TEXT/EVENT-STREAM;q=1, text/html;q=0.5",
+			"*/*",
+			"application/json",
+			"",
+		} {
+			rec := do(http.MethodGet, accept)
+			assert.Equal(t, http.StatusMethodNotAllowed, rec.Code, accept)
+			assert.Equal(t, "POST", rec.Header().Get("Allow"), accept)
+			assert.Contains(t, rec.Body.String(), mcpAnswer, accept)
+			assert.Equal(t, "Accept", rec.Header().Get("Vary"), accept)
+		}
+	})
+
+	t.Run("POST is the MCP handler whatever it accepts", func(t *testing.T) {
+		for _, accept := range []string{"application/json, text/event-stream", browser, ""} {
+			rec := do(http.MethodPost, accept)
+			assert.Equal(t, http.StatusOK, rec.Code, accept)
+			assert.Equal(t, mcpAnswer, rec.Body.String(), accept)
+			assert.Empty(t, rec.Header().Get("Vary"), accept)
+		}
+		for _, method := range []string{http.MethodDelete, http.MethodPut, http.MethodOptions} {
+			assert.Equal(t, http.StatusMethodNotAllowed, do(method, browser).Code, method)
+		}
+	})
+}
+
+func TestLandingLinksTheMCPSetupPage(t *testing.T) {
+	body := siteGet(t, http.MethodGet, "/").Body.String()
+	assert.Contains(t, body, `<a href="/mcp">/mcp</a>`)
+	assert.Contains(t, siteGet(t, http.MethodGet, "/llms.txt").Body.String(), "https://data.sierragridteam.org/mcp")
+}

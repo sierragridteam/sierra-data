@@ -1428,8 +1428,9 @@ spec:
           `sierra-grid`) for LLM agents. Stateless request/response: POST one
           JSON-RPC message, get one JSON response (no SSE stream, no session id).
           A notification (no `id`) is answered `202` with no body. Any other HTTP
-          method is `405`. Tools call this same `/api/v1` surface in-process and
-          every result carries a reference-only disclaimer.
+          method is `405`, except a GET for HTML (below). Tools call this same
+          `/api/v1` surface in-process and every result carries a reference-only
+          disclaimer.
 
           Tools (`tools/list` for their input schemas):
           - `grid_situation`: what is happening at a place, address or lat,lng
@@ -1437,6 +1438,10 @@ spec:
           - `grid_events`: list events, filtered by location, layer, severity,
             status and time.
           - `grid_event`: one event in full, by id.
+          - `grid_search`: find a thing by name (events, mesh nodes, places,
+            roads, cameras, scanner feeds).
+          - `search`, `fetch`: the same search and one record by id, in the
+            shape research clients expect.
           - `grid_conditions`: current weather and fire-weather state.
           - `grid_resolve`: address or lat,lng to the places containing it.
           - `grid_places`: the place directory.
@@ -1476,8 +1481,34 @@ spec:
             content:
               text/plain:
                 schema: {type: string}
-                example: "MCP endpoint accepts POST (JSON-RPC)\n"
+                example: "MCP endpoint accepts POST (JSON-RPC). Setup instructions: open this URL in a browser.\n"
           "503": {$ref: "#/components/responses/HandoffUnavailable"}
+      get:
+        tags: [MCP]
+        operationId: McpSetupPage
+        summary: Setup instructions for MCP clients (HTML), or 405
+        description: |
+          The endpoint's URL doubles as its help page. A GET whose `Accept`
+          names `text/html` and not `text/event-stream` (a browser, or an agent
+          fetching the link) returns an HTML page with the steps to add this
+          server to Claude, ChatGPT and Gemini. Every other GET is `405`, which
+          is the Streamable HTTP answer to a client asking for an event stream:
+          this server offers none. Responses carry `Vary: Accept`.
+        responses:
+          "200":
+            description: The setup page.
+            content:
+              text/html:
+                schema: {type: string}
+          "405":
+            description: The request did not ask for HTML. MCP clients POST.
+            headers:
+              Allow:
+                schema: {type: string, example: POST}
+            content:
+              text/plain:
+                schema: {type: string}
+                example: "MCP endpoint accepts POST (JSON-RPC). Setup instructions: open this URL in a browser.\n"
 
     /api/openapi.json:
       get:

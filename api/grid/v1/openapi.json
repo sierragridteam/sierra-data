@@ -3474,8 +3474,47 @@
       }
     },
     "/mcp": {
+      "get": {
+        "description": "The endpoint's URL doubles as its help page. A GET whose `Accept`\nnames `text/html` and not `text/event-stream` (a browser, or an agent\nfetching the link) returns an HTML page with the steps to add this\nserver to Claude, ChatGPT and Gemini. Every other GET is `405`, which\nis the Streamable HTTP answer to a client asking for an event stream:\nthis server offers none. Responses carry `Vary: Accept`.\n",
+        "operationId": "McpSetupPage",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The setup page."
+          },
+          "405": {
+            "content": {
+              "text/plain": {
+                "example": "MCP endpoint accepts POST (JSON-RPC). Setup instructions: open this URL in a browser.\n",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The request did not ask for HTML. MCP clients POST.",
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "example": "POST",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Setup instructions for MCP clients (HTML), or 405",
+        "tags": [
+          "MCP"
+        ]
+      },
       "post": {
-        "description": "A read-only MCP server (protocol revision `2025-06-18`, server name\n`sierra-grid`) for LLM agents. Stateless request/response: POST one\nJSON-RPC message, get one JSON response (no SSE stream, no session id).\nA notification (no `id`) is answered `202` with no body. Any other HTTP\nmethod is `405`. Tools call this same `/api/v1` surface in-process and\nevery result carries a reference-only disclaimer.\n\nTools (`tools/list` for their input schemas):\n- `grid_situation`: what is happening at a place, address or lat,lng\n  (mode, per-domain status, top headlines). Start here.\n- `grid_events`: list events, filtered by location, layer, severity,\n  status and time.\n- `grid_event`: one event in full, by id.\n- `grid_conditions`: current weather and fire-weather state.\n- `grid_resolve`: address or lat,lng to the places containing it.\n- `grid_places`: the place directory.\n- `grid_sources`: feed health.\n- `grid_history`: revisions over a time range.\n\nResource `grid://reference` (the API reference, Markdown); prompt\n`hazard_briefing(location)`.\n\nNot callable from a browser cross-origin (CORS allows GET only).\n",
+        "description": "A read-only MCP server (protocol revision `2025-06-18`, server name\n`sierra-grid`) for LLM agents. Stateless request/response: POST one\nJSON-RPC message, get one JSON response (no SSE stream, no session id).\nA notification (no `id`) is answered `202` with no body. Any other HTTP\nmethod is `405`, except a GET for HTML (below). Tools call this same\n`/api/v1` surface in-process and every result carries a reference-only\ndisclaimer.\n\nTools (`tools/list` for their input schemas):\n- `grid_situation`: what is happening at a place, address or lat,lng\n  (mode, per-domain status, top headlines). Start here.\n- `grid_events`: list events, filtered by location, layer, severity,\n  status and time.\n- `grid_event`: one event in full, by id.\n- `grid_search`: find a thing by name (events, mesh nodes, places,\n  roads, cameras, scanner feeds).\n- `search`, `fetch`: the same search and one record by id, in the\n  shape research clients expect.\n- `grid_conditions`: current weather and fire-weather state.\n- `grid_resolve`: address or lat,lng to the places containing it.\n- `grid_places`: the place directory.\n- `grid_sources`: feed health.\n- `grid_history`: revisions over a time range.\n\nResource `grid://reference` (the API reference, Markdown); prompt\n`hazard_briefing(location)`.\n\nNot callable from a browser cross-origin (CORS allows GET only).\n",
         "operationId": "Mcp",
         "requestBody": {
           "content": {
@@ -3538,7 +3577,7 @@
           "405": {
             "content": {
               "text/plain": {
-                "example": "MCP endpoint accepts POST (JSON-RPC)\n",
+                "example": "MCP endpoint accepts POST (JSON-RPC). Setup instructions: open this URL in a browser.\n",
                 "schema": {
                   "type": "string"
                 }

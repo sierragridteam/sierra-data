@@ -21,7 +21,7 @@ import (
 // build step and no JavaScript beyond the optional copy button. The data
 // explorer lives in the separate sierra-grid project at grid.sierragridteam.org.
 //
-//go:embed landing/index.html landing/style.css landing/llms.txt
+//go:embed landing/index.html landing/style.css landing/llms.txt landing/mcp.html
 var landingFS embed.FS
 
 // sitePage is one response the "/" handler can serve, with its ETag computed
@@ -40,6 +40,7 @@ func newSitePage(ctype string, body []byte) *sitePage {
 var (
 	sitePagesOnce sync.Once
 	sitePages     map[string]*sitePage
+	mcpHelpPage   *sitePage
 )
 
 // loadSitePages builds the route table on first use. The changelog is
@@ -61,6 +62,8 @@ func loadSitePages() map[string]*sitePage {
 			"llms.txt":  newSitePage("text/plain; charset=utf-8", read("llms.txt")),
 			"changelog": newSitePage("text/html; charset=utf-8", renderChangelog(sierradata.Changelog)),
 		}
+		// Not in the route table: /mcp is its own mount (mcpRoute).
+		mcpHelpPage = newSitePage("text/html; charset=utf-8", read("mcp.html"))
 	})
 	return sitePages
 }
@@ -102,6 +105,7 @@ func renderChangelog(src []byte) []byte {
 // siteHandler serves the landing page at "/", plus /style.css, /llms.txt and
 // /changelog. It only sees paths no more specific mount claimed (the /api/
 // gateway, /api/openapi.json, /mcp, health), so it does not route around them.
+// The MCP setup page is served at /mcp itself, by mcpRoute.
 // Everything is no-cache with a strong ETag, so a deploy shows on reload and a
 // revalidation costs a bodiless 304.
 func siteHandler(w http.ResponseWriter, r *http.Request) {
@@ -135,6 +139,12 @@ func siteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	servePage(w, r, page)
+}
+
+// servePage writes one immutable page for a GET or HEAD: no-cache with a
+// strong ETag, so a revalidation costs a bodiless 304.
+func servePage(w http.ResponseWriter, r *http.Request, page *sitePage) {
 	w.Header().Set("Content-Type", page.ctype)
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("ETag", page.etag)
@@ -146,6 +156,49 @@ func siteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, _ = w.Write(page.body)
+}
+
+// mcpRoute puts the setup instructions (landing/mcp.html) at the MCP
+// endpoint's own URL without changing the endpoint for MCP clients.
+//
+// Streamable HTTP gives GET on the endpoint one meaning: a client opening an
+// event stream, which must send "Accept: text/event-stream" and gets a stream
+// or 405. We serve no stream, so that request, like every POST and every
+// request that does not ask for HTML, goes to the MCP handler exactly as
+// before. Only a GET or HEAD that asks for text/html and not for an event
+// stream (a person's browser, or an agent fetching the link) gets the page.
+// "Vary: Accept" keeps a cache from handing one to the other.
+func mcpRoute(mcp http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet || r.Method == http.MethodHead {
+			w.Header().Add("Vary", "Accept")
+			if wantsHTMLPage(r.Header.Values("Accept")) {
+				loadSitePages()
+				servePage(w, r, mcpHelpPage)
+				return
+			}
+		}
+		mcp(w, r)
+	}
+}
+
+// wantsHTMLPage reports whether an Accept header names text/html and does not
+// name text/event-stream. A wildcard (*/*, as curl sends) is not a request
+// for HTML: an MCP client's probe must keep getting the protocol's answer.
+func wantsHTMLPage(accept []string) bool {
+	html := false
+	for _, header := range accept {
+		for _, part := range strings.Split(header, ",") {
+			mediaType, _, _ := strings.Cut(part, ";")
+			switch strings.ToLower(strings.TrimSpace(mediaType)) {
+			case "text/event-stream":
+				return false
+			case "text/html":
+				html = true
+			}
+		}
+	}
+	return html
 }
 
 // etagMatches reports whether an If-None-Match header selects `tag`.

@@ -75,7 +75,13 @@ is dropped). There is no build step and no Node: edit the file, `go build`,
 reload. Keep it small and honest — monospace, the brand's ink-strong, cream,
 green and brass, no external requests, no JavaScript beyond the optional copy
 button — and keep `index.html`, `llms.txt` and the OpenAPI description saying
-the same things. `cmd/server/site_test.go` pins the routes. The data explorer
+the same things. `cmd/server/site_test.go` pins the routes. The MCP setup
+page (`landing/mcp.html`: adding the server to Claude, ChatGPT and Gemini) is
+served at `/mcp` itself, only to a GET that asks for `text/html` and not for
+an event stream (`mcpRoute` in `site.go`); every other request reaches the MCP
+handler unchanged, so do not loosen that rule to `*/*`. Its steps quote each
+vendor's menus and go stale: re-check them against the linked help pages when
+touching the page. The data explorer
 that used to live here (an Astro site under `web/`) was removed on 2026-11-12;
 browsing the data is the separate sierra-grid project at
 grid.sierragridteam.org. A fuller docs site is planned; until then the OpenAPI

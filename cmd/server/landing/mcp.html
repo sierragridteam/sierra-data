@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP · The Grid</title>
+<meta name="description" content="Connect Claude, ChatGPT or Gemini to The Grid, the S.I.E.R.R.A data service, over the Model Context Protocol. Public, read-only, no sign-in.">
+<meta name="color-scheme" content="dark light">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+<header>
+<p class="prompt">sierra@grid:~$ <span class="cmd">cat MCP</span> · <a href="/">data.sierragridteam.org</a></p>
+<h1>The Grid over MCP</h1>
+<p class="lede">Ask Claude, ChatGPT or Gemini about fires, evacuations, roads,
+weather and power on the Ebbetts Pass / Highway 4 corridor. The assistant
+reads The Grid through the Model Context Protocol (MCP).</p>
+<p class="meta">public · read-only · no sign-in · Streamable HTTP</p>
+</header>
+
+<section aria-labelledby="url">
+<h2 id="url"><span class="mark" aria-hidden="true">#</span> The server</h2>
+<pre class="term">Server URL      https://data.sierragridteam.org/mcp
+Authentication  none
+Name            Sierra Grid   <span class="c"># any name works</span></pre>
+<p>That URL is this page. A browser gets these instructions; an MCP client
+POSTs to it and gets the protocol.</p>
+<p class="meta">The steps below follow each vendor's help page as of November
+2026. Menus move: where they differ, the linked page is right.</p>
+</section>
+
+<section aria-labelledby="claude">
+<h2 id="claude"><span class="mark" aria-hidden="true">&gt;</span> Claude</h2>
+<ol class="steps">
+<li>Open <b>Customize</b>, then <b>Connectors</b>
+(<a href="https://claude.ai/customize/connectors">claude.ai/customize/connectors</a>).</li>
+<li>Click <b>+ Add</b>, then <b>Add custom connector</b>.</li>
+<li>Give it a name, paste the server URL, and click <b>Continue</b>.</li>
+<li>Under Authentication choose <b>No sign in</b>, then click <b>Add</b>.</li>
+<li>In a chat, click <b>+</b>, then <b>Connectors</b>, and turn it on.</li>
+</ol>
+<ul class="list">
+<li>Every plan can add custom connectors; the Free plan is limited to one.</li>
+<li>Once added it also works in Claude Desktop and the mobile apps.</li>
+<li>On Team and Enterprise an owner adds it first, under Organization
+settings, Connectors, <b>Add</b>, <b>Custom</b>, <b>Web</b>. Members then
+click <b>Connect</b>.</li>
+</ul>
+<pre class="term"><span class="c"># Claude Code</span>
+<span class="p">$</span> claude mcp add --transport http sierra-grid https://data.sierragridteam.org/mcp</pre>
+<p class="meta">Anthropic's instructions:
+<a href="https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp">custom connectors using remote MCP</a>.</p>
+</section>
+
+<section aria-labelledby="chatgpt">
+<h2 id="chatgpt"><span class="mark" aria-hidden="true">&gt;</span> ChatGPT</h2>
+<ol class="steps">
+<li>On the web, open
+<a href="https://chatgpt.com/plugins">chatgpt.com/plugins</a>.</li>
+<li>Select the plus button, then <b>Add custom MCP server</b>.</li>
+<li>Give it a name. Under Connection, paste the server URL.</li>
+<li>Set authentication to <b>No authentication</b>.</li>
+<li>Read the risk warning, select <b>I understand and want to continue</b>,
+then <b>Create as a plugin</b>.</li>
+<li>Install the plugin. In a chat, type <code>@</code> and pick it.</li>
+</ol>
+<ul class="list">
+<li>A work or school workspace may not let members add servers; ask its
+admin.</li>
+</ul>
+<p class="meta">OpenAI's instructions:
+<a href="https://developers.openai.com/api/docs/guides/custom-mcp-server">add a custom MCP server</a>.</p>
+</section>
+
+<section aria-labelledby="gemini">
+<h2 id="gemini"><span class="mark" aria-hidden="true">&gt;</span> Gemini</h2>
+<ol class="steps">
+<li>On a computer, open
+<a href="https://gemini.google.com">gemini.google.com</a>.</li>
+<li>Click <b>Settings</b>, then <b>Connected Apps</b>. If it is not there,
+click <b>Personal Intelligence</b> first.</li>
+<li>Under Custom apps, click <b>Add a custom app</b> and paste the server
+URL.</li>
+<li>Click <b>Next</b> and follow the prompts.</li>
+<li>In a chat, type <code>@</code> and pick it. It then works in the mobile
+app too.</li>
+</ol>
+<ul class="list">
+<li>Google offers custom apps to personal accounts in the US, age 18 or
+over, in English, with History turned on.</li>
+<li>Google's page describes servers that ask you to sign in. This one does
+not, and we have not confirmed that Gemini accepts it.</li>
+</ul>
+<p class="meta">Google's instructions:
+<a href="https://support.google.com/gemini/answer/17209137">connect and manage custom apps</a>.</p>
+</section>
+
+<section aria-labelledby="other">
+<h2 id="other"><span class="mark" aria-hidden="true">&gt;</span> Any other client</h2>
+<p>Anything that speaks MCP over Streamable HTTP can connect: give it the
+server URL and no credentials. The server is stateless (one JSON-RPC message
+per POST, one JSON response, no session, no event stream) and implements
+protocol revision <code>2025-06-18</code>.</p>
+<pre class="term"><span class="p">$</span> curl -s https://data.sierragridteam.org/mcp \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+<span class="c"># the tools and their input schemas</span></pre>
+</section>
+
+<section aria-labelledby="ask">
+<h2 id="ask"><span class="mark" aria-hidden="true">#</span> Things to ask</h2>
+<ul class="list">
+<li>What is happening around Arnold right now?</li>
+<li>Is Highway 4 open over Ebbetts Pass?</li>
+<li>Are there evacuation orders or warnings in Calaveras County?</li>
+<li>How did the last road closure near Murphys unfold?</li>
+<li>Which of The Grid's sources are down?</li>
+</ul>
+</section>
+
+<section aria-labelledby="tools">
+<h2 id="tools"><span class="mark" aria-hidden="true">#</span> What the assistant gets</h2>
+<ul class="links">
+<li><code>grid_situation</code> <span>what is happening at a place, address or lat,lng</span></li>
+<li><code>grid_events</code> <span>events by place, layer, severity, status, time and text</span></li>
+<li><code>grid_event</code> <span>one event in full</span></li>
+<li><code>grid_search</code> <span>find a fire, road, place, camera or feed by name</span></li>
+<li><code>grid_conditions</code> <span>current weather and fire-weather state</span></li>
+<li><code>grid_history</code> <span>how events changed over a time range</span></li>
+<li><code>grid_resolve</code> <span>an address or lat,lng to the places containing it</span></li>
+<li><code>grid_places</code> <span>the place directory</span></li>
+<li><code>grid_sources</code> <span>the health of every upstream feed</span></li>
+<li><code>search</code>, <code>fetch</code> <span>the same search, in the shape research modes expect</span></li>
+</ul>
+<p>The data is the same as the <a href="/">HTTP API</a>, with map geometry
+left out.</p>
+</section>
+
+<section aria-labelledby="mind">
+<h2 id="mind"><span class="mark" aria-hidden="true">#</span> Keep in mind</h2>
+<ul class="list">
+<li><b>Reference only.</b> For an evacuation or a road, follow the source
+link in the answer and check the official page.</li>
+<li><b>No data is not an all-clear.</b> A source marked
+<code>UNAVAILABLE</code> means its status is unknown. Every result says so,
+but an assistant can still summarize it wrongly.</li>
+<li><b>Read-only.</b> The server has no account, takes no input beyond the
+question's parameters, and changes nothing.</li>
+</ul>
+</section>
+
+<footer>
+<hr>
+<p>Something here out of date, or a client that will not connect?
+<a href="https://sierragridteam.org">sierragridteam.org</a>.</p>
+<p class="prompt">sierra@grid:~$ <span class="cursor" aria-hidden="true">_</span></p>
+</footer>
+</main>
+</body>
+</html>
