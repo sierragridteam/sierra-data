@@ -21,6 +21,45 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-19 (later still)
+
+### Monitored roads say what set their status: `roadSegment.causes`, the description, related events
+
+A monitored road's event (`road:{id}`, layer `ROAD_SEGMENT`) read "Hwy 4
+Murphys to Arnold: closed" and nothing else, while the `road_segment` map
+layer knew the closure was CHP incident `chp:261118ST0331`. The event now
+carries it. Additive: no existing field changes, and the place summary and
+the map layer are as they were.
+
+- **`roadSegment.causes[]`**: what a `CLOSED` or `RESTRICTED` status was read
+  from. Each has `status` (`CLOSED` or `RESTRICTED`, what that item set),
+  `source` (`incident`, `lane_closure` or `road_condition`), `eventId` (the
+  Grid event it is: `chp:{log number}` for a CHP incident, the same id as
+  `road.statusCauses[].eventId` on the map layer; an empty string otherwise)
+  and `text` (Caltrans's highway-conditions text for a `road_condition`; an
+  empty string for an incident or a lane closure, whose wording on the roads
+  service is written by a model: read the linked event). Empty for an open
+  road. Ordered closures first, then by source, event id and text.
+- **`description`** of the road's event is the text of its `road_condition`
+  causes (a blank line between two), and stays an empty string when there
+  are none. The headline is unchanged.
+- **`GET /api/v1/events/{id}/related`** links a road and each stored event
+  its causes name, both ways, under the new rule `road-status-cause` with
+  `RELATION_HIGH`: the road lists the incident ("Set this road's status:
+  closed") and the incident lists the road ("This road's status (closed) was
+  set by this report"). The link follows the road's current causes and ends
+  when the cause does. A cause whose event is not stored is not listed.
+
+Causes are part of the road's recorded state, so a change of causes is a
+revision even when the status does not move (closed for a fire, then closed
+for snow). A cause appearing is recorded at once; a cause no longer reported
+is dropped once a second refresh agrees, like a reopening. **Expect one new
+revision on each road that is closed or restricted at the first refresh
+after this deploys**, as its stored event gains its causes; open roads write
+nothing. The event's timeline has no entry of its own for a change of causes
+yet: such a revision is counted in "N changes since" and is in
+`/events/{id}/history`.
+
 ## 2026-11-19 (later)
 
 ### Fixed: Hwy 4 Arnold to Bear Valley read CLOSED for the Ebbetts Pass winter closure

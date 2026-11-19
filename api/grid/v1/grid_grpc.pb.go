@@ -142,6 +142,12 @@ type GridServiceClient interface {
 	// side: an evacuation lists its fire. Relations state what the sources say
 	// or how events coincide, never a cause the sources do not state.
 	//
+	// A monitored road (`road:{id}`) lists the events its status was read from
+	// (`roadSegment.causes[].eventId`), and each of them lists the road
+	// (`road-status-cause`, HIGH): the road closed by a CHP incident and that
+	// incident. It follows the road's current causes, so the link ends when the
+	// cause does; a cause whose event is not stored is not listed.
+	//
 	// Mesh nodes relate differently, by structure, not by situation: along the
 	// reads an operator-run monitor states (`mesh.telemetry.readVia`), whatever
 	// the nodes' status. A gateway (a companion radio a monitor listens through)
@@ -609,6 +615,12 @@ type GridServiceServer interface {
 	// winter storm product's area while it is in effect. Works from either
 	// side: an evacuation lists its fire. Relations state what the sources say
 	// or how events coincide, never a cause the sources do not state.
+	//
+	// A monitored road (`road:{id}`) lists the events its status was read from
+	// (`roadSegment.causes[].eventId`), and each of them lists the road
+	// (`road-status-cause`, HIGH): the road closed by a CHP incident and that
+	// incident. It follows the road's current causes, so the link ends when the
+	// cause does; a cause whose event is not stored is not listed.
 	//
 	// Mesh nodes relate differently, by structure, not by situation: along the
 	// reads an operator-run monitor states (`mesh.telemetry.readVia`), whatever
