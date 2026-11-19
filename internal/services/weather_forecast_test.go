@@ -82,6 +82,28 @@ func TestForecasts_WarmThenRead(t *testing.T) {
 	assert.Contains(t, f.Source, "STO 90,41")
 }
 
+// A new process warms its forecasts before, and apart from, the road refresh:
+// /api/v1/conditions answered `forecast: []` for minutes after every deploy
+// while the first refresh was still on the roads.
+func TestPeriodicRefresh_WarmsForecastsAtStartWithoutTheRoads(t *testing.T) {
+	svc := newForecastSvc(cache.NewCache(), forecastDoer{points: pointsBody, grid: gridBody()}, true)
+	// No roads service at all: the warm must not touch it.
+	p := NewPeriodicRefreshService(nil, svc, forecastConfig(true))
+	select {
+	case <-p.warmForecastsAtStart(testCtx()):
+	case <-time.After(5 * time.Second):
+		t.Fatal("the forecast warm did not finish")
+	}
+	require.NotNil(t, svc.LocationForecasts(testCtx())["arnold"])
+
+	// Without a weather service there is nothing to warm, and nothing waits.
+	select {
+	case <-NewPeriodicRefreshService(nil, nil, forecastConfig(true)).warmForecastsAtStart(testCtx()):
+	case <-time.After(time.Second):
+		t.Fatal("no weather service must not block")
+	}
+}
+
 func TestForecasts_Disabled(t *testing.T) {
 	svc := newForecastSvc(cache.NewCache(), forecastDoer{points: pointsBody, grid: gridBody()}, false)
 	svc.RefreshForecasts(testCtx()) // no-op

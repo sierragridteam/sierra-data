@@ -76,8 +76,18 @@ func (p *PeriodicRefreshService) refreshLoop(ctx context.Context, interval time.
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
+	// Forecasts first, and on their own. A new process has no forecast until
+	// this warms the cache (the request path never fetches NWS), and the
+	// refresh below reaches it only after the road refresh, which takes
+	// minutes. Until 2026-11-19 /api/v1/conditions therefore answered
+	// `forecast: []` for minutes after every deploy; the forecasts are a
+	// handful of NWS calls that depend on nothing else. The refresh below
+	// finds them fresh and skips them.
+	startDone := p.warmForecastsAtStart(ctx)
+
 	// Do initial refresh immediately
 	p.refreshCacheData(ctx)
+	<-startDone
 
 	for {
 		select {
@@ -91,6 +101,29 @@ func (p *PeriodicRefreshService) refreshLoop(ctx context.Context, interval time.
 			p.refreshCacheData(ctx)
 		}
 	}
+}
+
+// warmForecastsAtStart warms the forecast cache in the background and returns
+// a channel closed when it has finished. A no-op without a weather service.
+func (p *PeriodicRefreshService) warmForecastsAtStart(ctx context.Context) <-chan struct{} {
+	done := make(chan struct{})
+	if p.weatherService == nil {
+		close(done)
+		return done
+	}
+	go func() {
+		defer close(done)
+		defer func() {
+			if r := recover(); r != nil {
+				logging.Errorw(ctx, "Periodic refresh: forecast warm at start panicked", "error", r)
+			}
+		}()
+		fcCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		p.weatherService.RefreshForecasts(fcCtx)
+		logging.Info(ctx, "Periodic refresh: warmed forecasts at start")
+	}()
+	return done
 }
 
 // refreshCacheData directly refreshes the cached road data

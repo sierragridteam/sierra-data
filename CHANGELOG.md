@@ -21,6 +21,17 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-19 (forecasts after a deploy)
+
+### Fixed: `GET /api/v1/conditions` had no forecast for minutes after each deploy
+
+A new process answered `forecast: []` (with `weatherStatus: OK`) until its
+first background refresh had finished the roads and reached the forecasts.
+The forecasts are now read from NWS as soon as the process starts, apart
+from the road refresh, so the gap is the few seconds those calls take. An
+empty `forecast` can still happen in that short window, or when NWS is down
+with nothing cached: treat it as "not available", as before.
+
 ## 2026-11-19 (chains on roads)
 
 ### Road segments say which chain requirements are on them: `road.chains`
