@@ -21,6 +21,20 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-19 (later)
+
+### Fixed: Hwy 4 Arnold to Bear Valley read CLOSED for the Ebbetts Pass winter closure
+
+From 2026-11-17 23:35Z the monitored road `hwy4-arnold-bearvalley` (the
+`road_segment` map layer, the `road:hwy4-arnold-bearvalley` event and the
+place summary's roads domain) read `CLOSED`, on and off, while the road was
+open with chains required. Caltrans had reworded the seasonal closure past the
+road's end as "closed from the Mt. Reba turnoff to ...", and the period in
+"Mt." kept it from being recognised as the named seasonal closure, so it was
+put on the segment. An abbreviation's period is now ignored. The closure is
+reported in `road.beyond` again and the segment keeps its own status. The
+event's history keeps the false revisions it recorded.
+
 ## 2026-11-19
 
 ### BREAKING: event samples are shaped for a chart
