@@ -932,19 +932,42 @@ holds the state, a table holds the series.** The road sampler
   outside readers (`TestRoadHistoryShapeIsFixed`). Add a layer's series to
   the samples envelope as another list beside `road`, not to that route.
 
-- **Hashed: status and the seasonal closures past its ends.** Travel time,
+- **Hashed: status, its causes and the seasonal closures past its ends.** Travel time,
   delay and congestion level are samples and never on the event. Congestion
   was on it at first; in a week of production samples 11 of Hwy 49's 14
   changes were traffic crossing the clear/light line, burying two closures.
 - **Deterministic only.** The roads service's `status_explanation` is
   model-written and reworded between refreshes; on the event it would mint a
   revision each time.
+- **Causes are hashed, as a stable set** (`roadCauses`, 2026-11-19).
+  `roadSegment.causes` is what set a CLOSED or RESTRICTED status, from the
+  roads service's `status_causes`: `{status, source, event_id, text}` and
+  nothing else. `event_id` comes from `hazards.RoadCauseEventID`, the one
+  rule the map layer's `statusCauses[].eventId` also uses (`chp:{log}` for a
+  CHP incident, empty for a lane closure or a condition): do not derive it
+  again here. `text` is only Caltrans's condition text (whitespace
+  collapsed) for a `road_condition`. An incident's or lane closure's
+  `description` on the roads service is the model's `restriction_details`
+  (`services.alertCause`), so it never goes on the event; neither do title,
+  begin or end (positions are the map layer's). The service promises no
+  order and repeats a condition Caltrans publishes twice, so the set is
+  de-duplicated and sorted (closures first, then source, event id, text):
+  `TestRoadSegmentCauses_OrderAndDuplicatesAreNotAChange`. The event's
+  `description` is the `road_condition` texts joined; the headline carries
+  no reason. `internal/related/roads.go` links a road and the stored events
+  its causes name, both ways (`road-status-cause`).
 - **Easing waits for a second refresh.** The roads service does not say when
   its inputs failed: a failed CHP or road-conditions fetch reads as "nothing
   reported", which is OPEN and no seasonal closure. So a change that only
-  eases (a lower status, a closure gone) is recorded when a second refresh
-  agrees (`pending`, poller-local); a change that restricts anything is
-  recorded at once. Production samples had a restricted Hwy 49 reading open
+  eases (a lower status, a closure gone, a cause gone, or a cause that sets
+  a lower status than it did) is recorded when a second refresh
+  agrees (`pending`, poller-local); a change that restricts anything (a
+  higher status, a closure or a cause added, a cause setting a higher
+  status) is recorded at once, whatever else it eases. A cause is the same
+  cause while its source, event id and text match, so reworded condition
+  text is a cause gone and one added: at once. A cause gone while another
+  holds the status is held because it is all a failed CHP fetch would
+  change on a road also closed for snow. Production samples had a restricted Hwy 49 reading open
   for exactly one refresh on 2026-11-12. The proper fix is the roads service
   reporting its inputs' health; until then this is the guard.
 - **A stale set is not a reading.** `ListRoads` serves its last set while
