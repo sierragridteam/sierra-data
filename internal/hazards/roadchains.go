@@ -10,7 +10,9 @@ import (
 
 	"github.com/dpup/prefab/logging"
 
+	api "github.com/sierragridteam/sierra-data/api/v1"
 	"github.com/sierragridteam/sierra-data/internal/clients/caltrans"
+	"github.com/sierragridteam/sierra-data/internal/config"
 )
 
 // A monitored road under a chain requirement is OPEN: chains do not change a
@@ -286,4 +288,32 @@ func (s *Service) roadChainRegistry(ctx context.Context) roadChainRead {
 	}
 	m.read, m.until = newRoadChainRead(controls, quiet), time.Now().Add(layerTTL(LayerChainControl))
 	return m.read
+}
+
+// RoadChainsOn is the one rule for "which chain requirements are on this
+// road", bound to one read of the registry: the road_segment layer writes
+// road.chains with it, and the road-segment poller writes the stored event's
+// chains with it, so the feature and the event cannot place a stretch
+// differently. They read the registry through the same memo and can still
+// differ by its TTL.
+//
+// The returned function takes a monitored road and the roads service's
+// current reading of it. known false means the read cannot say (see
+// roadChainRead.on), or the road has no real path: the two-point fallback
+// line is not the road, and "none" read off it would be a guess. With known
+// true the list is never nil; empty is Caltrans reporting no requirement on
+// this road. The registry is read on the first call, not before, so a caller
+// with no road to ask about costs Caltrans nothing.
+func (s *Service) RoadChainsOn(ctx context.Context) func(mr config.MonitoredRoad, rd *api.Road) (chains []RoadChainProps, known bool) {
+	var read *roadChainRead
+	return func(mr config.MonitoredRoad, rd *api.Road) ([]RoadChainProps, bool) {
+		if len(rd.GetPolyline()) < 2 {
+			return nil, false
+		}
+		if read == nil {
+			r := s.roadChainRegistry(ctx)
+			read = &r
+		}
+		return read.on(mr.Name, pathOf(rd, mr))
+	}
 }

@@ -585,17 +585,7 @@ func (s *Service) roadSegments(ctx context.Context, area config.HazardArea) ([]F
 
 	// The chain-control registry, read once for the request and only if a
 	// road in this area has a path to place signs on.
-	var chainRead *roadChainRead
-	chainsOn := func(mr config.MonitoredRoad, path []LatLng) *[]RoadChainProps {
-		if chainRead == nil {
-			read := s.roadChainRegistry(ctx)
-			chainRead = &read
-		}
-		if chains, known := chainRead.on(mr.Name, path); known {
-			return &chains
-		}
-		return nil // not known: no `chains` key, never an empty list
-	}
+	chainsOn := s.RoadChainsOn(ctx)
 
 	var out []Feature
 	for _, mr := range s.cfg.Roads.MonitoredRoads {
@@ -652,10 +642,9 @@ func (s *Service) roadSegments(ctx context.Context, area config.HazardArea) ([]F
 			s.addRoadHistory(ctx, p.Road, rd, time.Now())
 			p.Road.StatusCauses = roadStatusCauses(rd, pathOf(rd, mr))
 			p.Road.Beyond = roadBeyond(rd, mr)
-			// Only on the road's real path. The two-point fallback line is
-			// not the road: a "none" read off it would be a guess.
-			if len(rd.GetPolyline()) >= 2 {
-				p.Road.Chains = chainsOn(mr, pathOf(rd, mr))
+			// Not known: no `chains` key, never an empty list.
+			if chains, known := chainsOn(mr, rd); known {
+				p.Road.Chains = &chains
 			}
 		}
 		p.setSeverity(sev)

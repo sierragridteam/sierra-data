@@ -23,36 +23,56 @@ import (
 // the road's history still has it.
 const RuleRoadStatusCause = "road-status-cause"
 
-// roadCauseRelated lists, for a monitored road, the stored events its causes
-// name, and for any other event, the monitored roads whose causes name it.
-func (e *Engine) roadCauseRelated(ctx context.Context, subject *gridv1.Event) ([]Relation, error) {
+// RuleRoadChains relates a monitored road and a chain-control stretch that
+// lies on it: the road's own event names the stretch
+// (roadSegment.chains[].eventId), by the rule the road_segment map layer
+// writes road.chains with. High, and no window or distance, for the same
+// reason as a cause. It follows the road's CURRENT chains; a requirement
+// that ended is in the road's history. A stretch's id is a slot per route
+// and level, so the event it names can be RESOLVED for the refresh in which
+// the road's event still waits to record the lifting.
+const RuleRoadChains = "road-chains"
+
+// roadNamedRelated lists, for a monitored road, the stored events its causes
+// and chains name, and for any other event, the monitored roads that name it.
+func (e *Engine) roadNamedRelated(ctx context.Context, subject *gridv1.Event) ([]Relation, error) {
 	if subject.GetLayer() == gridv1.Layer_ROAD_SEGMENT {
 		var out []Relation
 		seen := map[string]bool{subject.GetId(): true}
-		for _, c := range subject.GetRoadSegment().GetCauses() {
-			id := c.GetEventId()
+		named := func(id, rule, reason string) error {
 			if id == "" || seen[id] {
-				continue
+				return nil
 			}
 			seen[id] = true
 			ev, err := e.Store.GetEvent(ctx, id)
 			if errors.Is(err, store.ErrNotFound) {
-				continue // named by the roads service, never stored: nothing to list
+				return nil // named, never stored: nothing to list
 			}
 			if err != nil {
-				return nil, err
+				return err
 			}
 			// As every other relation: no shape, the stored box and centroid.
 			if g := ev.GetGeometry(); g != nil {
 				g.Geojson, g.Object = nil, nil
 			}
-			out = append(out, Relation{Event: ev, Rule: RuleRoadStatusCause, Confidence: High,
-				Reason: "Set this road's status: " + strings.ToLower(c.GetStatus())})
+			out = append(out, Relation{Event: ev, Rule: rule, Confidence: High, Reason: reason})
+			return nil
+		}
+		for _, c := range subject.GetRoadSegment().GetCauses() {
+			if err := named(c.GetEventId(), RuleRoadStatusCause, "Set this road's status: "+strings.ToLower(c.GetStatus())); err != nil {
+				return nil, err
+			}
+		}
+		for _, c := range subject.GetRoadSegment().GetChains() {
+			if err := named(c.GetEventId(), RuleRoadChains, "Chain requirement on this road: "+c.GetLevel()); err != nil {
+				return nil, err
+			}
 		}
 		return out, nil
 	}
-	// Only layers a cause can name: today CHP incidents.
-	if subject.GetLayer() != gridv1.Layer_ROAD_INCIDENT {
+	// Only layers a road can name: CHP incidents (causes) and chain-control
+	// stretches (chains).
+	if subject.GetLayer() != gridv1.Layer_ROAD_INCIDENT && subject.GetLayer() != gridv1.Layer_CHAIN_CONTROL {
 		return nil, nil
 	}
 	var out []Relation
@@ -69,6 +89,13 @@ func (e *Engine) roadCauseRelated(ctx context.Context, subject *gridv1.Event) ([
 				if c.GetEventId() == subject.GetId() {
 					out = append(out, Relation{Event: road, Rule: RuleRoadStatusCause, Confidence: High,
 						Reason: "This road's status (" + strings.ToLower(c.GetStatus()) + ") was set by this report"})
+					break
+				}
+			}
+			for _, c := range road.GetRoadSegment().GetChains() {
+				if c.GetEventId() == subject.GetId() {
+					out = append(out, Relation{Event: road, Rule: RuleRoadChains, Confidence: High,
+						Reason: "This road is under this chain requirement"})
 					break
 				}
 			}

@@ -34,11 +34,19 @@ type RoadLister interface {
 	RoadInputHealth() (failed []services.RoadInputFailure, at time.Time)
 }
 
+// RoadChainReader is which chain requirements lie on a monitored road:
+// hazards.Service.RoadChainsOn, the rule the road_segment map layer writes
+// road.chains with. known false means the read cannot say.
+type RoadChainReader interface {
+	RoadChainsOn(ctx context.Context) func(mr config.MonitoredRoad, rd *api.Road) (chains []hazards.RoadChainProps, known bool)
+}
+
 // RoadSegmentNormalizer records each monitored road's STATE as an event
 // (layer ROAD_SEGMENT, id "road:<road id>", the id of its road_segment map
-// feature): its status, what set that status (causes) and the seasonal
-// closures in effect past its ends. The event is revised when one of those
-// changes, so its history is when the road closed and reopened, and for what.
+// feature): its status, what set that status (causes), the seasonal
+// closures in effect past its ends and the chain requirements on it. The
+// event is revised when one of those changes, so its history is when the
+// road closed, went under chains and reopened, and for what.
 //
 // This is the mesh-node pattern. Everything that moves at each refresh
 // (travel time, delay, congestion level) is not on the event: it is a row of
@@ -54,6 +62,20 @@ type RoadLister interface {
 // incident or a lane closure the event keeps which one it is, never the
 // service's words for it.
 //
+// Chains are beside the status, never in it (decided with the user on
+// 2026-11-19): a road under a chain requirement is OPEN, and a restricted or
+// closed road can be under chains too, so a fourth status value would have
+// to choose. The detail lists the stretches on the road (level and stretch
+// id, hazards.Service.RoadChainsOn); the headline says "open, chains
+// required (R2)" and the category is "chains" while the road is open under
+// one, so a list reads closed / chains / open. Severity stays the status's:
+// the chain stretch is its own, rated event. Only the level and the stretch
+// id are on the event, so a stretch growing or shrinking is not a revision
+// here. A stretch id is a slot per route and level, and a renumbered stretch
+// (see "Chain requirements as events" in AGENTS.md) is a revision with the
+// level unchanged. When the chain read cannot say, the event keeps the
+// chains it has: unknown is not "none", and it is not a change.
+//
 // Four rules keep the history honest about the roads service's own inputs:
 //
 //   - An input the service could not read is reported, not recorded. The
@@ -64,8 +86,9 @@ type RoadLister interface {
 //     2026-11-19 a failed fetch read as "nothing reported", which is OPEN
 //     and no seasonal closure: on 2026-11-18 Hwy 4 Arnold to Bear Valley
 //     went CLOSED, OPEN, CLOSED for five hours (revisions 4 to 9).
-//   - A change that EASES a road (to open, a seasonal closure gone, or a
-//     cause no longer reported) is held until a second refresh says the same.
+//   - A change that EASES a road (to open, a seasonal closure gone, a
+//     cause no longer reported, or chains lifted or lowered) is held until a
+//     second refresh says the same.
 //     It was the only guard against a failed fetch, and covered one refresh
 //     of it. It stays for what the service cannot report: a read that
 //     succeeds and is wrong for one refresh, and lcs2way.kml, whose failures
@@ -84,6 +107,7 @@ type RoadLister interface {
 type RoadSegmentNormalizer struct {
 	cfg      *config.Config
 	roads    RoadLister
+	chains   RoadChainReader // nil: chains are never known, and stay as stored
 	placesAt func(ctx context.Context, lat, lng float64) ([]string, error)
 	now      func() time.Time
 	// pending is, per event id, an easing change seen in one refresh and
@@ -101,6 +125,13 @@ type pendingEase struct {
 // NewRoadSegmentNormalizer wires the poller. placesAt may be nil.
 func NewRoadSegmentNormalizer(cfg *config.Config, roads RoadLister, placesAt func(ctx context.Context, lat, lng float64) ([]string, error)) *RoadSegmentNormalizer {
 	return &RoadSegmentNormalizer{cfg: cfg, roads: roads, placesAt: placesAt, now: time.Now, pending: map[string]pendingEase{}}
+}
+
+// UseRoadChains wires the chain requirements on each road. Without it the
+// events keep whatever chains they have stored.
+func (n *RoadSegmentNormalizer) UseRoadChains(r RoadChainReader) *RoadSegmentNormalizer {
+	n.chains = r
+	return n
 }
 
 // SourceIDs implements Normalizer.
@@ -134,6 +165,12 @@ func (n *RoadSegmentNormalizer) Poll(ctx context.Context, prior Prior) (*PollRes
 	for _, rd := range resp.GetRoads() {
 		byID[rd.GetId()] = rd
 	}
+	// One read of the chain-control registry for the poll, made only when a
+	// road has a reading to place it on.
+	chainsOn := func(config.MonitoredRoad, *api.Road) ([]hazards.RoadChainProps, bool) { return nil, false }
+	if n.chains != nil {
+		chainsOn = n.chains.RoadChainsOn(ctx)
+	}
 	for _, mr := range monitored {
 		id := "road:" + mr.ID
 		held := prior.ByID(id)
@@ -149,7 +186,13 @@ func (n *RoadSegmentNormalizer) Poll(ctx context.Context, prior Prior) (*PollRes
 			}
 			continue
 		}
-		ev, err := n.event(ctx, mr, rd, refreshed, now)
+		// Not known is not "none": the event keeps the chains it has. The
+		// chain-control source (caltrans-cc) reports why its read cannot say.
+		chains := held.GetRoadSegment().GetChains()
+		if on, known := chainsOn(mr, rd); known {
+			chains = roadChains(on)
+		}
+		ev, err := n.event(ctx, mr, rd, chains, refreshed, now)
 		if err != nil {
 			return nil, err
 		}
@@ -192,12 +235,59 @@ func roadRank(status string) int {
 	return 0
 }
 
+// chainRank orders a chain level by how much it asks of a driver.
+func chainRank(level string) int {
+	switch level {
+	case "R1":
+		return 1
+	case "R2":
+		return 2
+	case "R3":
+		return 3
+	}
+	return 0
+}
+
+// topChainLevel is the highest level among a road's chain requirements, or
+// "" with none: what the headline and the easing rule go by.
+func topChainLevel(chains []*gridv1.RoadSegmentChain) string {
+	top := ""
+	for _, c := range chains {
+		if chainRank(c.GetLevel()) > chainRank(top) {
+			top = c.GetLevel()
+		}
+	}
+	return top
+}
+
+// roadChains is a road's chain requirements as the event keeps them: the
+// level and the stretch's id, in the read's order (highest level first, then
+// id), a stretch listed once. Nothing else of the stretch goes on the road's
+// event, because it is hashed: where a stretch begins and ends moves through
+// a storm, and that history is the stretch's own event's.
+func roadChains(on []hazards.RoadChainProps) []*gridv1.RoadSegmentChain {
+	var out []*gridv1.RoadSegmentChain
+	seen := map[string]bool{}
+	for _, c := range on {
+		k := c.Level + "\x00" + c.EventID
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, &gridv1.RoadSegmentChain{Level: c.Level, EventId: c.EventID})
+	}
+	return out
+}
+
 // eases reports whether now is less restrictive than was and in no way more.
 // It eases when the status is lower, a seasonal closure is no longer listed,
-// a cause is no longer listed, or a cause still listed sets a lower status
-// than it did. It restricts when the status is higher, a seasonal closure
-// was added, a cause was added, or a cause still listed sets a higher
-// status. A change that eases something and restricts nothing waits for a
+// a cause is no longer listed, a cause still listed sets a lower status
+// than it did, or the highest chain level is lower (chains lifted is the
+// lowest). It restricts when the status is higher, a seasonal closure
+// was added, a cause was added, a cause still listed sets a higher
+// status, or the highest chain level is higher. A chain change that leaves
+// the highest level alone (a second, lower stretch ending; a stretch
+// renumbered) is neither, and is recorded at once. A change that eases something and restricts nothing waits for a
 // second refresh (see RoadSegmentNormalizer); a change that restricts
 // anything is recorded at once, whatever else it eases. A cause is the same
 // cause while its source, event and text are the same, so reworded condition
@@ -244,10 +334,11 @@ func eases(was, now *gridv1.RoadSegmentDetail) bool {
 	for k := range before {
 		lost = lost || !after[k]
 	}
-	if added || causeAdded || roadRank(now.GetStatus()) > roadRank(was.GetStatus()) {
+	chainsBefore, chainsAfter := chainRank(topChainLevel(was.GetChains())), chainRank(topChainLevel(now.GetChains()))
+	if added || causeAdded || chainsAfter > chainsBefore || roadRank(now.GetStatus()) > roadRank(was.GetStatus()) {
 		return false
 	}
-	return lost || causeLost || roadRank(now.GetStatus()) < roadRank(was.GetStatus())
+	return lost || causeLost || chainsAfter < chainsBefore || roadRank(now.GetStatus()) < roadRank(was.GetStatus())
 }
 
 // roadCauses is what set a road's status, as the event keeps it: for each
@@ -307,7 +398,7 @@ func roadCauses(rd *api.Road) []*gridv1.RoadSegmentCause {
 	return out
 }
 
-func (n *RoadSegmentNormalizer) event(ctx context.Context, mr config.MonitoredRoad, rd *api.Road, refreshed, now time.Time) (*gridv1.Event, error) {
+func (n *RoadSegmentNormalizer) event(ctx context.Context, mr config.MonitoredRoad, rd *api.Road, chains []*gridv1.RoadSegmentChain, refreshed, now time.Time) (*gridv1.Event, error) {
 	id := "road:" + mr.ID
 	status := strings.TrimPrefix(rd.GetStatus().String(), "ROAD_STATUS_")
 
@@ -326,20 +417,34 @@ func (n *RoadSegmentNormalizer) event(ctx context.Context, mr config.MonitoredRo
 	})
 
 	d.Causes = roadCauses(rd)
+	d.Chains = chains
 
 	// The headline says the status and no reason: an incident's wording is a
-	// model's, and the causes are on the detail.
+	// model's, and the causes are on the detail. Chains are said beside the
+	// status, by their highest level: "open, chains required (R2)".
 	headline := strings.TrimSpace(mr.Name+" "+mr.Section) + ": " + roadStatusWord(status)
+	chainLevel := topChainLevel(chains)
+	if chainLevel != "" {
+		headline += ", chains required (" + chainLevel + ")"
+	}
 	for _, b := range d.Beyond {
 		if b.GetName() != "" {
 			headline += "; " + b.GetName() + " in effect"
 		}
 	}
 	// Severity from the status alone, as the map layer grades a road with
-	// clear traffic: congestion is not on the event.
+	// clear traffic: congestion is not on the event, and a chain requirement
+	// is rated on its own stretch's event (rating it here too would count one
+	// requirement twice in every rollup).
 	sev := hazards.SeverityFromRoad(&api.Road{Status: rd.GetStatus()})
 	ev := NewEvent(id, gridv1.Layer_ROAD_SEGMENT, SeverityFromLabel(sev), gridv1.EventStatus_ACTIVE, headline)
+	// The one-word state for lists and filters. An open road under chains is
+	// "chains"; a restricted or closed one keeps its status, which is the
+	// stronger statement, and has the chains on its detail.
 	ev.Category = strings.ToLower(status)
+	if status == "OPEN" && chainLevel != "" {
+		ev.Category = "chains"
+	}
 	ev.AreaLabel = strings.TrimSpace(mr.Name + " " + mr.Section)
 	ev.ObservedAt = tsProto(refreshed)
 	ev.Provenance = NewProvenance(RoadSegmentSourceID, "Road conditions", "Google · quickmap.dot.ca.gov", "")
