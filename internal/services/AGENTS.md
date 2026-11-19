@@ -47,6 +47,14 @@ TTL cannot drift; a fresh hit is a no-op). It makes the documented worst case th
 actual case: 7 locations x 96 ticks/day = 672 calls/day, every day. Adding
 `weather.locations` raises that linearly.
 
+**Forecasts are warmed first at process start, on their own goroutine**
+(`warmForecastsAtStart`). The request path never fetches NWS, so a new process
+has no forecast until the refresher warms it, and the refresher reaches the
+forecasts only after the road refresh, which takes minutes. Until 2026-11-19
+`/api/v1/conditions` answered `forecast: []` for minutes after every deploy
+(Grid's Overview forecast chart test failed whenever it ran in that window).
+The first tick then finds them fresh and skips them.
+
 A failure in one upstream must not abandon the rest of the tick — roads and
 weather are independent, so `refreshCacheData` logs and continues rather than
 returning early.
