@@ -47,6 +47,22 @@ Caltrans/CHP timestamps are **Pacific time** with no zone marker. Parse them wit
 mislabel them UTC). `cmd/server` blank-imports `time/tzdata` so the zone resolves
 even in a minimal container.
 
+## Caltrans road conditions (`roads.dot.ca.gov/roadscell.php`): a 200 is not a page
+
+`ParseRoadConditions` reads one HTML page per highway
+(`?roadnumber=4`). Its text has no geometry and its answers set a road's
+status, so "no conditions" means OPEN downstream. Every real page carries the
+sentence "This highway information is the latest reported as of ..." above its
+sections (`IsRoadConditionsPage`). **A 200 response without it is
+`ErrNotConditionsPage`, never an empty result**: an error page, an empty body,
+and the page for a number Caltrans does not know ("There is no information
+available for Highway Number 9999") all lack it. A real page with no `SR N`
+section is a good read of no conditions (`ParseRoadConditionsHTML` returns
+nil, nil, and does not make the check itself). The roads service keeps the
+last good read per highway when this fails; see "A status input that fails"
+in `internal/services/AGENTS.md`. Sample:
+`curl -s 'https://roads.dot.ca.gov/roadscell.php?roadnumber=4'`.
+
 ## Caltrans CWWP2 (`cwwp2`) — Caltrans's structured data portal
 
 QuickMap (quickmap.dot.ca.gov) is a static app: `/config/layers.json` maps each

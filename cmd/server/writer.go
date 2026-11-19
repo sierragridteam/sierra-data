@@ -372,7 +372,9 @@ func (a *gridApp) startTerm(actx context.Context, lease *store.Lease) (*writerTe
 	// in road_samples, written by the scheduler's road sampler).
 	if appConfig.Grid.RoadSegments.Record && a.roadsService != nil {
 		pollers = append(pollers, ingest.PollerSpec{
-			Normalizer: ingest.NewRoadSegmentNormalizer(appConfig, a.roadsService, placesAt),
+			// The chain requirements on each road come from the rule the
+			// road_segment layer writes road.chains with.
+			Normalizer: ingest.NewRoadSegmentNormalizer(appConfig, a.roadsService, placesAt).UseRoadChains(a.hazards),
 			Interval:   gridPollInterval(appConfig, ingest.RoadSegmentSourceID),
 		})
 	}

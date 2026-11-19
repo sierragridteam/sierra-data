@@ -145,6 +145,36 @@ type RoadProps struct {
 	// that are in effect (the Ebbetts Pass winter closure past Bear Valley).
 	// They do not change the segment's status. Omitted when there are none.
 	Beyond []RoadBeyondProps `json:"beyond,omitempty"`
+	// Chains are the chain-control stretches (R1, R2, R3) that lie on this
+	// road, one entry per stretch, highest level first. They do not change
+	// the segment's status or severity: a road under R2 is OPEN.
+	//
+	// A pointer, because absent and empty say different things. Absent: not
+	// known (the chain-control read failed or could not vouch for this
+	// highway, or the road has no measured path to place signs on). Present
+	// and empty: Caltrans reports no chain requirement on this road. An error
+	// never becomes a 0, so never set this to an empty list on a failed read.
+	Chains *[]RoadChainProps `json:"chains,omitempty"`
+}
+
+// RoadChainProps is one chain-control stretch that lies on a road segment.
+// Every field is the stretch's own, as the chain_control layer's feature for
+// it carries it (chainStretchFeature): the stretch is not clipped to the road.
+type RoadChainProps struct {
+	Level string `json:"level"` // R1 | R2 | R3
+	// EventID is the stretch's id: the chain_control feature's id, and the
+	// /api/v1/events id while the stretch is recorded as an event.
+	EventID  string `json:"eventId"`
+	Headline string `json:"headline"`
+	// From and To are the whole stretch's two ends (low end first), which
+	// may be past the road's own ends.
+	From string `json:"from"`
+	To   string `json:"to"`
+	// Since is the stretch's earliest sign (RFC 3339), omitted when no sign
+	// in it reports a time.
+	Since string `json:"since,omitempty"`
+	// Inferred is the stretch's chainControl.inferred. Always written.
+	Inferred bool `json:"inferred"`
 }
 
 // RoadBeyondProps is one named seasonal closure past a segment's end.

@@ -105,3 +105,48 @@ func TestRoadCauseRelationEndsWithTheCause(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, rs)
 }
+
+// A road under a chain requirement lists the stretch, and the stretch lists
+// the road: the road's event names it. A stretch named and never stored (one
+// with no sign inside a hazard area) is not listed, and the link ends when
+// the road's event drops the chains.
+func TestRoadAndTheChainRequirementOnIt(t *testing.T) {
+	stretch := ev("cc:hwy4:r2", gridv1.Layer_CHAIN_CONTROL, "r2", "Hwy 4 chains required, Blue Lake Springs to Mount Reba Road (R2)", -6, point(38.27, -120.31))
+	stretch.Provenance = &gridv1.Provenance{SourceId: "caltrans-cc", SourceName: "caltrans-cc"}
+	under := func() *gridv1.Event {
+		r := roadEvent("hwy4-arnold-bearvalley", "OPEN")
+		r.GetRoadSegment().Chains = []*gridv1.RoadSegmentChain{{Level: "R2", EventId: "cc:hwy4:r2"}, {Level: "R1", EventId: "cc:hwy4:r1"}}
+		return r
+	}
+	below := roadEvent("hwy4-murphys-arnold", "OPEN")
+	e, st := newEngine(t)
+	ctx := context.Background()
+	require.NoError(t, st.SeedSources(ctx, []store.SourceSeed{
+		{ID: "roads", Name: "roads", PollInterval: time.Minute}, {ID: "caltrans-cc", Name: "caltrans-cc", PollInterval: time.Minute}}))
+	for _, x := range []*gridv1.Event{stretch, under(), below} {
+		_, err := st.UpsertEvent(ctx, x)
+		require.NoError(t, err)
+	}
+
+	rs, err := e.Related(ctx, under())
+	require.NoError(t, err)
+	require.Len(t, rs, 1, "cc:hwy4:r1 was never stored")
+	assert.Equal(t, "cc:hwy4:r2", rs[0].Event.GetId())
+	assert.Equal(t, RuleRoadChains, rs[0].Rule)
+	assert.Equal(t, High, rs[0].Confidence)
+	assert.Equal(t, "Chain requirement on this road: R2", rs[0].Reason)
+
+	rs, err = e.Related(ctx, stretch)
+	require.NoError(t, err)
+	require.Len(t, rs, 1, "the road below is not under it")
+	assert.Equal(t, "road:hwy4-arnold-bearvalley", rs[0].Event.GetId())
+	assert.Equal(t, RuleRoadChains, rs[0].Rule)
+	assert.Equal(t, "This road is under this chain requirement", rs[0].Reason)
+
+	// Chains lifted: the road's event no longer names the stretch.
+	_, err = st.UpsertEvent(ctx, roadEvent("hwy4-arnold-bearvalley", "OPEN"))
+	require.NoError(t, err)
+	rs, err = e.Related(ctx, stretch)
+	require.NoError(t, err)
+	assert.Empty(t, rs)
+}

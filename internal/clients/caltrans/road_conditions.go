@@ -2,6 +2,7 @@ package caltrans
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -34,8 +35,36 @@ type RoadCondition struct {
 
 const roadConditionsURLPattern = "https://roads.dot.ca.gov/roadscell.php?roadnumber=%s"
 
+// ErrNotConditionsPage is a 200 response from roads.dot.ca.gov that is not a
+// conditions page.
+var ErrNotConditionsPage = errors.New("not a road conditions page")
+
+// conditionsPageMarker is the sentence every conditions page carries above
+// its highway sections: "This highway information is the latest reported as
+// of Thursday, November 19th, 2026 at 09:14 AM." (extractLastUpdated reads
+// its date).
+var conditionsPageMarker = regexp.MustCompile(`(?i)highway\s+information\s+is\s+the\s+latest\s+reported\s+as\s+of`)
+
+// IsRoadConditionsPage reports whether html is a roads.dot.ca.gov conditions
+// page: it carries the "latest reported as of" sentence. An error page, a
+// maintenance page, an empty body, and the page for a number Caltrans does
+// not know ("There is no information available for Highway Number 9999") do
+// not.
+func IsRoadConditionsPage(html string) bool {
+	return conditionsPageMarker.MatchString(html)
+}
+
 // ParseRoadConditions fetches and parses the Caltrans road conditions page
 // for the given highway number (e.g., "4" for Highway 4).
+//
+// A response that is not a conditions page is an error
+// (ErrNotConditionsPage), never "no conditions": the caller reads no
+// conditions as an open road. On 2026-11-18 the Hwy 4 read came back with
+// nothing, one to four refreshes at a time, while Caltrans was listing the
+// Ebbetts Pass winter closure. With no logs from that day, a 200 with some
+// other body is one of the ways that can have happened, and
+// ParseRoadConditionsHTML alone cannot tell it from a page with no section
+// for the highway.
 func (p *FeedParser) ParseRoadConditions(ctx context.Context, highwayNumber string) ([]RoadCondition, error) {
 	url := fmt.Sprintf(roadConditionsURLPattern, highwayNumber)
 
@@ -64,11 +93,18 @@ func (p *FeedParser) ParseRoadConditions(ctx context.Context, highwayNumber stri
 		return nil, fmt.Errorf("failed to read road conditions response: %w", err)
 	}
 
+	if !IsRoadConditionsPage(string(body)) {
+		return nil, fmt.Errorf("road conditions for highway %s: %w (HTTP 200, %d bytes, no \"latest reported as of\" line)",
+			highwayNumber, ErrNotConditionsPage, len(body))
+	}
+
 	return ParseRoadConditionsHTML(string(body), highwayNumber)
 }
 
 // ParseRoadConditionsHTML parses the HTML content of a road conditions page.
-// Exported for testing.
+// A page with no section for the highway is no conditions (nil, nil). It does
+// not check that html is a conditions page; ParseRoadConditions does, before
+// calling it. Exported for testing.
 func ParseRoadConditionsHTML(html string, highwayNumber string) ([]RoadCondition, error) {
 	var conditions []RoadCondition
 

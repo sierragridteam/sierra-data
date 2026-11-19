@@ -932,7 +932,8 @@ holds the state, a table holds the series.** The road sampler
   outside readers (`TestRoadHistoryShapeIsFixed`). Add a layer's series to
   the samples envelope as another list beside `road`, not to that route.
 
-- **Hashed: status, its causes and the seasonal closures past its ends.** Travel time,
+- **Hashed: status, its causes, the seasonal closures past its ends and the
+  chain requirements on it.** Travel time,
   delay and congestion level are samples and never on the event. Congestion
   was on it at first; in a week of production samples 11 of Hwy 49's 14
   changes were traffic crossing the clear/light line, burying two closures.
@@ -956,20 +957,68 @@ holds the state, a table holds the series.** The road sampler
   `description` is the `road_condition` texts joined; the headline carries
   no reason. `internal/related/roads.go` links a road and the stored events
   its causes name, both ways (`road-status-cause`).
-- **Easing waits for a second refresh.** The roads service does not say when
-  its inputs failed: a failed CHP or road-conditions fetch reads as "nothing
-  reported", which is OPEN and no seasonal closure. So a change that only
-  eases (a lower status, a closure gone, a cause gone, or a cause that sets
-  a lower status than it did) is recorded when a second refresh
+- **A failed status input is reported, never recorded** (2026-11-19). The
+  roads service serves the last good read of a failed CHP or road-conditions
+  fetch while it is servable-stale, then fails its refresh and keeps its last
+  road set (`services.RoadsService.RoadInputHealth`, "A status input that
+  fails" in `internal/services/AGENTS.md`). `Poll` reads that health after
+  `ListRoads` and puts each failed input on `PerSource["roads"]`, e.g.
+  "road conditions for Hwy 4 unavailable since 17:05Z; last good read used
+  (HTTP error 503 ...)". The events are still returned and written, from the
+  last good data; only the source is degraded, which also skips the sweep.
+  Before this a failed fetch read as "nothing reported": OPEN, and no
+  seasonal closure. On 2026-11-18 Hwy 4 Arnold to Bear Valley alternated
+  CLOSED and OPEN for five hours (revisions 4 to 9), each OPEN one to four
+  refreshes long and missing the Ebbetts Pass closure Caltrans was listing.
+- **Chains are beside the status, never in it** (2026-11-19, decided with
+  the user: "closed / chains / open" is how the history should read, and a
+  fourth status value cannot carry it, because a restricted or closed road
+  can be under chains too, the level matters, and every reader that checks
+  for `OPEN` would stop calling a chained road open). `roadSegment.chains`
+  is `{level, event_id}` per stretch on the road, from
+  `hazards.Service.RoadChainsOn`: the function the `road_segment` layer
+  writes `road.chains` with, over the same memoized registry read, so the
+  event and the feature place a stretch the same way (`UseRoadChains`,
+  wired in `cmd/server/writer.go`). The headline says the highest level,
+  "Hwy 4 Arnold to Bear Valley: open, chains required (R2)", and the
+  category is `chains` while the road is OPEN under one; a restricted or
+  closed road keeps its status as the category. **Severity does not move**:
+  the stretch is its own rated event, and rating the road too would count
+  one requirement twice. Rules:
+  - **Only level and stretch id are hashed.** Where a stretch begins and
+    ends moves through a storm; that is the stretch's event's history
+    (`TestRoadSegmentChains_OpenUnderChains`). A stretch id is a slot per
+    route and level, so a renumbered stretch is a revision here with the
+    level unchanged (no timeline entry: the timeline follows the highest
+    level).
+  - **Unknown keeps the last state.** When the read cannot say (a Caltrans
+    source down, an unreadable sign on the highway, no route polyline) the
+    event carries the chains it has stored, hash-equal, for as long as that
+    lasts. Never write "none" for unknown. `roads` is not degraded for it:
+    `caltrans-cc` is the source whose read failed, and it says so.
+  - **Lifted or lowered waits for a second refresh; started or raised is
+    recorded at once** (`eases`, by the highest level). A chain change that
+    leaves the highest level alone is recorded at once.
+  - **No chains hashes as before** (`TestRoadSegmentChains_NoChainsHashesAsBefore`):
+    the deploy minted no revision, and history starts at the deploy. Earlier
+    revisions carry no chains whatever the road was under.
+  - `internal/related/roads.go` links a road and the stored stretches its
+    chains name, both ways (`road-chains`); the timeline has "Chains R2" and
+    "Chains lifted" entries (`field: chains`, `internal/gridapi/timeline.go`).
+- **Easing waits for a second refresh.** A change that only
+  eases (a lower status, a closure gone, a cause gone, a cause that sets
+  a lower status than it did, or a lower highest chain level) is recorded when a second refresh
   agrees (`pending`, poller-local); a change that restricts anything (a
   higher status, a closure or a cause added, a cause setting a higher
   status) is recorded at once, whatever else it eases. A cause is the same
   cause while its source, event id and text match, so reworded condition
   text is a cause gone and one added: at once. A cause gone while another
-  holds the status is held because it is all a failed CHP fetch would
+  holds the status is held because it is all one bad read of its feed would
   change on a road also closed for snow. Production samples had a restricted Hwy 49 reading open
-  for exactly one refresh on 2026-11-12. The proper fix is the roads service
-  reporting its inputs' health; until then this is the guard.
+  for exactly one refresh on 2026-11-12. This was the only guard against a
+  failed fetch and covered one refresh of it; it stays for a read that
+  succeeds and is wrong for one refresh, and for `lcs2way.kml`, whose
+  failures the service still swallows when CWWP2 closures are off.
 - **A stale set is not a reading.** `ListRoads` serves its last set while
   its refresh fails. Older than twice `roads.refreshInterval`, the events
   keep their state and `roads` is a `PerSource` failure. `observed_at` is

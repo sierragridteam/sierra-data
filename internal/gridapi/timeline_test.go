@@ -116,6 +116,39 @@ func TestTimelineChangeAfterReadings(t *testing.T) {
 	assert.Equal(t, uint32(7), tl.GetEntries()[1].GetRevision())
 }
 
+// A monitored road through a storm: chains go up on the open road, are
+// raised, move to another stretch id at the same level (a revision, and no
+// entry), and are lifted. The status never changes, so chains are the whole
+// timeline.
+func TestTimelineRoadChains(t *testing.T) {
+	road := func(chains ...*gridv1.RoadSegmentChain) *gridv1.Event {
+		return &gridv1.Event{Id: "road:hwy4-arnold-bearvalley", Layer: gridv1.Layer_ROAD_SEGMENT, Revision: 5,
+			Detail: &gridv1.Event_RoadSegment{RoadSegment: &gridv1.RoadSegmentDetail{RoadId: "hwy4-arnold-bearvalley", Status: "OPEN", Chains: chains}}}
+	}
+	r1 := &gridv1.RoadSegmentChain{Level: "R1", EventId: "cc:hwy4:r1"}
+	r2 := &gridv1.RoadSegmentChain{Level: "R2", EventId: "cc:hwy4:r2"}
+	r2b := &gridv1.RoadSegmentChain{Level: "R2", EventId: "cc:hwy4:r2:2"}
+	tl := buildTimeline(road(), []*gridv1.EventRevision{
+		rev(1, 0, road()), rev(2, 60, road(r1)), rev(3, 120, road(r2, r1)), rev(4, 180, road(r2b)), rev(5, 600, road()),
+	}, nil, false)
+	assert.Equal(t, []string{"First recorded by the Grid", "Chains R1", "Chains R2", "Chains lifted"}, labels(tl))
+	up, lifted := tl.GetEntries()[1], tl.GetEntries()[3]
+	assert.Equal(t, "chains", up.GetField())
+	assert.Equal(t, gridv1.TimelineKind_TIMELINE_CHANGED, up.GetKind())
+	assert.Equal(t, "none", up.GetBefore())
+	assert.Equal(t, "R1", up.GetAfter())
+	assert.Equal(t, "was none", up.GetDetail())
+	assert.Equal(t, "R2", lifted.GetBefore())
+	assert.Equal(t, "none", lifted.GetAfter())
+	assert.Equal(t, uint32(5), lifted.GetRevision())
+
+	// A road that closes under chains says both.
+	closed := road(r2)
+	closed.GetRoadSegment().Status = "CLOSED"
+	tl = buildTimeline(closed, []*gridv1.EventRevision{rev(1, 0, road()), rev(2, 60, closed)}, nil, false)
+	assert.Equal(t, []string{"First recorded by the Grid", "Closed", "Chains R2"}, labels(tl))
+}
+
 // A READING revision is one timeline entry at the time of the call, naming
 // the line that was called.
 func TestTimelineReadings(t *testing.T) {

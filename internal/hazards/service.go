@@ -53,6 +53,10 @@ type Service struct {
 	// UseRoadHistory once the store is open.
 	history atomic.Pointer[roadHistoryHolder]
 
+	// roadChains backs road_segment's road.chains: the last read of the
+	// chain-control registry (roadChainRegistry).
+	roadChains roadChainMemo
+
 	// layerBuilders is derived once from layerRegistry() so the dispatch map has
 	// one source of truth.
 	layerBuilders map[string]builder
@@ -579,6 +583,10 @@ func (s *Service) roadSegments(ctx context.Context, area config.HazardArea) ([]F
 		byID[rd.GetId()] = rd
 	}
 
+	// The chain-control registry, read once for the request and only if a
+	// road in this area has a path to place signs on.
+	chainsOn := s.RoadChainsOn(ctx)
+
 	var out []Feature
 	for _, mr := range s.cfg.Roads.MonitoredRoads {
 		// Include the segment if either endpoint is in the area, and always on
@@ -634,6 +642,10 @@ func (s *Service) roadSegments(ctx context.Context, area config.HazardArea) ([]F
 			s.addRoadHistory(ctx, p.Road, rd, time.Now())
 			p.Road.StatusCauses = roadStatusCauses(rd, pathOf(rd, mr))
 			p.Road.Beyond = roadBeyond(rd, mr)
+			// Not known: no `chains` key, never an empty list.
+			if chains, known := chainsOn(mr, rd); known {
+				p.Road.Chains = &chains
+			}
 		}
 		p.setSeverity(sev)
 		out = append(out, Feature{Type: "Feature", Geometry: geom, Properties: p})

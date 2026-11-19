@@ -39,6 +39,161 @@ nothing in particular, is answered as before: JSON-RPC over `POST`, `405` with
 The OpenAPI description of `/mcp` gains the `GET` operation and lists the
 `grid_search`, `search` and `fetch` tools, which it had been missing.
 
+## 2026-11-19 (chains on the road event)
+
+### A monitored road's event records the chain requirements on it: `roadSegment.chains`
+
+The stored event of a monitored road (`road:{id}`, layer `ROAD_SEGMENT`)
+recorded when the road closed and reopened, and nothing about chains: through
+the storm of 2026-11-18 the event of Hwy 4 Arnold to Bear Valley read "open"
+under R2. It now records them, beside the status and not as one. Additive:
+`roadSegment.status` and the event's `severity` are as they were, and a road
+under chains is still `OPEN`.
+
+- **`roadSegment.chains[]`**: one entry per chain-control stretch on the
+  road, highest level first:
+
+  ```json
+  {"level": "R2", "eventId": "cc:hwy4:r2"}
+  ```
+
+  `eventId` is the stretch: its `chain_control` map feature and its stored
+  event, which have the extent, the signs and when it began. The stretches
+  are the ones `road.chains` lists on the `road_segment` map layer, by the
+  same rule. Empty when Caltrans reports none.
+- **`headline`** says it: "Hwy 4 Arnold to Bear Valley: open, chains required
+  (R2)" (the highest level on the road). A road with no chains reads as
+  before.
+- **`category`** of a road event is its state in one word: `open`, `chains`
+  (open, under a chain requirement), `restricted`, `maintenance` or `closed`.
+  **If you match on `category: "open"` to mean "the road is open", match on
+  `roadSegment.status` instead**: an open road under chains is now `chains`.
+  A restricted or closed road under chains keeps its status as the category
+  and has the chains on `roadSegment.chains`.
+- **Revisions.** One when a requirement starts, ends or changes level on the
+  road (or moves to another stretch id), none when a stretch only grows or
+  shrinks. Started or raised is recorded at once; lifted or lowered once a
+  second refresh agrees (about 15 minutes), like a reopening.
+- **Unknown is not "none".** While the chain-control read cannot say (one of
+  Caltrans's two sources down, an unreadable sign on the highway), the event
+  keeps the chains it has. On the map layer `road.chains` is absent then; on
+  the event the list is the last known state. The `caltrans-cc` source says
+  when that read is failing.
+- **Timeline** (`GET /api/v1/events/{id}/timeline`): entries with `field:
+  "chains"`, labelled "Chains R2" and "Chains lifted", `before` and `after`
+  the highest level or `none`.
+- **Related** (`GET /api/v1/events/{id}/related`): a road lists the stored
+  stretches it is under, and a stretch the roads it is on, under the new
+  rule `road-chains` (HIGH).
+- History starts with this release. Revisions before it carry no chains,
+  whatever the road was under: read the `chain_control` events for those.
+
+## 2026-11-19 (forecasts after a deploy)
+
+### Fixed: `GET /api/v1/conditions` had no forecast for minutes after each deploy
+
+A new process answered `forecast: []` (with `weatherStatus: OK`) until its
+first background refresh had finished the roads and reached the forecasts.
+The forecasts are now read from NWS as soon as the process starts, apart
+from the road refresh, so the gap is the few seconds those calls take. An
+empty `forecast` can still happen in that short window, or when NWS is down
+with nothing cached: treat it as "not available", as before.
+
+## 2026-11-19 (chains on roads)
+
+### Road segments say which chain requirements are on them: `road.chains`
+
+In a storm a monitored road such as `road:hwy4-arnold-bearvalley` is `OPEN`
+while Caltrans requires chains on most of it. That is right: chains do not
+change a road's status. But nothing on the road's own feature said so, and
+each client had to work out which `chain_control` stretch lies on which road.
+The `road_segment` map layer now states it. Additive: `status`, `severity`
+and `headline` are as they were, and so are the `chain_control` layer and the
+stored events.
+
+- **`road.chains[]`**: one entry per chain-control stretch (R1, R2, R3; not
+  closures, not truck or hold levels) that lies on the road, highest level
+  first, then by `eventId`:
+
+  ```json
+  {"level": "R2", "eventId": "cc:hwy4:r2",
+   "headline": "Hwy 4 chains required, Mill Creek to Mount Reba Road (R2)",
+   "from": "Mill Creek", "to": "Mount Reba Road",
+   "since": "2026-11-18T08:53:41-08:00", "inferred": false}
+  ```
+
+  Every value is the stretch's own, the `chain_control` feature with that id
+  (`eventId` is its id, `since` its `effective`, `from` and `to` its
+  `chainControl.from.place` and `to.place`). The stretch is not clipped to the
+  road: `from` and `to` can lie past the road's ends.
+- **Absent is not empty.** `chains` is absent when it is not known: the
+  chain-control read failed, came from one of Caltrans's two sources only, or
+  has a sign on the road's highway whose status or position could not be
+  read; or the road has no measured route yet. `"chains": []` is Caltrans
+  reporting no chain requirement on this road. Render absent as "unknown",
+  never as "none".
+- **Which stretch is on which road.** Same highway (Hwy 4 is never Hwy 49),
+  and either one of the stretch's signs stands within 250 m of the road's
+  line, or none does but its signs stand past both ends of the road. A
+  stretch that runs on past one end of a road and covers less than 1 km of
+  it is not on it: R2 from Blue Lake Springs up is on Arnold to Bear Valley
+  and not on the last 170 m of Murphys to Arnold. A single sign within 250 m
+  of where two monitored roads meet is on both.
+- The entry and the `chain_control` layer are separate reads of Caltrans,
+  each kept for up to 5 minutes, so one can show a change up to 5 minutes
+  before the other.
+
+Migration: none needed. A client that matched `chain_control` features to
+roads itself can read `road.chains` instead.
+## 2026-11-19 (road status)
+
+### Fixed: a road no longer reads OPEN because a Caltrans or CHP read failed
+
+On 2026-11-18 the monitored road `road:hwy4-arnold-bearvalley` alternated
+`CLOSED` and `OPEN` for five hours (revisions 4 to 9). Each `OPEN` revision
+had also lost the Ebbetts Pass winter closure (`roadSegment.beyond`), which
+Caltrans was listing the whole time: the read of its road-conditions page had
+come back with nothing, and that counted as "no conditions". A failed CHP
+read was treated the same way.
+
+- When the road-conditions page of a highway or the CHP incident feed cannot
+  be read, road status is worked out from the last good read of it: for up to
+  two hours for road conditions (Caltrans edits them rarely, and the page was
+  unreadable for up to an hour at a time that day), and for up to twice
+  `roads.refreshInterval` (30 minutes) for CHP incidents. After that the road
+  set is not refreshed at all, and monitored-road events keep their state.
+- A response that is not a road-conditions page (an error page, an empty
+  body) is a failed read, not an empty one. A real page that lists nothing
+  for the highway is still "no conditions".
+- `GET /api/v1/sources`: the `roads` row is `STALE` or `UNAVAILABLE` while an
+  input is failing, and its `lastError` says which and since when, e.g.
+  "road segments: road conditions for Hwy 4 unavailable since 17:05Z; last
+  good read used (HTTP error 503 fetching road conditions for highway 4)".
+  Before, `roads` stayed `OK` through these failures.
+
+No field or value changed. The revisions recorded on 2026-11-18 stay in the
+event's history.
+
+### Fixed: a CHP incident on a road beside a highway no longer sets the highway's status
+
+On 2026-11-18 `road:hwy49-angels-sonora` read `RESTRICTED` and then `CLOSED`
+for 75 minutes (revisions 6 and 7) because of CHP incident `chp:261118MR0292`,
+"21151 Old Sonora Columbia Rd": a county road, closed for a downed power pole,
+82 m from the Hwy 49 line. Any CHP incident within 100 m of a monitored road
+counted as on it.
+
+A CHP incident now sets a monitored road's status, and is listed in
+`road.statusCauses[]` / `roadSegment.causes[]`, only when it is on the highway
+itself: CHP's own location text names the route ("Sr49 / Reynolds Ferry Rd"),
+or its point is within 25 m of the road's line. Any other incident within
+100 m is near the road and sets nothing. The incident's own event
+(`layer=road_incident`) is unchanged. Lane closures and Caltrans road
+conditions are unaffected.
+
+One consequence to know: a CHP incident on the highway that CHP locates by a
+street address without the route number, and places more than 25 m off the
+line, no longer sets the road's status.
+
 ## 2026-11-19 (seasonal closures)
 
 ### Changed: a seasonal closure past a road's end is INFO and marked `seasonal`
