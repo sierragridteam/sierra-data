@@ -1,7 +1,6 @@
 package gridapi
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -53,37 +52,47 @@ func TestGetRoadHistory(t *testing.T) {
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 }
 
-// The samples of a ROAD_SEGMENT event are the road's archive, reached through
-// the event: the same rows GetRoadHistory returns. Other layers keep none.
-func TestGetEventSamples(t *testing.T) {
+// GET /api/v1/roads/{road}/history has readers outside this repository: its
+// body is one row per stored sample, exactly as stored, whatever the event
+// samples endpoint does with the same table. A closed road's travel time is
+// still the router's figure here, and nothing is bucketed, however many rows.
+func TestRoadHistoryShapeIsFixed(t *testing.T) {
 	s := newTestService(t)
 	road := s.Cfg.Roads.MonitoredRoads[0].ID
 	seedRoadSamples(t, s, road)
-	require.NoError(t, s.Store.SeedSources(context.Background(), []store.SourceSeed{
-		{ID: "roads", Name: "Road conditions", PollInterval: 5 * time.Minute},
+	d, delay := int32(29), int32(2)
+	require.NoError(t, s.Store.InsertRoadSamples(rpcBG(), []store.RoadSample{
+		{RoadID: road, At: base.Add(-30 * time.Minute), Status: int32(api.RoadStatus_CLOSED), Congestion: int32(api.CongestionLevel_HEAVY), DurationMinutes: &d, DelayMinutes: &delay},
 	}))
-	upsert(t, s.Store, &gridv1.Event{
-		Id: "road:" + road, Layer: gridv1.Layer_ROAD_SEGMENT, Category: "open",
-		Severity: gridv1.Severity_INFO, Status: gridv1.EventStatus_ACTIVE, Headline: "Hwy 4: open",
-		Provenance: &gridv1.Provenance{SourceId: "roads", SourceName: "Road conditions", FetchedAt: timestamppb.New(base)},
-		Detail:     &gridv1.Event_RoadSegment{RoadSegment: &gridv1.RoadSegmentDetail{RoadId: road, Name: "Hwy 4", Status: "OPEN"}},
-	})
 	g := NewGridServer(s)
 
-	got, err := g.GetEventSamples(rpcBG(), &gridv1.GetEventSamplesRequest{Id: "road:" + road})
-	require.NoError(t, err)
-	assert.Equal(t, gridv1.Layer_ROAD_SEGMENT, got.GetLayer())
-	assert.Equal(t, "road:"+road, got.GetEventId())
 	h, err := g.GetRoadHistory(rpcBG(), &gridv1.GetRoadHistoryRequest{Road: road})
 	require.NoError(t, err)
-	require.Len(t, got.GetRoad(), len(h.GetSamples()))
-	assert.Equal(t, h.GetSamples()[0].GetAt().AsTime(), got.GetRoad()[0].GetAt().AsTime())
-	assert.Equal(t, int32(42), got.GetRoad()[0].GetDurationMinutes().GetValue())
+	body, err := gatewaySummaryJSON.Marshal(h)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{
+		"road": "hwy-4",
+		"from": "2026-06-24T12:00:00Z", "to": "2026-07-01T12:00:00Z",
+		"samples": [
+			{"at": "2026-07-01T10:00:00Z", "status": "OPEN", "congestion": "CLEAR", "durationMinutes": 42, "delayMinutes": 0},
+			{"at": "2026-07-01T11:00:00Z", "status": "CLOSED", "congestion": "", "durationMinutes": null, "delayMinutes": null},
+			{"at": "2026-07-01T11:30:00Z", "status": "CLOSED", "congestion": "HEAVY", "durationMinutes": 29, "delayMinutes": 2}
+		]}`, string(body))
 
-	_, err = g.GetEventSamples(rpcBG(), &gridv1.GetEventSamplesRequest{Id: "road:nowhere"})
-	assert.Equal(t, codes.NotFound, status.Code(err))
-	_, err = g.GetEventSamples(rpcBG(), &gridv1.GetEventSamplesRequest{Id: "usgs:q1"})
-	assert.Equal(t, codes.NotFound, status.Code(err), "an event on a layer without samples")
-	_, err = g.GetEventSamples(rpcBG(), &gridv1.GetEventSamplesRequest{Id: "road:" + road, From: timestamppb.New(base), To: timestamppb.New(base)})
-	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+	// No ceiling and no buckets: more rows than the samples endpoint's
+	// largest answer come back one each.
+	var many []store.RoadSample
+	for i := range maxSamplePoints + 100 {
+		many = append(many, store.RoadSample{RoadID: road, At: base.Add(-100*24*time.Hour + time.Duration(i)*15*time.Minute), Status: int32(api.RoadStatus_OPEN)})
+	}
+	require.NoError(t, s.Store.InsertRoadSamples(rpcBG(), many))
+	h, err = g.GetRoadHistory(rpcBG(), &gridv1.GetRoadHistoryRequest{Road: road, From: timestamppb.New(base.Add(-100 * 24 * time.Hour)), To: timestamppb.New(base.Add(-50 * 24 * time.Hour))})
+	require.NoError(t, err)
+	assert.Len(t, h.GetSamples(), maxSamplePoints+100)
+
+	// It carries no validator: a conditional request is answered in full.
+	ctx, fs := rpcCtx()
+	_, err = g.GetRoadHistory(ctx, &gridv1.GetRoadHistoryRequest{Road: road})
+	require.NoError(t, err)
+	assert.Empty(t, fs.hdr.Get("grpc-metadata-etag"))
 }

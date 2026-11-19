@@ -17,12 +17,9 @@ import (
 	"github.com/sierragridteam/sierra-data/internal/store"
 )
 
-// Road samples follow the roads refresh (15 min); a year of them is ~35k rows
-// per segment.
-const (
-	roadSampleInterval  = 15 * time.Minute
-	roadSampleRetention = 400 * 24 * time.Hour
-)
+// Road samples are taken every store.RoadSampleInterval (the samples
+// endpoint reads the same constant to find gaps) and kept 400 days.
+const roadSampleRetention = 400 * 24 * time.Hour
 
 // roadSamplingConfig samples the roads service's CURRENT set, which ListRoads
 // serves from its cache (it refreshes upstream only when the cache is empty;
@@ -34,7 +31,7 @@ func roadSamplingConfig(roads *services.RoadsService) ingest.RoadSampling {
 		return ingest.RoadSampling{}
 	}
 	return ingest.RoadSampling{
-		Interval:  roadSampleInterval,
+		Interval:  store.RoadSampleInterval,
 		Retention: roadSampleRetention,
 		Sample: func(ctx context.Context) ([]store.RoadSample, error) {
 			resp, err := roads.ListRoads(ctx, &api.ListRoadsRequest{})

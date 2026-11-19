@@ -1836,13 +1836,30 @@ service GridService {
 
   // Get an event's samples.
   //
-  // The dense numeric series behind an event whose layer has one. The event's
-  // revisions record when its state changed; its samples are the readings in
-  // between. Today one layer has samples: ROAD_SEGMENT (`road:{road id}`),
-  // one sample per roads refresh (about every 15 minutes) with status,
-  // congestion, travel time and delay, kept 400 days. It is the series
-  // `GET /api/v1/roads/{road}/history` returns. Default window: the 7 days
-  // before `to` (default now); windows over 400 days are clamped.
+  // The dense numeric series behind an event whose layer has one, shaped for
+  // a chart. The event's revisions record when its state changed; its samples
+  // are the readings in between. Today one layer has samples: ROAD_SEGMENT
+  // (`road:{road id}`), recorded at each roads refresh (about every 15
+  // minutes) and kept 400 days.
+  //
+  // The answer is at most `maxPoints` points (default 500, at most 2000).
+  // When the window holds no more samples than that, each point is one
+  // sample and `bucketSeconds` is 0. Otherwise the samples are grouped into
+  // buckets of `bucketSeconds`: the narrowest of 5, 15 and 30 minutes, 1, 2,
+  // 3, 6 and 12 hours and 1 day that fits (then whole days). Buckets are
+  // aligned to the Unix epoch, so a bucket's start does not depend on the
+  // window. `coverage` says what the window holds and `gaps` where the
+  // series has holes, so a chart can break its line there instead of joining
+  // across them.
+  //
+  // A closed road has no travel time: a sample taken while the segment was
+  // CLOSED carries `null` for travel time and delay, and is left out of a
+  // bucket's figures.
+  //
+  // Default window: the 7 days before `to` (default now); windows over 400
+  // days are clamped. Supports ETag / If-None-Match: the validator changes
+  // when a sample lands in the window. The raw rows, one per refresh and
+  // unbounded, remain at `GET /api/v1/roads/{road}/history`.
   rpc GetEventSamples(GetEventSamplesRequest) returns (EventSamples) {
     option (google.api.http) = {get: "/api/v1/events/{id}/samples"};
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -1853,7 +1870,7 @@ service GridService {
       }
       responses: {
         key: "400"
-        value: {description: "INVALID_ARGUMENT: `from` not before `to`."}
+        value: {description: "INVALID_ARGUMENT: `from` not before `to`, or `maxPoints` below 1 or not a number."}
       }
     };
   }
@@ -2250,7 +2267,8 @@ message GetRoadHistoryRequest {
   google.protobuf.Timestamp to = 3;
 }
 
-// GetEventSamplesRequest names an event and a window.
+// GetEventSamplesRequest names an event, a window and how many points to
+// answer with.
 message GetEventSamplesRequest {
   // The event id, e.g. `road:hwy4-arnold-bearvalley`.
   string id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"road:hwy4-arnold-bearvalley\""}];
@@ -2258,18 +2276,99 @@ message GetEventSamplesRequest {
   google.protobuf.Timestamp from = 2;
   // Window end, RFC 3339, exclusive. Default: now.
   google.protobuf.Timestamp to = 3;
+  // The most points to answer with. Default 500; above 2000 is read as 2000;
+  // below 1 is a 400. A window with more samples than this is answered in
+  // buckets (see `bucketSeconds`).
+  //
+  // (-- optional, so an explicit 0 is refused and not read as the default. --)
+  optional int32 max_points = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    minimum: 1
+    example: "500"
+  }];
 }
 
-// EventSamples is one event's samples over a window. The list that is filled
-// depends on the event's layer.
+// EventSamples is one event's samples over a window. The envelope is the same
+// for every layer; the list that is filled depends on the event's layer.
 message EventSamples {
+  // Field 5 was the unbucketed `road` list (2026-11-17 to 2026-11-19).
+  reserved 5;
+
   string event_id = 1;
-  // The event's layer, which says which list below holds the samples.
+  // The event's layer, which says which list below holds the points.
   Layer layer = 2;
+  // Window start actually used (after defaults and clamping).
   google.protobuf.Timestamp from = 3 [(google.api.field_behavior) = REQUIRED];
+  // Window end actually used.
   google.protobuf.Timestamp to = 4 [(google.api.field_behavior) = REQUIRED];
-  // ROAD_SEGMENT: one per roads refresh, oldest first.
-  repeated RoadSample road = 5;
+  // What the window holds, before any bucketing.
+  SampleCoverage coverage = 6 [(google.api.field_behavior) = REQUIRED];
+  // 0 when each point is one sample. Otherwise the width of each bucket in
+  // seconds: every point then stands for the samples in
+  // [`at`, `at` + `bucketSeconds`) that are inside the window. Bucket starts
+  // are multiples of `bucketSeconds` since the Unix epoch, so the first
+  // point's `at` can be earlier than `from`, and the first and last buckets
+  // hold only the part of them the window covers.
+  int32 bucket_seconds = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "3600"}];
+  // Stretches of the window without samples, oldest first: between two
+  // consecutive samples further apart than three times the sampling
+  // interval, from `from` to the first sample, and from the last sample to
+  // `to` (or to now, when `to` is in the future). Found on the samples
+  // themselves, before bucketing. A window with no samples at all is one
+  // gap. Break a chart's line across each.
+  repeated SampleGap gaps = 8;
+  // ROAD_SEGMENT: the points, oldest first.
+  repeated RoadSamplePoint road = 9;
+}
+
+// SampleCoverage is what a window of samples holds.
+message SampleCoverage {
+  // The first sample in the window. `null` when the window holds none.
+  google.protobuf.Timestamp first = 1;
+  // The last sample in the window. `null` when the window holds none.
+  google.protobuf.Timestamp last = 2;
+  // How many samples the window holds, however many points they are
+  // answered as.
+  int32 samples = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "685"}];
+}
+
+// SampleGap is a stretch of a window without samples.
+message SampleGap {
+  // The sample before the gap, or the window start.
+  google.protobuf.Timestamp from = 1 [(google.api.field_behavior) = REQUIRED];
+  // The sample after the gap, or the window end (now, when that is earlier).
+  google.protobuf.Timestamp to = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+// RoadSamplePoint is one point of a road segment's series: one sample, or
+// one bucket of them. The shape is the same either way; for one sample the
+// minimum, the maximum and the value are equal.
+//
+// Travel time and delay count only the samples taken while the segment was
+// not CLOSED and that had a figure. They are `null` when no sample counts: a
+// closed road, or a refresh without a travel time.
+message RoadSamplePoint {
+  // The sample's time, or the start of the bucket.
+  google.protobuf.Timestamp at = 1 [(google.api.field_behavior) = REQUIRED];
+  // How many samples the point stands for: 1 when `bucketSeconds` is 0.
+  int32 samples = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "1"}];
+  // The most restrictive status among the samples: CLOSED, then RESTRICTED,
+  // then MAINTENANCE, then OPEN.
+  string status = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"OPEN\""}];
+  // The worst congestion among the samples: CLEAR, LIGHT, MODERATE, HEAVY or
+  // SEVERE; `""` when none had one.
+  string congestion = 4;
+  // Travel time, minutes: the mean over the samples that count, to one
+  // decimal.
+  google.protobuf.DoubleValue duration_minutes = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "28.4"}];
+  // The shortest travel time among the samples that count.
+  google.protobuf.Int32Value duration_minutes_min = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "27"}];
+  // The longest travel time among the samples that count.
+  google.protobuf.Int32Value duration_minutes_max = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "30"}];
+  // Delay against free flow, minutes: the mean over the samples that count,
+  // to one decimal.
+  google.protobuf.DoubleValue delay_minutes = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "0.5"}];
+  // The longest delay among the samples that count.
+  google.protobuf.Int32Value delay_minutes_max = 9 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "2"}];
 }
 
 // RoadSample is a segment at one roads refresh.

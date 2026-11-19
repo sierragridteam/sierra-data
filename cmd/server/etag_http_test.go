@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,6 +27,8 @@ func TestConditionalGetThroughTheGateway(t *testing.T) {
 	blockOutbound(t)
 	dbURL := seededGridDB(t)
 	eventID := seedPlaceAndEvent(t, dbURL)
+
+	roadID := seedRoadEvent(t, dbURL)
 
 	a, portA := preparedGrid(t, dbURL)
 	// The writer's boot seed (sources, places) bumps the places version that
@@ -59,6 +62,9 @@ func TestConditionalGetThroughTheGateway(t *testing.T) {
 		"/api/v1/history",
 		"/api/v1/places",
 		"/api/v1/places/etag-test",
+		// A window in the past: one that ends now is keyed by the clock too.
+		"/api/v1/events/" + roadID + "/samples?from=2026-11-10T00:00:00Z&to=2026-11-10T06:00:00Z",
+		"/api/v1/events/" + roadID + "/samples?from=2026-11-10T00:00:00Z&to=2026-11-10T06:00:00Z&maxPoints=3",
 		// /api/v1/cameras is guarded too, but only with the camera directory
 		// configured; this config has none (an UNAVAILABLE list, no tag).
 	}
@@ -106,8 +112,72 @@ func TestConditionalGetThroughTheGateway(t *testing.T) {
 	assert.NotEqual(t, before, after)
 	assert.Equal(t, after, get(t, portB, path, "").header.Get("ETag"))
 
+	// Samples are not events: no version counter moves with them. A sample
+	// landing in the window still changes the validator, at once and in both
+	// processes, because it is read from the rows.
+	samples := "/api/v1/events/" + roadID + "/samples?from=2026-11-10T00:00:00Z&to=2026-11-10T06:00:00Z"
+	first := get(t, portB, samples, "")
+	assert.JSONEq(t, `{"first":"2026-11-10T01:00:00Z","last":"2026-11-10T02:00:00Z","samples":5}`, jsonField(t, first.body, "coverage"))
+	assert.JSONEq(t, `[{"from":"2026-11-10T00:00:00Z","to":"2026-11-10T01:00:00Z"},{"from":"2026-11-10T02:00:00Z","to":"2026-11-10T06:00:00Z"}]`, jsonField(t, first.body, "gaps"))
+	bucketed := get(t, portB, samples+"&maxPoints=3", "")
+	assert.JSONEq(t, `1800`, jsonField(t, bucketed.body, "bucketSeconds"))
+	assert.NotEqual(t, first.header.Get("ETag"), bucketed.header.Get("ETag"), "maxPoints is part of the validator")
+	require.NoError(t, a.store.InsertRoadSamples(context.Background(), []store.RoadSample{
+		{RoadID: "etag-road", At: time.Date(2026, 11, 10, 2, 15, 0, 0, time.UTC), Status: 1},
+	}))
+	for _, port := range []int{portA, portB} {
+		r := get(t, port, samples, first.header.Get("ETag"))
+		require.Equal(t, http.StatusOK, r.code, "the old tag no longer matches")
+		assert.NotEqual(t, first.header.Get("ETag"), r.header.Get("ETag"))
+		assert.JSONEq(t, `6`, jsonField(t, jsonField(t, r.body, "coverage"), "samples"))
+	}
+	assert.Equal(t, get(t, portA, samples, "").header.Get("ETag"), get(t, portB, samples, "").header.Get("ETag"))
+
+	// maxPoints: below 1 or not a number is a 400; above the ceiling is not.
+	for _, bad := range []string{"0", "-5", "abc", "1.5"} {
+		assert.Equal(t, http.StatusBadRequest, get(t, portB, samples+"&maxPoints="+bad, "").code, "maxPoints=%s", bad)
+	}
+	assert.Equal(t, http.StatusOK, get(t, portB, samples+"&maxPoints=100000", "").code)
+	assert.Equal(t, http.StatusOK, get(t, portB, samples+"&max_points=3", "").code, "the proto name works too")
+	assert.Equal(t, http.StatusNotFound, get(t, portB, "/api/v1/events/"+eventID+"/samples", "").code, "a layer without samples")
+	assert.Equal(t, http.StatusNotFound, get(t, portB, "/api/v1/events/road:nowhere/samples", "").code)
+
 	assert.Equal(t, 0, hb.terminate())
 	assert.Equal(t, 0, ha.terminate())
+}
+
+// jsonField is one top-level member of a JSON object, as JSON.
+func jsonField(t *testing.T, body, key string) string {
+	t.Helper()
+	var m map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(body), &m), body)
+	require.Contains(t, m, key, body)
+	return string(m[key])
+}
+
+// seedRoadEvent adds a monitored-road event with five samples (01:00 to
+// 02:00 on 2026-11-10) and returns its id.
+func seedRoadEvent(t *testing.T, dbURL string) string {
+	t.Helper()
+	st, err := store.Open(dbURL)
+	require.NoError(t, err)
+	defer st.Close()
+	ctx := context.Background()
+	require.NoError(t, st.SeedSources(ctx, []store.SourceSeed{{ID: "roads", Name: "Road conditions", PollInterval: 5 * time.Minute}}))
+	_, err = st.UpsertEvent(ctx, &gridv1.Event{
+		Id: "road:etag-road", Layer: gridv1.Layer_ROAD_SEGMENT, Category: "open",
+		Severity: gridv1.Severity_INFO, Status: gridv1.EventStatus_ACTIVE, Headline: "Test road: open",
+		Provenance: &gridv1.Provenance{SourceId: "roads"},
+		Detail:     &gridv1.Event_RoadSegment{RoadSegment: &gridv1.RoadSegmentDetail{RoadId: "etag-road", Name: "Test road", Status: "OPEN"}},
+	})
+	require.NoError(t, err)
+	d := int32(28)
+	var samples []store.RoadSample
+	for i := range 5 {
+		samples = append(samples, store.RoadSample{RoadID: "etag-road", At: time.Date(2026, 11, 10, 1, 15*i, 0, 0, time.UTC), Status: 1, Congestion: 1, DurationMinutes: &d})
+	}
+	require.NoError(t, st.InsertRoadSamples(ctx, samples))
+	return "road:etag-road"
 }
 
 type resp struct {

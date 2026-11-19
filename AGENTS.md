@@ -588,8 +588,8 @@ everything from the grid event store. Field names are **camelCase** (protojson
 `UseProtoNames:false`), timestamps RFC 3339, errors gRPC-standard
 `{code, codeName, message, details}` with the mapped HTTP status. gRPC reflection
 is on. Conditional GET (ETag/If-None-Match -> 304) is wired via prefab's `etag`
-plugin on most read RPCs — event detail, the event/history lists, places, and
-cameras (`GetPlaceSummary`/`GetConditions`/`ListSources`/`ResolvePlace`/
+plugin on most read RPCs — event detail, the event/history lists, an event's
+samples, places, and cameras (`GetPlaceSummary`/`GetConditions`/`ListSources`/`ResolvePlace`/
 `ListScanners` are not yet guarded). Headers an RPC sets with prefab's
 `serverutil.SendHeader` (the `ETag`, and `Cache-Control: public, max-age=30`
 from `gridapi.CacheControlInterceptor`) reach HTTP clients only through

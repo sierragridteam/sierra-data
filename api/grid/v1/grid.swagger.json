@@ -502,7 +502,7 @@
     "/api/v1/events/{id}/samples": {
       "get": {
         "summary": "Get an event's samples.",
-        "description": "The dense numeric series behind an event whose layer has one. The event's\nrevisions record when its state changed; its samples are the readings in\nbetween. Today one layer has samples: ROAD_SEGMENT (`road:{road id}`),\none sample per roads refresh (about every 15 minutes) with status,\ncongestion, travel time and delay, kept 400 days. It is the series\n`GET /api/v1/roads/{road}/history` returns. Default window: the 7 days\nbefore `to` (default now); windows over 400 days are clamped.",
+        "description": "The dense numeric series behind an event whose layer has one, shaped for\na chart. The event's revisions record when its state changed; its samples\nare the readings in between. Today one layer has samples: ROAD_SEGMENT\n(`road:{road id}`), recorded at each roads refresh (about every 15\nminutes) and kept 400 days.\n\nThe answer is at most `maxPoints` points (default 500, at most 2000).\nWhen the window holds no more samples than that, each point is one\nsample and `bucketSeconds` is 0. Otherwise the samples are grouped into\nbuckets of `bucketSeconds`: the narrowest of 5, 15 and 30 minutes, 1, 2,\n3, 6 and 12 hours and 1 day that fits (then whole days). Buckets are\naligned to the Unix epoch, so a bucket's start does not depend on the\nwindow. `coverage` says what the window holds and `gaps` where the\nseries has holes, so a chart can break its line there instead of joining\nacross them.\n\nA closed road has no travel time: a sample taken while the segment was\nCLOSED carries `null` for travel time and delay, and is left out of a\nbucket's figures.\n\nDefault window: the 7 days before `to` (default now); windows over 400\ndays are clamped. Supports ETag / If-None-Match: the validator changes\nwhen a sample lands in the window. The raw rows, one per refresh and\nunbounded, remain at `GET /api/v1/roads/{road}/history`.",
         "operationId": "GridService_GetEventSamples",
         "responses": {
           "200": {
@@ -512,7 +512,7 @@
             }
           },
           "400": {
-            "description": "INVALID_ARGUMENT: `from` not before `to`.",
+            "description": "INVALID_ARGUMENT: `from` not before `to`, or `maxPoints` below 1 or not a number.",
             "schema": {}
           },
           "404": {
@@ -550,6 +550,15 @@
             "required": false,
             "type": "string",
             "format": "date-time"
+          },
+          {
+            "name": "maxPoints",
+            "description": "The most points to answer with. Default 500; above 2000 is read as 2000;\nbelow 1 is a 400. A window with more samples than this is answered in\nbuckets (see `bucketSeconds`).\n",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32",
+            "x-example": 500
           }
         ],
         "tags": [
@@ -2261,29 +2270,50 @@
         },
         "layer": {
           "$ref": "#/definitions/v1Layer",
-          "description": "The event's layer, which says which list below holds the samples."
+          "description": "The event's layer, which says which list below holds the points."
         },
         "from": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "Window start actually used (after defaults and clamping)."
         },
         "to": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "Window end actually used."
+        },
+        "coverage": {
+          "$ref": "#/definitions/v1SampleCoverage",
+          "description": "What the window holds, before any bucketing."
+        },
+        "bucketSeconds": {
+          "type": "integer",
+          "format": "int32",
+          "example": 3600,
+          "description": "0 when each point is one sample. Otherwise the width of each bucket in\nseconds: every point then stands for the samples in\n[`at`, `at` + `bucketSeconds`) that are inside the window. Bucket starts\nare multiples of `bucketSeconds` since the Unix epoch, so the first\npoint's `at` can be earlier than `from`, and the first and last buckets\nhold only the part of them the window covers."
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1SampleGap"
+          },
+          "description": "Stretches of the window without samples, oldest first: between two\nconsecutive samples further apart than three times the sampling\ninterval, from `from` to the first sample, and from the last sample to\n`to` (or to now, when `to` is in the future). Found on the samples\nthemselves, before bucketing. A window with no samples at all is one\ngap. Break a chart's line across each."
         },
         "road": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1RoadSample"
+            "$ref": "#/definitions/v1RoadSamplePoint"
           },
-          "description": "ROAD_SEGMENT: one per roads refresh, oldest first."
+          "description": "ROAD_SEGMENT: the points, oldest first."
         }
       },
-      "description": "EventSamples is one event's samples over a window. The list that is filled\ndepends on the event's layer.",
+      "description": "EventSamples is one event's samples over a window. The envelope is the same\nfor every layer; the list that is filled depends on the event's layer.",
       "required": [
         "from",
-        "to"
+        "to",
+        "coverage"
       ]
     },
     "v1EventStatus": {
@@ -3529,6 +3559,65 @@
         "at"
       ]
     },
+    "v1RoadSamplePoint": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The sample's time, or the start of the bucket."
+        },
+        "samples": {
+          "type": "integer",
+          "format": "int32",
+          "example": 1,
+          "description": "How many samples the point stands for: 1 when `bucketSeconds` is 0."
+        },
+        "status": {
+          "type": "string",
+          "example": "OPEN",
+          "description": "The most restrictive status among the samples: CLOSED, then RESTRICTED,\nthen MAINTENANCE, then OPEN."
+        },
+        "congestion": {
+          "type": "string",
+          "description": "The worst congestion among the samples: CLEAR, LIGHT, MODERATE, HEAVY or\nSEVERE; `\"\"` when none had one."
+        },
+        "durationMinutes": {
+          "type": "number",
+          "format": "double",
+          "example": 28.4,
+          "description": "Travel time, minutes: the mean over the samples that count, to one\ndecimal."
+        },
+        "durationMinutesMin": {
+          "type": "integer",
+          "format": "int32",
+          "example": 27,
+          "description": "The shortest travel time among the samples that count."
+        },
+        "durationMinutesMax": {
+          "type": "integer",
+          "format": "int32",
+          "example": 30,
+          "description": "The longest travel time among the samples that count."
+        },
+        "delayMinutes": {
+          "type": "number",
+          "format": "double",
+          "example": 0.5,
+          "description": "Delay against free flow, minutes: the mean over the samples that count,\nto one decimal."
+        },
+        "delayMinutesMax": {
+          "type": "integer",
+          "format": "int32",
+          "example": 2,
+          "description": "The longest delay among the samples that count."
+        }
+      },
+      "description": "RoadSamplePoint is one point of a road segment's series: one sample, or\none bucket of them. The shape is the same either way; for one sample the\nminimum, the maximum and the value are equal.\n\nTravel time and delay count only the samples taken while the segment was\nnot CLOSED and that had a figure. They are `null` when no sample counts: a\nclosed road, or a refresh without a travel time.",
+      "required": [
+        "at"
+      ]
+    },
     "v1RoadSegmentBeyond": {
       "type": "object",
       "properties": {
@@ -3580,6 +3669,48 @@
         }
       },
       "description": "RoadSegmentDetail is one monitored road's state (layer ROAD_SEGMENT, event\nid `road:{road id}`, the id of its feature on the `road_segment` map\nlayer). The event holds the state and is revised when it changes: the\nroad's status, and the seasonal closures past its ends. What moves at\nevery refresh (travel time, delay, congestion level) is in the samples:\n`GET /api/v1/events/{id}/samples`.\n\nA change that eases the road (reopened, a closure lifted) is recorded once\na second refresh, about 15 minutes later, agrees; a change that restricts\nit is recorded at once. `observedAt` is the refresh the state was read at."
+    },
+    "v1SampleCoverage": {
+      "type": "object",
+      "properties": {
+        "first": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The first sample in the window. `null` when the window holds none."
+        },
+        "last": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The last sample in the window. `null` when the window holds none."
+        },
+        "samples": {
+          "type": "integer",
+          "format": "int32",
+          "example": 685,
+          "description": "How many samples the window holds, however many points they are\nanswered as."
+        }
+      },
+      "description": "SampleCoverage is what a window of samples holds."
+    },
+    "v1SampleGap": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The sample before the gap, or the window start."
+        },
+        "to": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The sample after the gap, or the window end (now, when that is earlier)."
+        }
+      },
+      "description": "SampleGap is a stretch of a window without samples.",
+      "required": [
+        "from",
+        "to"
+      ]
     },
     "v1Scanner": {
       "type": "object",
