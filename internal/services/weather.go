@@ -34,6 +34,31 @@ type WeatherService struct {
 	// set (refreshWeatherData), and this is what keeps that honest.
 	readMu sync.Mutex
 	readAt map[string]time.Time
+	// readings is each town's last successful read as OpenWeatherMap reported
+	// it (unrounded), under readMu beside readAt.
+	readings map[string]weather.Reading
+}
+
+// LocationReading is one location's last successful read of current weather
+// and when it was taken.
+type LocationReading struct {
+	At      time.Time
+	Reading weather.Reading
+}
+
+// CurrentReadings returns each location's last successful read since the
+// process started, by location id. It never fetches: it is what the refresh
+// path last noted (the periodic refresher keeps that warm on the writer). A
+// location whose fetch keeps failing keeps its last reading and its time, so
+// a reader that samples this sees the same reading again, not a new one.
+func (s *WeatherService) CurrentReadings() map[string]LocationReading {
+	s.readMu.Lock()
+	defer s.readMu.Unlock()
+	out := make(map[string]LocationReading, len(s.readings))
+	for id, r := range s.readings {
+		out[id] = LocationReading{At: s.readAt[id], Reading: r}
+	}
+	return out
 }
 
 // ReadingTimes returns when each location's current weather was last read
@@ -49,13 +74,20 @@ func (s *WeatherService) ReadingTimes() map[string]time.Time {
 	return out
 }
 
-func (s *WeatherService) noteRead(id string, at time.Time) {
+func (s *WeatherService) noteRead(id string, at time.Time, reading *weather.Reading) {
 	s.readMu.Lock()
 	defer s.readMu.Unlock()
 	if s.readAt == nil {
 		s.readAt = map[string]time.Time{}
 	}
 	s.readAt[id] = at
+	if reading == nil {
+		return
+	}
+	if s.readings == nil {
+		s.readings = map[string]weather.Reading{}
+	}
+	s.readings[id] = *reading
 }
 
 // NewWeatherService creates a new WeatherService
@@ -233,7 +265,7 @@ func (s *WeatherService) refreshWeatherData(ctx context.Context) ([]*api.Weather
 	for i, location := range s.config.Weather.Locations {
 		logging.Infow(ctx, "Processing weather location", "index", i, "location_id", location.ID, "location_name", location.Name)
 
-		weatherData, err := s.processWeatherLocation(ctx, location)
+		weatherData, reading, err := s.processWeatherLocation(ctx, location)
 		if err != nil {
 			logging.Errorw(ctx, "Failed to process weather for location",
 				"location_id", location.ID,
@@ -247,7 +279,7 @@ func (s *WeatherService) refreshWeatherData(ctx context.Context) ([]*api.Weather
 			continue
 		}
 		weatherDataList = append(weatherDataList, weatherData)
-		s.noteRead(location.ID, time.Now())
+		s.noteRead(location.ID, time.Now(), reading)
 		logging.Infow(ctx, "Successfully processed weather location", "location_id", location.ID)
 	}
 
@@ -268,17 +300,18 @@ func (s *WeatherService) refreshWeatherData(ctx context.Context) ([]*api.Weather
 // Call alerts were dropped deliberately — for US locations they are relabeled
 // NWS data, and the One Call 3.0 endpoint's 1,000 calls/day free cap was being
 // exceeded. Don't reintroduce per-location One Call fetches.)
-func (s *WeatherService) processWeatherLocation(ctx context.Context, location config.WeatherLocation) (*api.WeatherData, error) {
+func (s *WeatherService) processWeatherLocation(ctx context.Context, location config.WeatherLocation) (*api.WeatherData, *weather.Reading, error) {
 	logging.Infow(ctx, "Processing weather for location", "location_id", location.ID)
 
 	if s.config.OpenWeather.APIKey == "" {
-		return nil, fmt.Errorf("OpenWeatherMap API key not configured")
+		return nil, nil, fmt.Errorf("OpenWeatherMap API key not configured")
 	}
 
-	// Get current weather data
-	weatherData, err := s.weatherClient.GetCurrentWeather(ctx, location.ToProto())
+	// Get current weather data, and the same response unrounded for the
+	// sample archive (CurrentReadings).
+	weatherData, reading, err := s.weatherClient.GetCurrentReading(ctx, location.ToProto())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get current weather: %w", err)
+		return nil, nil, fmt.Errorf("failed to get current weather: %w", err)
 	}
 
 	// Set location ID and name from config
@@ -290,7 +323,7 @@ func (s *WeatherService) processWeatherLocation(ctx context.Context, location co
 	// failure leaves alerts empty rather than failing current conditions.
 	weatherData.Alerts = s.nwsAlertsForZone(ctx, location.Zone)
 
-	return weatherData, nil
+	return weatherData, reading, nil
 }
 
 // refreshWeatherAlerts builds the weather-alerts list from authoritative NWS

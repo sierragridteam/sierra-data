@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"time"
@@ -50,6 +51,89 @@ func NewClientWithHTTPDoer(apiKey, baseURL string, httpClient HTTPDoer) *Client 
 // GetCurrentWeather retrieves current weather conditions for coordinates
 // Endpoint per research.md line 92
 func (c *Client) GetCurrentWeather(ctx context.Context, coordinates *api.Coordinates) (*api.WeatherData, error) {
+	data, _, err := c.GetCurrentReading(ctx, coordinates)
+	return data, err
+}
+
+// Reading is one location's current weather as OpenWeatherMap reported it,
+// before the whole-number conversion WeatherData applies (which also drops
+// the gust and the precipitation rates). It is what the weather sample
+// archive stores (store.WeatherSample): a freezing threshold cannot be
+// checked against a temperature cut to a whole degree. A pointer is nil when
+// the response did not carry the field.
+type Reading struct {
+	TemperatureCelsius float64 // to 0.01, as reported
+	FeelsLikeCelsius   float64
+	HumidityPercent    int32
+	WindSpeedKmh       float64 // from m/s, to 0.1
+	// Direction the wind blows FROM; nil when the response had no wind block
+	// direction (OpenWeatherMap reports 0 for calm and for north alike).
+	WindDirectionDegrees *int32
+	WindGustKmh          *float64 // reported "where available"
+	VisibilityMeters     *int32   // OpenWeatherMap caps it at 10,000
+	// Precipitation over the last hour, mm. OpenWeatherMap leaves the block
+	// out when it reports none, so nil is "nothing reported", not a measured 0.
+	RainMmPerHour *float64
+	SnowMmPerHour *float64
+	// Condition group and description, e.g. "Snow" and "light snow".
+	WeatherMain        string
+	WeatherDescription string
+}
+
+// GetCurrentReading is GetCurrentWeather with the reading beside it: one
+// fetch, the same response read both ways.
+func (c *Client) GetCurrentReading(ctx context.Context, coordinates *api.Coordinates) (*api.WeatherData, *Reading, error) {
+	response, err := c.fetchCurrent(ctx, coordinates)
+	if err != nil {
+		return nil, nil, err
+	}
+	data, err := c.processCurrentWeatherResponse(*response)
+	if err != nil {
+		return nil, nil, err
+	}
+	return data, readingFrom(*response), nil
+}
+
+// round rounds v to the given number of decimals. The response's numbers are
+// decoded as float32, so 3.4 would otherwise widen to 3.4000000953674316.
+func round(v float64, decimals int) float64 {
+	p := math.Pow(10, float64(decimals))
+	return math.Round(v*p) / p
+}
+
+func readingFrom(response OpenWeatherCurrentResponse) *Reading {
+	r := &Reading{
+		TemperatureCelsius: round(float64(response.Main.Temp), 2),
+		FeelsLikeCelsius:   round(float64(response.Main.FeelsLike), 2),
+		HumidityPercent:    response.Main.Humidity,
+		WindSpeedKmh:       round(float64(response.Wind.Speed)*3.6, 1),
+		VisibilityMeters:   response.Visibility,
+	}
+	if len(response.Weather) > 0 {
+		r.WeatherMain = response.Weather[0].Main
+		r.WeatherDescription = response.Weather[0].Description
+	}
+	if response.Wind.Deg != nil {
+		d := *response.Wind.Deg
+		r.WindDirectionDegrees = &d
+	}
+	if response.Wind.Gust != nil {
+		g := round(float64(*response.Wind.Gust)*3.6, 1)
+		r.WindGustKmh = &g
+	}
+	if response.Rain != nil && response.Rain.OneHour != nil {
+		v := round(float64(*response.Rain.OneHour), 2)
+		r.RainMmPerHour = &v
+	}
+	if response.Snow != nil && response.Snow.OneHour != nil {
+		v := round(float64(*response.Snow.OneHour), 2)
+		r.SnowMmPerHour = &v
+	}
+	return r
+}
+
+// fetchCurrent reads /data/2.5/weather for coordinates.
+func (c *Client) fetchCurrent(ctx context.Context, coordinates *api.Coordinates) (*OpenWeatherCurrentResponse, error) {
 	// Build URL with query parameters
 	params := url.Values{}
 	params.Set("lat", fmt.Sprintf("%.6f", coordinates.Latitude))
@@ -89,8 +173,12 @@ func (c *Client) GetCurrentWeather(ctx context.Context, coordinates *api.Coordin
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
-
-	return c.processCurrentWeatherResponse(response)
+	// A 200 with no `main` block would read as 0 C, calm and dry: a reading
+	// nobody took. OpenWeatherMap stamps every real answer with `dt`.
+	if response.Main == nil || response.Dt == 0 {
+		return nil, fmt.Errorf("response carries no current weather (no main block or dt)")
+	}
+	return &response, nil
 }
 
 // GetWeatherAlerts retrieves weather alerts using One Call API 3.0.
@@ -148,6 +236,18 @@ func (c *Client) processCurrentWeatherResponse(response OpenWeatherCurrentRespon
 		weatherIcon = response.Weather[0].Icon
 	}
 
+	// Absent fields read as 0, as they always have on this message.
+	var windDeg, visibilityKm int32
+	if response.Wind.Deg != nil {
+		windDeg = *response.Wind.Deg
+	}
+	if response.Visibility != nil {
+		visibilityKm = *response.Visibility / 1000 // meters to km
+	}
+	if response.Main == nil {
+		response.Main = &OpenWeatherMain{}
+	}
+
 	return &api.WeatherData{
 		LocationId:           "", // Will be set by calling service
 		LocationName:         response.Name,
@@ -158,9 +258,9 @@ func (c *Client) processCurrentWeatherResponse(response OpenWeatherCurrentRespon
 		FeelsLikeCelsius:     int32(response.Main.FeelsLike), // Round to int
 		HumidityPercent:      response.Main.Humidity,
 		WindSpeedKmh:         int32(response.Wind.Speed * 3.6), // Convert m/s to km/h
-		WindDirectionDegrees: response.Wind.Deg,
-		VisibilityKm:         int32(response.Visibility / 1000), // Convert meters to km
-		Alerts:               nil,                               // Alerts fetched separately
+		WindDirectionDegrees: windDeg,
+		VisibilityKm:         visibilityKm,
+		Alerts:               nil, // Alerts fetched separately
 	}, nil
 }
 
@@ -197,10 +297,12 @@ func (c *Client) processWeatherAlerts(alerts []OpenWeatherAlert) ([]*api.Weather
 type OpenWeatherCurrentResponse struct {
 	Coord      OpenWeatherCoord     `json:"coord"`
 	Weather    []OpenWeatherWeather `json:"weather"`
-	Main       OpenWeatherMain      `json:"main"`
+	Main       *OpenWeatherMain     `json:"main"`
 	Wind       OpenWeatherWind      `json:"wind"`
 	Clouds     OpenWeatherClouds    `json:"clouds"`
-	Visibility int32                `json:"visibility"`
+	Visibility *int32               `json:"visibility"`
+	Rain       *OpenWeatherPrecip   `json:"rain"`
+	Snow       *OpenWeatherPrecip   `json:"snow"`
 	Name       string               `json:"name"`
 	Dt         int64                `json:"dt"`
 }
@@ -235,8 +337,15 @@ type OpenWeatherMain struct {
 
 // OpenWeatherWind represents wind data
 type OpenWeatherWind struct {
-	Speed float32 `json:"speed"`
-	Deg   int32   `json:"deg"`
+	Speed float32  `json:"speed"`
+	Deg   *int32   `json:"deg"`
+	Gust  *float32 `json:"gust"` // m/s, where available
+}
+
+// OpenWeatherPrecip is the `rain` or `snow` block: precipitation over the
+// last hour, mm. Present only when OpenWeatherMap reports some.
+type OpenWeatherPrecip struct {
+	OneHour *float32 `json:"1h"`
 }
 
 // OpenWeatherClouds represents cloud cover
