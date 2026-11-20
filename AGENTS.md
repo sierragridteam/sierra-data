@@ -548,26 +548,23 @@ survives as a legacy alias):
   no reading since 6am Pacific (checked against the public API), so the first
   run after 6:00 reads the day and every later one no-ops. A failing line (usually
   "busy") is retried in-run, then by the next scheduled run.
-- **Two things can start it, and both may be on at once** (each skips what the
-  other read). (1) A **scheduled task in the hosting account**: the image is
+- **A scheduled task in the hosting account starts it**: the image is
   the Dockerfile's `burn-line` target, the Deploy workflow pushes it, registers
   a task-definition revision and points the schedule at it (`scripts/deploy.py`,
   `release_scheduled`; the three `DEPLOY_BURN_LINE_*` variables, all or none).
   When it fires, how often it retries, which provider and model it reads
   with (it is meant to run `-provider=aws`) and its credentials belong to the
   infrastructure code, not to this repository. A deploy never starts the task,
-  so a deploy never places a call. (2) `.github/workflows/burn-line.yml`: its
-  hourly cron is what ran until the scheduled task existed, and GitHub started
-  only ~3 of the 15 hourly runs a day, so the morning read landed 8 to noon
-  Pacific. The cron is to be removed once the scheduled task has had a good
-  run; manual dispatch stays as the way to force a read (it always dials
-  unless given `not_before`).
+  so a deploy never places a call. `.github/workflows/burn-line.yml` is
+  **manual only** (its hourly cron ran until 2026-11; GitHub started only ~3
+  of the 15 runs a day, so the morning read landed 8 to noon Pacific): it is
+  the way to force a read, and always dials unless given `not_before`.
 - Runs must not overlap: a run that is still dialing has pushed nothing, so a
-  second run sees no reading and dials too. The workflow has a concurrency
-  group; a schedule must space its retries wider than the longest run (per
-  line: `-attempts` x `-timeout` plus the waits, 34 minutes by default; the
-  scheduled task passes `-attempts=2`, 22 minutes a line, for its hourly
-  retries).
+  second run sees no reading and dials too. The schedule must space its
+  retries wider than the longest run (per line: `-attempts` x `-timeout` plus
+  the waits, 34 minutes by default; the scheduled task passes `-attempts=2`,
+  22 minutes a line, for its hourly retries), and a manual dispatch during
+  the morning read should pass `not_before` or wait.
 - The value can therefore be wrong in ways an API cannot (a `confidence` and the
   cleaned transcript ride along), and a stopped pipeline is INVISIBLE except by
   age — `grid.burn.burnDayStaleAfter` (36h, one missed run plus slack) turns an

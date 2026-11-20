@@ -498,8 +498,8 @@ tells the model to spell the county as the line's name has it and to write
 Tuolumne recording of 2026-11-23.
 
 **The server never runs this.** `cmd/burn-line` does, on a daily schedule (a
-scheduled task built from the Dockerfile's `burn-line` target, and
-`.github/workflows/burn-line.yml`; see the root `AGENTS.md`), and PUSHES the
+scheduled task built from the Dockerfile's `burn-line` target;
+`.github/workflows/burn-line.yml` runs it by hand; see the root `AGENTS.md`), and PUSHES the
 results to `POST /api/v1/ingest/burn.line` as ONE batched report.
 It reads `grid.burn.lines` from `prefab.yaml` and dials every enabled line, so
 neither the image nor the workflow enumerates phone numbers — one source of
