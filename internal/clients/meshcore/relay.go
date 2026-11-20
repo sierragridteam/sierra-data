@@ -79,6 +79,10 @@ type relayEntry struct {
 	at   time.Time
 }
 
+// RelayCapable reports whether a node of this role can sit in the middle of a
+// path: the rule the resolver credits hops by, for readers of the link graph.
+func RelayCapable(role string) bool { return canRelay(role) }
+
 // canRelay reports whether a node of this role can appear as a path hop.
 // Companions and sensors originate packets but never forward them; an unknown
 // role is kept, which can only add ambiguity, never remove it.
