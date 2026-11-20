@@ -528,3 +528,40 @@ func TestRegistrySeedRestoresActivity(t *testing.T) {
 	assert.Equal(t, base.Add(-30*time.Minute), nodes[0].LastRelayedAt)
 	assert.False(t, nodes[0].HasSignal, "a seeded node's zero SNR is not a reading")
 }
+
+// A node kept present by relays alone has no advert reception on record, and
+// last_seen_at advances for as long as it is present. A restart must not read
+// that as an advert: each one would start a new advert window, and with
+// restarts less than GraceFloor apart the node would never leave.
+func TestRegistrySeedDoesNotRenewRelayPresence(t *testing.T) {
+	base := time.Date(2026, 11, 19, 3, 59, 0, 0, time.UTC)
+	cfg := Config{GraceFloor: 14 * time.Hour, GraceCeil: 72 * time.Hour, RetainFor: 96 * time.Hour, RelayPresence: 14 * time.Hour}
+	relayed := time.Date(2026, 11, 18, 10, 13, 15, 0, time.UTC)
+	seed := func(now, lastSeen time.Time) []NodeState {
+		r := NewRegistry(cfg)
+		r.now = func() time.Time { return now }
+		r.Seed([]SeedNode{{
+			PubKey: "ca", Role: RoleRepeater, HasLocation: true, Lat: 38, Lng: -120,
+			LastHeard:   lastSeen, // last_seen_at: the previous process's last tick
+			LastRelayed: relayed,
+		}})
+		return r.Snapshot()
+	}
+
+	// Inside the relay window a restart keeps it, on the relay clock.
+	in := relayed.Add(13 * time.Hour)
+	nodes := seed(in, in.Add(-time.Minute))
+	require.Len(t, nodes, 1, "present while the relay is inside relayPresence")
+	assert.True(t, nodes[0].LastHeardAt.IsZero(), "no advert was heard, and the seed does not invent one")
+
+	// Past it, a restart does not start an advert window from last_seen_at.
+	assert.Empty(t, seed(base, base.Add(-time.Minute)), "17h after its one relay, a restart must not bring it back")
+
+	// A node with no activity on record at all still falls back to
+	// last_seen_at: that is what keeps the mesh from emptying at a restart
+	// when the activity table could not be read.
+	r := NewRegistry(cfg)
+	r.now = func() time.Time { return base }
+	r.Seed([]SeedNode{{PubKey: "cb", HasLocation: true, Lat: 38, Lng: -120, LastHeard: base.Add(-time.Minute)}})
+	assert.Len(t, r.Snapshot(), 1)
+}

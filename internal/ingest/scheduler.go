@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 
@@ -763,6 +764,7 @@ func (s *Scheduler) tick(ctx context.Context, spec PollerSpec, st *pollerState) 
 		superseded[id] = true
 	}
 	sweepStart := time.Now()
+	s.retire(ctx, sourceIDs, result.Retired, now)
 	for _, src := range sourceIDs {
 		if result.PerSource[src] != nil || suppressed[src] {
 			continue
@@ -963,6 +965,37 @@ func (s *Scheduler) supersede(ctx context.Context, src string, ids map[string]bo
 	}
 	logging.Infow(ctx, "Ingest tick: resolved superseded events",
 		"source", src, "count", len(match), "ids", match)
+}
+
+// retire RESOLVES the events the poller named in PollResult.Retired: ones its
+// configuration says are over, whatever the feed shows. It runs outside the
+// sweep's clean-fetch guard for that reason, and takes an event from any
+// status (an EXPIRED node is still a relay candidate until it is RESOLVED).
+// RESOLVED is a recorded revision: the history stays, and removing the config
+// entry lets the next advert bring the node back. Ids that are not the
+// poller's own are refused.
+func (s *Scheduler) retire(ctx context.Context, sourceIDs, ids []string, now time.Time) {
+	var own []string
+	for _, id := range ids {
+		for _, src := range sourceIDs {
+			if strings.HasPrefix(id, src+":") {
+				own = append(own, id)
+				break
+			}
+		}
+	}
+	if len(own) != len(ids) {
+		logging.Errorw(ctx, "Ingest tick: a poller retired events that are not its own; ignored those",
+			"sources", sourceIDs, "ids", ids)
+	}
+	if len(own) == 0 {
+		return
+	}
+	if err := s.store.TransitionEvents(ctx, own, gridv1.EventStatus_RESOLVED, now); err != nil {
+		logging.Errorw(ctx, "Ingest tick: retiring transition failed", "sources", sourceIDs, "error", err)
+		return
+	}
+	logging.Infow(ctx, "Ingest tick: resolved retired events", "sources", sourceIDs, "count", len(own), "ids", own)
 }
 
 // sweepDisappeared applies the source's disappearance policy to active

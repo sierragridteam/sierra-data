@@ -446,6 +446,11 @@ survives as a legacy alias):
   2026-10; see "A deaf broker" in `internal/ingest/AGENTS.md`. The MQTT client
   id gets a random per-process suffix so two of our processes never share a
   broker session.
+- **A node taken out of service goes in `grid.meshcore.retired`** (full key,
+  in `prefab.yaml`): its event is RESOLVED with its history kept, and no
+  advert, relay credit or monitor report brings it back until the entry is
+  removed. Do not delete rows to remove a node; see "Retired nodes" in
+  `internal/ingest/AGENTS.md`.
 - **Cross-check the feed with CoreScope** (`corescope.stonekitty.net`, open
   source: Kpa-clawbot/CoreScope): a keyless analyzer subscribed to the same
   gomesh broker. `/api/nodes?limit=5000` is every node with `last_heard` (ANY

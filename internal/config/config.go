@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -767,6 +768,47 @@ type MeshcoreConfig struct {
 	// or a node known only by a key prefix, falls back to the community map.
 	// canonical_url is hashed, so changing this mints one revision per node.
 	NodeURL string `koanf:"nodeUrl"`
+	// Retired lists nodes their operator has taken out of service for good.
+	// A mesh has no goodbye packet, and the Grid reads liveness liberally (a
+	// relay credit revives an EXPIRED node from its stored identity), so a
+	// node that is gone can come back on a misattributed hop, a monitor that
+	// still lists it, or an old advert a gateway's radio kept. An entry here
+	// is the operator's word, and it wins over all of them: the node's event
+	// is RESOLVED with its history kept, and no advert, relay or report
+	// brings it back until the entry is removed. See "Retired nodes" in
+	// internal/ingest/AGENTS.md.
+	Retired []MeshcoreRetiredNode `koanf:"retired"`
+}
+
+// MeshcoreRetiredNode is one grid.meshcore.retired entry. Only Key acts; the
+// rest is the record of who decided what, for whoever reads the config next.
+type MeshcoreRetiredNode struct {
+	// Key is the node's FULL public key, 64 hex characters. A prefix is
+	// refused: it could name a second node.
+	Key string `koanf:"key"`
+	// Name, Since (a date) and Note document the entry.
+	Name  string `koanf:"name"`
+	Since string `koanf:"since"`
+	Note  string `koanf:"note"`
+}
+
+// RetiredKeys returns the retired nodes' public keys, lowercased, or an error
+// naming the first entry that is not a full key. A malformed entry is an
+// error rather than a skip: a skipped one would leave the node on the map
+// while the config says it is retired.
+func (m MeshcoreConfig) RetiredKeys() (map[string]bool, error) {
+	if len(m.Retired) == 0 {
+		return nil, nil
+	}
+	out := make(map[string]bool, len(m.Retired))
+	for i, r := range m.Retired {
+		key := strings.ToLower(strings.TrimSpace(r.Key))
+		if len(key) != 64 || strings.Trim(key, "0123456789abcdef") != "" {
+			return nil, fmt.Errorf("grid.meshcore.retired[%d] (%q): key must be the node's full public key, 64 hex characters, got %q", i, r.Name, r.Key)
+		}
+		out[key] = true
+	}
+	return out, nil
 }
 
 // DefaultMeshcoreSilenceAfter is the default grid.meshcore.silenceAfter. The
@@ -1159,6 +1201,9 @@ func LoadConfig() *Config {
 	}
 	if err := prefab.Config.Unmarshal("grid", &appConfig.Grid); err != nil {
 		log.Fatalf("Failed to unmarshal grid section: %v", err)
+	}
+	if _, err := appConfig.Grid.Meshcore.RetiredKeys(); err != nil {
+		log.Fatalf("Invalid configuration: %v", err)
 	}
 	return appConfig
 }

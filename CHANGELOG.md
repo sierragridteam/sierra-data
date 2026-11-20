@@ -21,6 +21,35 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-20 (retired mesh nodes)
+
+### Changed: a mesh node taken out of service is `RESOLVED`, and stays that way
+
+Operators can now list a decommissioned node in the Grid's configuration
+(`grid.meshcore.retired`). Its event moves to `status: RESOLVED`, keeps its
+history, timeline and telemetry archive, and no advert, relay or monitor
+report makes it `ACTIVE` again while it is listed. The first entry is SIERRA
+Eagle One
+(`meshcore:ca57b9577ee6ee8444ffaa632c1bcaab62cd1cb3f8c0d0090b55c9ded65bbb25`).
+
+Until now a mesh node was only ever `ACTIVE` or `EXPIRED` (a provisional
+prefix-keyed event aside), and an expired node could come back on a single
+relay credit. A reader that lists mesh nodes with the default status filter
+(`ACTIVE,SCHEDULED`), or reads the `mesh_node` map layer, needs no change: a
+retired node is simply no longer there. A reader that asks for `EXPIRED` to
+show nodes that have gone quiet will not see retired ones; ask for `RESOLVED`
+as well if you want them.
+
+### Fixed: a node kept present by a relay stayed `ACTIVE` across deploys
+
+A node with a relay on record but no advert was given a fresh 14-hour presence
+window every time the service restarted, so with deploys less than 14 hours
+apart it never expired. SIERRA Eagle One stayed `ACTIVE` from 2026-11-18 to
+2026-11-20 on one relay credit this way. Such a node now leaves when its relay
+window ends (`relayPresence`, 14 hours) and expires two hours later, whatever
+restarts happen in between. Expect a few mesh nodes to move to `EXPIRED` in the
+hours after this deploys.
+
 ## 2026-11-20 (mesh tools on MCP)
 
 ### Added: five MCP tools for the radio mesh
