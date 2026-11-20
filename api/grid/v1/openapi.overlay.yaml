@@ -914,7 +914,18 @@ spec:
           generatedAt: {type: string, format: date-time}
           links:
             type: array
+            description: With `node`, most recently seen first; an empty list means none was observed in the window, not that the node hears nothing.
             items: {$ref: "#/components/schemas/MeshLink"}
+          node:
+            type: string
+            description: Only with `?node=`. The requested node's public key, lowercase, without the `meshcore:` prefix.
+          nodes:
+            type: object
+            description: |
+              Only with `?node=`. What the Grid knows about the nodes the links
+              mention, by public key. A key with no entry is a relay the Grid
+              has no record of (outside its area, or never heard advertising).
+            additionalProperties: {$ref: "#/components/schemas/MeshNodeRef"}
       MeshLink:
         type: object
         description: One undirected relay link. Every member is always present.
@@ -927,6 +938,62 @@ spec:
           firstSeen: {type: string, format: date-time}
           lastSeen: {type: string, format: date-time, description: "Drive recency fade from this."}
           bestSnr: {type: number, description: "Peak SNR (dB) of an advert seen traversing it; 0 when none was measured."}
+
+      MeshNodeRef:
+        type: object
+        description: A mesh node as a link or path names it. Every member is always present.
+        required: [name, nodeType, status, lastHeardAt, lastRelayedAt, location]
+        properties:
+          name: {type: string, description: "The name the node advertises.", example: SIERRA Forest Meadows}
+          nodeType: {type: string, enum: [companion, repeater, room_server, sensor], description: "Repeaters and room servers relay; companions and sensors do not."}
+          status: {type: string, enum: [ACTIVE, SCHEDULED, RESOLVED, EXPIRED], description: "The node event's status. EXPIRED: no advert or relay for its presence window; it can still end links seen earlier in the window."}
+          lastHeardAt: {type: string, format: date-time, nullable: true, description: "`mesh.telemetry.lastHeardAt`: when the node's own advert last reached the Grid. `null` when none is on record."}
+          lastRelayedAt: {type: string, format: date-time, nullable: true, description: "`mesh.telemetry.lastRelayedAt`: when a packet the node relayed last reached the Grid. `null` when none is on record."}
+          location:
+            type: object
+            nullable: true
+            description: The advertised position. `null` for a node that shares none.
+            required: [lat, lng]
+            properties:
+              lat: {type: number}
+              lng: {type: number}
+      MeshPath:
+        type: object
+        description: The result of a path search. Every member is always present; `path` and `alternate` are `null` when there is none.
+        required: [window, generatedAt, from, to, found, path, alternate, linkCounts, nodes, basis]
+        properties:
+          window: {type: string, example: 72h}
+          generatedAt: {type: string, format: date-time}
+          from: {type: array, items: {type: string}, description: "The requested origin keys, normalized."}
+          to: {type: array, items: {type: string}, description: "The requested destination keys, normalized."}
+          found: {type: boolean, description: "`false`: no chain of observed links joins the two sides. Not observed, never \"no path\"."}
+          path:
+            allOf: [{$ref: "#/components/schemas/MeshRoute"}]
+            nullable: true
+            description: The preferred route.
+          alternate:
+            allOf: [{$ref: "#/components/schemas/MeshRoute"}]
+            nullable: true
+            description: A second route that shares none of `path`'s relays (or not its one link). `null` when the observed links hold none.
+          linkCounts:
+            type: object
+            description: Each requested node's number of links in the window.
+            additionalProperties: {type: integer}
+          nodes:
+            type: object
+            description: The nodes `from`, `to` and the routes mention, by public key; a key with no entry is a relay the Grid has no record of.
+            additionalProperties: {$ref: "#/components/schemas/MeshNodeRef"}
+          basis: {type: string, description: "What the answer rests on and cannot show. Show it, or its sense, with the route."}
+      MeshRoute:
+        type: object
+        required: [hops, nodes, links]
+        properties:
+          hops: {type: integer, description: "Number of links; 0 when one node is on both sides."}
+          nodes: {type: array, items: {type: string}, description: "Public keys in order, origin first."}
+          links:
+            type: array
+            description: The link between each neighbouring pair of `nodes`, in order (`hops` of them).
+            items: {$ref: "#/components/schemas/MeshLink"}
 
       # ----------------------------------------------------------------- ingest
 
@@ -1246,15 +1313,38 @@ spec:
           coordinates. For a place-scoped, ready-to-draw version use the
           `mesh_link` map layer. Weight edges by `daysActive`, fade by `lastSeen`.
 
+          **One node's links: `?node=`.** With `node` (a full public key) the
+          answer is only the links that end at that node, most recently seen
+          first, plus two members the whole list does not have: `node` (the key,
+          normalized) and `nodes`, which names every node the links mention
+          (name, type, status, the two activity clocks, position). This is "what
+          does this node hear". A key the Grid has no record of is a valid
+          question: its links are returned and it is simply absent from `nodes`.
+          An empty `links` means no link to the node was observed in the
+          window, which is common for a node whose traffic cannot be attributed
+          and is not evidence that it hears nothing: links are learned only from
+          packet paths the Grid could resolve without guessing.
+
           `Cache-Control: public, max-age=60` and a weak `ETag` (`W/"…"`) that
           excludes `generatedAt`: `If-None-Match` revalidates to `304` until the
           links change.
         parameters:
           - {$ref: "#/components/parameters/MeshWindow"}
+          - name: node
+            in: query
+            description: |
+              Only the links that end at this node, with a `nodes` object naming
+              the nodes they mention. The node's full public key, 64 hex
+              characters, any case, optionally prefixed `meshcore:` (its event
+              id). A prefix is not accepted (it can match several nodes): find
+              the key with `/api/v1/search?kind=MESH_NODE`. Anything else is a
+              `400 INVALID_ARGUMENT`.
+            schema: {type: string, pattern: "^([mM][eE][sS][hH][cC][oO][rR][eE]:)?[0-9a-fA-F]{64}$"}
+            example: 55678f4147f9d04a32c89aa857a1fdb2b7777f3a9144fa7e63702b66081a797d
           - {$ref: "#/components/parameters/IfNoneMatch"}
         responses:
           "200":
-            description: The links, possibly empty.
+            description: The links, possibly empty. With `node`, the body also has `node` and `nodes`.
             headers:
               ETag: {$ref: "#/components/headers/ETag"}
               Cache-Control: {$ref: "#/components/headers/CacheControl"}
@@ -1266,6 +1356,101 @@ spec:
                   {"a": "1000009e310d729534b70faa33a1abe5cd5e45d594f72f786febccbb770b7e74", "b": "c38f9962660d46617418a38abd099ad2927abde3ff784005fecffce33af1a862", "observations": 2416, "daysActive": 4, "firstSeen": "2026-11-04T00:01:19Z", "lastSeen": "2026-11-07T03:57:05Z", "bestSnr": 13.25}]}
           "304": {$ref: "#/components/responses/NotModified"}
           "400": {$ref: "#/components/responses/InvalidWindow"}
+          "500": {$ref: "#/components/responses/Internal"}
+          "503": {$ref: "#/components/responses/HandoffUnavailable"}
+
+    /api/v1/mesh/path:
+      get:
+        tags: [Mesh]
+        operationId: GetMeshPath
+        summary: A route between two nodes over the observed relay links
+        description: |
+          Is there a way across the mesh from one node to another, and through
+          which nodes. `from` and `to` are each one or more public keys (a side
+          is a set because a caller often means a place: "from Arnold" is
+          whichever node near Arnold has a way out), and the answer is the
+          cheapest route from any node of `from` to any node of `to` over the
+          links of `/api/v1/mesh/links` in the same `window`.
+
+          **It is an inference, and `basis` says so in every response.** The
+          links are learned only from packet paths the Grid could resolve
+          without guessing, so real links are missing: `found: false` means no
+          path was observed, not that none exists, and a path found is a chain
+          of links that each carried traffic in the window, not a promise that
+          a message sent now would be delivered. Show `basis` (or its sense)
+          with the route.
+
+          The route prefers fewer hops; a link last seen more than 24 hours
+          ago, or seen fewer than 3 times in the window, counts as half a hop
+          more each, so a route over fresh, busy links can beat a shorter one
+          over stale ones. Only repeaters and room servers (and relays the Grid
+          has no record of, which are in the links because they relayed) are
+          passed through; a companion or sensor can only be an end.
+          `alternate` is a second route that shares none of `path`'s relays (or,
+          when `path` is one direct link, does not use that link): `null` means
+          the observed links hold no such route, so each relay on `path` is a
+          single point of failure as far as the evidence goes. `linkCounts`
+          gives each requested node's number of links in the window: an end
+          with `0` is the usual reason a search fails.
+
+          `Cache-Control: public, max-age=60` and a weak `ETag` that excludes
+          `generatedAt`.
+        parameters:
+          - name: from
+            in: query
+            required: true
+            description: |
+              One to 16 full public keys (64 hex characters each, any case,
+              optionally prefixed `meshcore:`), comma-separated or repeated.
+            schema: {type: string}
+            example: 55678f4147f9d04a32c89aa857a1fdb2b7777f3a9144fa7e63702b66081a797d
+          - name: to
+            in: query
+            required: true
+            description: One to 16 full public keys, as `from`.
+            schema: {type: string}
+            example: a2d649457de4481afba636761b186898107959fe6f906fc9f838447b965ace71
+          - {$ref: "#/components/parameters/MeshWindow"}
+          - {$ref: "#/components/parameters/IfNoneMatch"}
+        responses:
+          "200":
+            description: The search result, found or not.
+            headers:
+              ETag: {$ref: "#/components/headers/ETag"}
+              Cache-Control: {$ref: "#/components/headers/CacheControl"}
+            content:
+              application/json:
+                schema: {$ref: "#/components/schemas/MeshPath"}
+                examples:
+                  found:
+                    value: {"window": "72h", "generatedAt": "2026-11-20T01:04:32Z",
+                      "from": ["55678f4147f9d04a32c89aa857a1fdb2b7777f3a9144fa7e63702b66081a797d"],
+                      "to": ["a2d649457de4481afba636761b186898107959fe6f906fc9f838447b965ace71"],
+                      "found": true,
+                      "path": {"hops": 1, "nodes": ["55678f4147f9d04a32c89aa857a1fdb2b7777f3a9144fa7e63702b66081a797d", "a2d649457de4481afba636761b186898107959fe6f906fc9f838447b965ace71"],
+                        "links": [{"a": "55678f4147f9d04a32c89aa857a1fdb2b7777f3a9144fa7e63702b66081a797d", "b": "a2d649457de4481afba636761b186898107959fe6f906fc9f838447b965ace71", "observations": 62, "daysActive": 3, "firstSeen": "2026-11-17T00:14:41Z", "lastSeen": "2026-11-19T12:15:04Z", "bestSnr": 12.75}]},
+                      "alternate": null,
+                      "linkCounts": {"55678f4147f9d04a32c89aa857a1fdb2b7777f3a9144fa7e63702b66081a797d": 22, "a2d649457de4481afba636761b186898107959fe6f906fc9f838447b965ace71": 5},
+                      "nodes": {
+                        "55678f4147f9d04a32c89aa857a1fdb2b7777f3a9144fa7e63702b66081a797d": {"name": "SIERRA Forest Meadows", "nodeType": "repeater", "status": "ACTIVE", "lastHeardAt": "2026-11-19T09:55:31Z", "lastRelayedAt": "2026-11-20T00:47:34Z", "location": {"lat": 38.1614, "lng": -120.4119}},
+                        "a2d649457de4481afba636761b186898107959fe6f906fc9f838447b965ace71": {"name": "SIERRA Lilac Park", "nodeType": "repeater", "status": "ACTIVE", "lastHeardAt": "2026-11-20T00:15:03Z", "lastRelayedAt": "2026-11-20T00:32:24Z", "location": {"lat": 38.2484, "lng": -120.3457}}},
+                      "basis": "Inferred from links the Grid observed carrying traffic in the window. Links are learned only from packet paths it could resolve without guessing, so a missing link or path was not observed, which does not mean it does not exist; and a path found is not a guarantee that a message sent now would be delivered. The route prefers fewer hops, counting a link last seen over 24h ago or seen fewer than 3 times as half a hop more."}
+                  notObserved:
+                    summary: No chain of observed links joins the two (not proof there is no path)
+                    value: {"window": "72h", "generatedAt": "2026-11-20T01:04:32Z",
+                      "from": ["55678f4147f9d04a32c89aa857a1fdb2b7777f3a9144fa7e63702b66081a797d"],
+                      "to": ["3cda55d3a1f0000000000000000000000000000000000000000000000000abcd"],
+                      "found": false, "path": null, "alternate": null,
+                      "linkCounts": {"55678f4147f9d04a32c89aa857a1fdb2b7777f3a9144fa7e63702b66081a797d": 22, "3cda55d3a1f0000000000000000000000000000000000000000000000000abcd": 0},
+                      "nodes": {"55678f4147f9d04a32c89aa857a1fdb2b7777f3a9144fa7e63702b66081a797d": {"name": "SIERRA Forest Meadows", "nodeType": "repeater", "status": "ACTIVE", "lastHeardAt": "2026-11-19T09:55:31Z", "lastRelayedAt": "2026-11-20T00:47:34Z", "location": {"lat": 38.1614, "lng": -120.4119}}},
+                      "basis": "Inferred from links the Grid observed carrying traffic in the window. Links are learned only from packet paths it could resolve without guessing, so a missing link or path was not observed, which does not mean it does not exist; and a path found is not a guarantee that a message sent now would be delivered. The route prefers fewer hops, counting a link last seen over 24h ago or seen fewer than 3 times as half a hop more."}
+          "304": {$ref: "#/components/responses/NotModified"}
+          "400":
+            description: "`from` or `to` missing, not full public keys, or more than 16 of them; or `window` is not a positive duration."
+            content:
+              application/json:
+                schema: {$ref: "#/components/schemas/rpcStatus"}
+                example: {"code": 3, "codeName": "INVALID_ARGUMENT", "message": "to is required: one or more node public keys, comma-separated", "details": []}
           "500": {$ref: "#/components/responses/Internal"}
           "503": {$ref: "#/components/responses/HandoffUnavailable"}
 
@@ -1447,6 +1632,28 @@ spec:
           - `grid_places`: the place directory.
           - `grid_sources`: feed health.
           - `grid_history`: revisions over a time range.
+          - `grid_mesh_status`: the MeshCore radio mesh around a place (default
+            the Ebbetts Pass area and every monitored node): who was heard
+            recently, who is quiet, silent or has no activity on record and
+            since when, which nodes did not answer their monitor, and whether
+            the Grid is hearing the mesh at all. Also "which nodes are near a
+            place".
+          - `grid_mesh_node`: one node by name, short id (the first 8
+            characters of its key), key prefix or key: its activity clocks, its
+            monitor's last reading with its age, and the links to its
+            neighbours.
+          - `grid_mesh_path`: an observed route between two nodes or places,
+            hop by hop, with a second route when there is one (the
+            `/api/v1/mesh/path` search).
+          - `grid_mesh_telemetry`: a monitored node's battery, temperature and
+            noise-floor trend.
+          - `grid_mesh_changes`: nodes first recorded, expired, back, or read
+            through a different gateway, over the last hours.
+
+          The mesh tools never report a node as down: the Grid knows only what
+          it heard. A node is `active`, `quiet`, `silent` or `unknown` by its
+          last activity; a monitor is `answering` or got `no_answer`; a reading
+          carries its age; and a path is an inference from observed links.
 
           Resource `grid://reference` (the API reference, Markdown); prompt
           `hazard_briefing(location)`.

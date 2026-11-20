@@ -21,6 +21,99 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-20 (mesh tools on MCP)
+
+### Added: five MCP tools for the radio mesh
+
+The MCP server at `/mcp` had no tool about the MeshCore mesh: an assistant
+could only page through `grid_events layer=mesh` and read raw node records. It
+now has:
+
+- **`grid_mesh_status`**: the mesh around a place. How many nodes were heard
+  recently, which are quiet, silent or have no activity on record and since
+  when, which did not answer the monitor that logs in to them, low batteries,
+  and whether the Grid's own mesh feed and monitors are reporting. With no
+  `location` it covers the Ebbetts Pass area plus every monitored node
+  wherever it is (the relay's gateways); a town, address or `lat,lng` lists
+  the nodes within `radius_km` with distances. `show` is `attention` (default),
+  `all`, `monitored` or `gateways`.
+- **`grid_mesh_node`**: one node by name, short id (the first 8 characters of
+  its public key), key prefix, key or event id. Its activity clocks with ages,
+  the monitor's last reading with its age, the gateway it is read through, its
+  recorded changes, and the links to its neighbours (traffic, best SNR, a
+  strength band, last seen, distance). A name that matches several nodes
+  returns them as `candidates` and reads none.
+- **`grid_mesh_path`**: a route between two nodes or places, hop by hop, with
+  each link's figures and a second route that avoids the first one's relays.
+- **`grid_mesh_telemetry`**: a monitored node's battery, temperature and
+  noise-floor trend (first, last, min, max, change, at most 12 bucketed means),
+  reboots, receive-error share and the newest reading.
+- **`grid_mesh_changes`**: nodes first recorded, expired, active again, or
+  read through a different gateway over the last hours, and which went quiet.
+
+What they will not say: **a node is never "down"**. The Grid hears the mesh
+through community brokers and a few gateways, so a node is `active` (heard,
+relayed or read by a monitor within 12 h), `quiet` (to 48 h), `silent`
+(longer) or `unknown` (no activity on record); a monitor is `answering` or got
+`no_answer`; a reading older than a day is given with its age and judged by
+nobody; and when the `meshcore` source is not OK the summary's `health` is
+`unknown`, because a deaf Grid and a quiet mesh look alike. A path is an
+inference from links observed carrying traffic: `found: false` is "no path
+observed", and a path found is not a promise of delivery.
+
+`initialize`'s instructions, the `grid://reference` resource, the setup page,
+`llms.txt` and the OpenAPI description of `/mcp` list the new tools.
+
+### Added: `GET /api/v1/mesh/path`
+
+A route between two nodes over the relay links of `/api/v1/mesh/links`:
+
+```
+GET /api/v1/mesh/path?from={publicKey}&to={publicKey}&window=72h
+```
+
+`from` and `to` each take 1 to 16 full public keys, comma-separated, and the
+search runs from any node of one side to any node of the other. The response
+has `found`, `path` and `alternate` (each `{hops, nodes[], links[]}` or
+`null`), `linkCounts` (each requested node's links in the window), `nodes`
+(name, type, status, activity clocks and position of every node mentioned) and
+`basis`, a sentence on what the answer rests on. The route prefers fewer hops;
+a link last seen over 24 hours ago, or seen fewer than 3 times, counts as half
+a hop more. Only repeaters, room servers and relays the Grid has no record of
+are passed through. `alternate` shares none of `path`'s relays.
+
+It is an inference. Links are learned only from packet paths the Grid could
+resolve without guessing, so real links are missing, and `found: false` does
+not mean there is no path. Show `basis` with any route you display.
+
+### Added: `/api/v1/mesh/links?node=` returns one node's links, with names
+
+`GET /api/v1/mesh/links?node={publicKey}` returns only the links that end at
+that node, most recently seen first, and two members the whole list does not
+have: `node` (the key, normalized) and `nodes`, the same per-node object as on
+`/mesh/path`. It answers "what does this node hear" without downloading the
+whole edge list (about 1 MB) and joining it to the node records. `node` must
+be a full 64-character key (a `meshcore:` prefix is accepted); a key prefix is
+a `400`.
+
+**Without `node` nothing changes**: the same body, the same `ETag`.
+
+### Fixed: MCP search by the start of a node's public key found nothing
+
+`grid_search`, `grid_events` and `search` describe finding a mesh node by "the
+start of its public key", and a short id such as `cb0c0579` returned no hits:
+the index holds a key as one word and matches the start of a word only for a
+query marked as still being typed. The tools now send a single run of 4 or
+more hex characters with `q_typing=true`. The HTTP API is unchanged: pass
+`q_typing=true` yourself to match a key prefix.
+
+### Changed: MCP `grid_search` and `fetch` on a mesh node
+
+A `grid_search` hit of kind `MESH_NODE` now says `next: grid_mesh_node node=…`
+(it said `grid_event id=…`). `fetch` on a mesh node returns its last activity,
+state and monitor reading as text; it used to print the record's `observedAt`
+as "Observed", which is not when the node was last heard.
+
 ## 2026-11-20
 
 ### Fixed: a page on another origin can use `ETag` and `If-None-Match`
