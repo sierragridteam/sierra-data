@@ -2,7 +2,9 @@
 
 How the Grid (`sierra-server`) is deployed and what it does during a
 deploy. The Grid and the mesh relay run as two ECS Fargate services, each
-with its own image, task definition and ECR repository. The infrastructure
+with its own image, task definition and ECR repository. The burn line
+reader (`cmd/burn-line`) is a third image and task definition with no
+service: a schedule starts it ("The burn line task" below). The infrastructure
 code that creates them owns the services, the task definitions' content and
 the deployment settings; this repository's deploy only swaps images. The
 first part is this repository's deploy workflow; the second part, "What the
@@ -46,6 +48,11 @@ lease, migrations, health, SIGTERM).
    deployment back, and on success the command that restores the revision
    that ran before. A rollback by ECS fails the run.
 
+7. **The burn line**, last and only when the Grid and the relay went well:
+   the same image and revision steps for the `burn-line` target, then, in
+   place of UpdateService, the schedule that starts the task is pointed at
+   the new revision. Nothing is started.
+
 A service whose image and revision are both unchanged is not redeployed, so
 a docs-only commit deploys nothing and a relay-only change leaves the Grid
 alone. The Grid deploys first; if it fails, the relay is not touched. One
@@ -72,7 +79,9 @@ The three relay variables are **optional as a group**, so the Grid can be
 deployed before a relay service exists. All three unset: the relay is
 skipped and the run (and `make deploy`) says so in a notice line,
 `relay: skipped, ... are all unset; deploying the Grid only`. Some set:
-refused, naming the missing ones. All set: both are deployed.
+refused, naming the missing ones. All set: both are deployed. The three
+burn line variables are optional as a group in the same way; unset, the
+notice ends `the burn line schedule is left alone`.
 
 | Variable | Required | What |
 |---|---|---|
@@ -85,9 +94,63 @@ refused, naming the missing ones. All set: both are deployed.
 | `DEPLOY_RELAY_SERVICE` | all three or none | The relay ECS service |
 | `DEPLOY_RELAY_TASK_FAMILY` | all three or none | Its task-definition family |
 | `DEPLOY_RELAY_ECR_REPOSITORY` | all three or none | ECR repository name for the `relay` image |
+| `DEPLOY_BURN_LINE_TASK_FAMILY` | all three or none | The burn line task-definition family |
+| `DEPLOY_BURN_LINE_ECR_REPOSITORY` | all three or none | ECR repository name for the `burn-line` image |
+| `DEPLOY_BURN_LINE_SCHEDULE` | all three or none | The EventBridge Scheduler schedule (default group) whose target is that task |
 
 The container whose image is replaced is the one already using the
-service's repository, or else the one named `grid` / `relay`.
+service's repository, or else the one named `grid` / `relay` /
+`burn-line`.
+
+### The burn line task
+
+`cmd/burn-line` phones the county burn lines and pushes the readings to the
+ingest endpoint (`internal/clients/AGENTS.md`, "County burn line"). It is
+its own Dockerfile target, `burn-line` (the binary, `prefab.yaml` for
+`grid.burn.lines`, CA certificates; entry point `/app/burn-line`), and not
+a second entry point in the Grid's image: the content key then keeps a
+change to the dialer from redeploying the API and the reverse, and the
+image holds no server.
+
+The infrastructure owns everything about when and how it runs: the task
+definition (the command, `-endpoint=... -not-before=06:00 -provider=aws
+-model=... -vocabulary=...`; the five environment variables injected from
+its secret store: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
+`TWILIO_FROM_NUMBER`, `TWILIO_TWIML_URL`, `GRID_INGEST_TOKEN`; and a task
+role that may call Amazon Transcribe's streaming API and the one Bedrock
+model, so there is no model key) and a schedule whose target is that
+task: when it fires, in which time zone, and whether it is on. The deploy
+reads the schedule (`scheduler get-schedule`), registers the family's
+latest revision with the new image, and writes the schedule back with only
+the target's task definition changed (`scheduler update-schedule`, which
+replaces a schedule whole; `with_task_definition` in `scripts/deploy.py`).
+A schedule that is off stays off. The infrastructure therefore has to
+leave the schedule's task definition revision to the deploy, as it leaves
+a service's, and its own revision (a placeholder image) never runs.
+
+A deploy never starts the task, so it never places a call: the release is
+the next scheduled run. An unchanged image on an unchanged revision leaves
+the schedule alone. `make deploy PUSH_ONLY=1` pushes the image and touches
+neither ECS nor the schedule. To go back, redeploy the earlier commit
+(`make deploy REF=<commit>`).
+
+The role the workflow assumes needs, beyond what the services need: push to
+the burn line repository, `iam:PassRole` for the task's two roles,
+`scheduler:GetSchedule` and `scheduler:UpdateSchedule` on that schedule, and
+`iam:PassRole` of the schedule's own role to `scheduler.amazonaws.com`.
+
+**Retries are the schedule firing again**, not the scheduler's retry policy
+(which covers only a refused start and never sees an exit code). With
+`-not-before` a later run dials only the lines still unread, so it costs
+nothing when the morning went well. Runs must not overlap (a run still
+dialing has pushed nothing for the next to see): the retries have to be
+further apart than the longest run, which is, per enabled line, `-attempts`
+x `-timeout` plus the waits between them (34 minutes with the defaults).
+
+Locally: `make docker-build-burn-line` builds the image. Running it with
+`-endpoint` and `-not-before` and no credentials is safe and shows what a
+scheduled run would do: it lists the lines already read today, and stops at
+the first missing credential if any line is still due.
 
 The runner is `ubuntu-24.04` (x86_64) and the workflow refuses to build for
 another architecture: the Dockerfile cross-compiles Go but its runtime

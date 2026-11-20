@@ -21,6 +21,27 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-24 (burn line reader as a scheduled task)
+
+### The daily burn line call can run as a scheduled task; no API change
+
+Nothing in the API changes and no client needs an update. This entry is here
+because of what it will do to *when* the burn-day reading arrives.
+
+The reader that phones the county burn lines (`cmd/burn-line`, the `burn-line`
+reporter on `/api/v1/sources`) has run from a GitHub scheduled workflow, and
+GitHub started it hours late: the day's reading on
+`/api/v1/events?layer=burn_status` (`burnStatus.burnLines[].observation`)
+landed between about 8am and noon Pacific. The reader is now also built as its
+own container image, and a deploy points a schedule in the hosting account at
+it, so that it can be started at 06:00 Pacific with retries later in the
+morning. Once that schedule is switched on, expect `observedAt` shortly after
+06:00 Pacific on a normal day. The reading itself, its fields and the 36 hour
+freshness rule are unchanged.
+
+Until then the workflow's hourly schedule keeps running. Both use the same
+guard (nothing before 06:00 Pacific, and a line read since 06:00 today is not
+called again), so having both on does not call a line twice.
 ## 2026-11-24
 
 ### The burn line reader can run on AWS models (internal; no API change)

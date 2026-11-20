@@ -23,7 +23,9 @@ ENV = {"DEPLOY_ROLE_ARN": "arn:aws:iam::123456789012:role/sierra-data-deploy",
        "DEPLOY_AWS_REGION": "us-west-2", "DEPLOY_ECS_CLUSTER": "sierra",
        "DEPLOY_GRID_SERVICE": "grid", "DEPLOY_GRID_TASK_FAMILY": "sierra-grid",
        "DEPLOY_GRID_ECR_REPOSITORY": "grid", "DEPLOY_RELAY_SERVICE": "relay",
-       "DEPLOY_RELAY_TASK_FAMILY": "sierra-relay", "DEPLOY_RELAY_ECR_REPOSITORY": "relay"}
+       "DEPLOY_RELAY_TASK_FAMILY": "sierra-relay", "DEPLOY_RELAY_ECR_REPOSITORY": "relay",
+       "DEPLOY_BURN_LINE_TASK_FAMILY": "sierra-burn-line", "DEPLOY_BURN_LINE_ECR_REPOSITORY": "burn-line",
+       "DEPLOY_BURN_LINE_SCHEDULE": "sierra-burn-line"}
 
 
 def cfg():
@@ -46,17 +48,18 @@ def git_responses(**answers):
 
 class ConfigTests(unittest.TestCase):
     RELAY = ["DEPLOY_RELAY_SERVICE", "DEPLOY_RELAY_TASK_FAMILY", "DEPLOY_RELAY_ECR_REPOSITORY"]
+    BURN_LINE = ["DEPLOY_BURN_LINE_TASK_FAMILY", "DEPLOY_BURN_LINE_ECR_REPOSITORY", "DEPLOY_BURN_LINE_SCHEDULE"]
 
     def test_every_unset_required_variable_is_named(self):
         problems = deploy.config_problems({})
-        required = [n for n in deploy.SETTINGS if n not in self.RELAY]
+        required = [n for n in deploy.SETTINGS if n not in self.RELAY + self.BURN_LINE]
         self.assertEqual(len(problems), len(required))
         for name in required:
             self.assertTrue(any(p.startswith(name + " is unset") for p in problems), name)
 
     def test_grid_variables_stay_required_without_the_relay(self):
         for name in ["DEPLOY_GRID_SERVICE", "DEPLOY_GRID_TASK_FAMILY", "DEPLOY_GRID_ECR_REPOSITORY"]:
-            env = {k: v for k, v in ENV.items() if k != name and k not in self.RELAY}
+            env = {k: v for k, v in ENV.items() if k != name and k not in self.RELAY + self.BURN_LINE}
             with self.subTest(name=name):
                 self.assertEqual([p.split()[0] for p in deploy.config_problems(env)], [name])
 
@@ -64,7 +67,7 @@ class ConfigTests(unittest.TestCase):
         env = {k: v for k, v in ENV.items() if k not in self.RELAY}
         self.assertEqual(deploy.config_problems(env), [])
         config = deploy.Config(env)
-        self.assertEqual(list(config.targets), ["grid"])
+        self.assertEqual(list(config.targets), ["grid", "burn-line"])
         self.assertEqual(config.skipped, ["relay"])
 
     def test_relay_partly_set_names_the_missing_ones(self):
@@ -78,8 +81,29 @@ class ConfigTests(unittest.TestCase):
 
     def test_relay_all_set_deploys_both(self):
         config = deploy.Config(ENV)
-        self.assertEqual(list(config.targets), ["grid", "relay"])
+        self.assertEqual(list(config.targets), ["grid", "relay", "burn-line"])
         self.assertEqual(config.skipped, [])
+
+    def test_burn_line_is_a_schedule_not_a_service(self):
+        self.assertEqual(cfg().targets["burn-line"], {"schedule": "sierra-burn-line", "family": "sierra-burn-line",
+                                                      "repository": "burn-line"})
+        self.assertNotIn("DEPLOY_BURN_LINE_SERVICE", deploy.SETTINGS)
+
+    def test_burn_line_all_unset_is_skipped_and_says_what_that_leaves(self):
+        env = {k: v for k, v in ENV.items() if k not in self.BURN_LINE}
+        self.assertEqual(deploy.config_problems(env), [])
+        config = deploy.Config(env)
+        self.assertEqual(list(config.targets), ["grid", "relay"])
+        self.assertEqual(config.skipped, ["burn-line"])
+        self.assertEqual(deploy.skip_notice("burn-line"),
+                         "burn-line: skipped, DEPLOY_BURN_LINE_TASK_FAMILY, DEPLOY_BURN_LINE_ECR_REPOSITORY, "
+                         "DEPLOY_BURN_LINE_SCHEDULE are all unset; the burn line schedule is left alone")
+
+    def test_burn_line_partly_set_names_the_missing_ones(self):
+        env = {k: v for k, v in ENV.items() if k != "DEPLOY_BURN_LINE_SCHEDULE"}
+        problems = deploy.config_problems(env)
+        self.assertEqual([p.split()[0] for p in problems], ["DEPLOY_BURN_LINE_SCHEDULE"])
+        self.assertIn("the burn-line variables are all or nothing", problems[0])
 
     def test_check_config_notices_a_skipped_relay(self):
         env = {**{k: v for k, v in ENV.items() if k not in self.RELAY}, **{k: "" for k in self.RELAY},
@@ -422,9 +446,9 @@ class ContentKeyTests(unittest.TestCase):
         # to one would ship nothing.
         dockerfile = (REPO / "Dockerfile").read_text()
         stages = re.findall(r"^FROM \S+ AS (\S+)", dockerfile, re.M)
-        self.assertIn("grid", stages)
-        self.assertIn("relay", stages)
-        builders = {"go-builder": "grid", "relay-builder": "relay"}
+        for name, target in deploy.TARGETS.items():
+            self.assertIn(target["stage"], stages, name)
+        builders = {"go-builder": "grid", "relay-builder": "relay", "burn-line-builder": "burn-line"}
         for builder, source in re.findall(r"^COPY --from=(\S+) (\S+) ", dockerfile, re.M):
             target = deploy.TARGETS[builders[builder]]
             if source.startswith("/app/"):
@@ -646,7 +670,7 @@ class ReleaseTests(unittest.TestCase):
     def test_release_without_relay_deploys_the_grid_only(self):
         args = SimpleNamespace(sha=SHA, git_tag="", source=str(REPO), only=None, push_only=False,
                                platform="linux/amd64", timeout=1)
-        env = {k: v for k, v in ENV.items() if not k.startswith("DEPLOY_RELAY_")}
+        env = {k: v for k, v in ENV.items() if not k.startswith(("DEPLOY_RELAY_", "DEPLOY_BURN_LINE_"))}
         with patch("deploy.release_one", return_value=(True, ["grid: deployed"])) as one, \
                 contextlib.redirect_stdout(io.StringIO()) as out:
             self.assertEqual(deploy.release(args, environ=env), 0)
@@ -694,6 +718,153 @@ class ReleaseTests(unittest.TestCase):
         with patch("deploy.aws", side_effect=fake), patch("deploy.host.machine", return_value="x86_64"), \
                 self.assertRaisesRegex(RuntimeError, "native runner"):
             deploy.ensure_image(cfg(), "grid", URI, "k" * 32, SHA, "", "arm64", REPO, log=lambda *_: None)
+
+
+class ScheduledTaskTests(unittest.TestCase):
+    """The burn line: a release registers a revision and points the schedule
+    at it. It never starts a task (a started task places phone calls)."""
+
+    URI = REGISTRY + "/burn-line"
+    FAMILY_ARN = "arn:aws:ecs:us-west-2:123456789012:task-definition/sierra-burn-line"
+    SCHEDULE = {
+        "Arn": "arn:aws:scheduler:us-west-2:123456789012:schedule/default/sierra-burn-line",
+        "CreationDate": "2026-11-20T00:00:00+00:00", "LastModificationDate": "2026-11-20T00:00:00+00:00",
+        "Name": "sierra-burn-line", "GroupName": "default", "State": "ENABLED",
+        "Description": "Daily burn line call", "ActionAfterCompletion": "NONE",
+        "ScheduleExpression": "cron(0 6,8,10 * * ? *)", "ScheduleExpressionTimezone": "America/Los_Angeles",
+        "FlexibleTimeWindow": {"Mode": "OFF"},
+        "Target": {"Arn": "arn:aws:ecs:us-west-2:123456789012:cluster/sierra",
+                   "RoleArn": "arn:aws:iam::123456789012:role/sierra-burn-line-schedule",
+                   "RetryPolicy": {"MaximumEventAgeInSeconds": 900, "MaximumRetryAttempts": 3},
+                   "EcsParameters": {"TaskDefinitionArn": FAMILY_ARN + ":3", "LaunchType": "FARGATE", "TaskCount": 1,
+                                     "NetworkConfiguration": {"awsvpcConfiguration": {
+                                         "Subnets": ["subnet-1"], "SecurityGroups": ["sg-1"],
+                                         "AssignPublicIp": "DISABLED"}}}}}
+
+    def fake(self, images, scheduled=3, latest=3, scheduled_image=None, state="ENABLED"):
+        test, calls, sent = self, [], {}
+        scheduled_image = scheduled_image or self.URI + "@" + OLD_DIGEST
+        images = dict(images)
+
+        def definition(revision, image):
+            return {"taskDefinitionArn": "%s:%d" % (self.FAMILY_ARN, revision), "family": "sierra-burn-line",
+                    "revision": revision, "status": "ACTIVE", "cpu": "256", "memory": "512",
+                    "runtimePlatform": {"cpuArchitecture": "X86_64", "operatingSystemFamily": "LINUX"},
+                    "containerDefinitions": [{"name": "burn-line", "image": image,
+                                              "command": ["-endpoint=https://x/api/v1/ingest/burn.line",
+                                                          "-not-before=06:00"]}]}
+
+        def aws(region, *command):
+            calls.append(command[:2])
+            op = command[:2]
+            arg = lambda flag: command[command.index(flag) + 1]
+            if op == ("ecr", "describe-repositories"):
+                return {"repositories": [{"repositoryUri": REGISTRY + "/" + arg("--repository-names")}]}
+            if op == ("ecr", "describe-images"):
+                kind, value = arg("--image-ids").split("=", 1)
+                if kind == "imageTag":
+                    if value not in images:
+                        raise RuntimeError("An error occurred (ImageNotFoundException)")
+                    return {"imageDetails": [{"imageDigest": images[value]}]}
+                return {"imageDetails": [{"imageDigest": value, "imageTags": [t for t, d in images.items() if d == value]}]}
+            if op == ("ecr", "batch-get-image"):
+                return {"images": [{"imageManifest": "{}"}]}
+            if op == ("ecr", "put-image"):
+                images[arg("--image-tag")] = arg("--image-digest")
+                return {}
+            if op == ("scheduler", "get-schedule"):
+                test.assertEqual(arg("--name"), "sierra-burn-line")
+                described = json.loads(json.dumps(self.SCHEDULE))
+                described["State"] = state
+                described["Target"]["EcsParameters"]["TaskDefinitionArn"] = "%s:%d" % (self.FAMILY_ARN, scheduled)
+                return described
+            if op == ("ecs", "describe-task-definition"):
+                ref = arg("--task-definition")
+                revision = latest if ref == "sierra-burn-line" else int(ref.rsplit(":", 1)[1])
+                # Terraform's own revision carries a tag that is not in ECR.
+                image = scheduled_image if revision == scheduled else self.URI + ":bootstrap"
+                return {"taskDefinition": definition(revision, image), "tags": []}
+            if op == ("ecs", "register-task-definition"):
+                sent["registered"] = json.loads(Path(arg("--cli-input-json")[len("file://"):]).read_text())
+                return {"taskDefinition": {"taskDefinitionArn": "%s:%d" % (self.FAMILY_ARN, latest + 1)}}
+            if op == ("scheduler", "update-schedule"):
+                sent["schedule"] = json.loads(Path(arg("--cli-input-json")[len("file://"):]).read_text())
+                return {}
+            raise AssertionError("unexpected aws call %s" % (command,))
+        return aws, calls, sent
+
+    def release(self, aws, **kwargs):
+        with patch("deploy.aws", side_effect=aws), patch("deploy.content_key", return_value="k" * 32), \
+                patch("deploy.docker_login"), patch("deploy.host.machine", return_value="x86_64"), \
+                patch("deploy.subprocess.run", side_effect=AssertionError("must not build")):
+            return deploy.release_one(cfg(), "burn-line", SHA, "", REPO, timeout=1, log=lambda *_: None, **kwargs)
+
+    def assert_starts_nothing(self, calls):
+        for forbidden in [("ecs", "run-task"), ("ecs", "update-service"), ("ecs", "describe-services")]:
+            self.assertNotIn(forbidden, calls)
+
+    def test_only_the_task_definition_of_the_schedule_changes(self):
+        request = deploy.with_task_definition(self.SCHEDULE, self.FAMILY_ARN + ":4")
+        for field in deploy.SCHEDULE_READ_ONLY:
+            self.assertNotIn(field, request)
+        self.assertEqual(request["Target"]["EcsParameters"]["TaskDefinitionArn"], self.FAMILY_ARN + ":4")
+        self.assertEqual(self.SCHEDULE["Target"]["EcsParameters"]["TaskDefinitionArn"], self.FAMILY_ARN + ":3",
+                         "input untouched")
+        expected = json.loads(json.dumps({k: v for k, v in self.SCHEDULE.items() if k not in deploy.SCHEDULE_READ_ONLY}))
+        expected["Target"]["EcsParameters"]["TaskDefinitionArn"] = self.FAMILY_ARN + ":4"
+        self.assertEqual(request, expected, "when it fires, its zone, state, role and network stay as read")
+
+    def test_new_image_registers_a_revision_and_moves_the_schedule(self):
+        aws, calls, sent = self.fake({"content-" + "k" * 32: DIGEST})
+        ok, lines = self.release(aws)
+        self.assertTrue(ok)
+        container = sent["registered"]["containerDefinitions"][0]
+        self.assertEqual(container["image"], self.URI + "@" + DIGEST)
+        self.assertEqual(container["command"][1], "-not-before=06:00", "the command is Terraform's")
+        self.assertEqual(sent["schedule"]["Target"]["EcsParameters"]["TaskDefinitionArn"], self.FAMILY_ARN + ":4")
+        self.assertEqual(sent["schedule"]["ScheduleExpression"], "cron(0 6,8,10 * * ? *)")
+        self.assertEqual(sent["schedule"]["State"], "ENABLED")
+        self.assertIn("now runs sierra-burn-line:4 (was sierra-burn-line:3)", lines[0])
+        self.assert_starts_nothing(calls)
+
+    def test_unchanged_image_and_revision_leaves_the_schedule_alone(self):
+        aws, calls, sent = self.fake({"content-" + "k" * 32: OLD_DIGEST})
+        ok, lines = self.release(aws)
+        self.assertTrue(ok)
+        self.assertIn("unchanged", lines[0])
+        self.assertEqual(sent, {})
+        self.assert_starts_nothing(calls)
+
+    def test_terraform_revision_gets_the_image_before_the_schedule_sees_it(self):
+        # Terraform registered :4 (a changed command) with its placeholder tag;
+        # the schedule still runs :3. The same image goes onto :5.
+        aws, _, sent = self.fake({"content-" + "k" * 32: OLD_DIGEST}, scheduled=3, latest=4)
+        ok, lines = self.release(aws)
+        self.assertTrue(ok)
+        self.assertEqual(sent["registered"]["containerDefinitions"][0]["image"], self.URI + "@" + OLD_DIGEST)
+        self.assertEqual(sent["schedule"]["Target"]["EcsParameters"]["TaskDefinitionArn"], self.FAMILY_ARN + ":5")
+
+    def test_first_deploy_moves_a_disabled_schedule_off_the_placeholder_and_keeps_it_disabled(self):
+        aws, _, sent = self.fake({"content-" + "k" * 32: DIGEST}, scheduled_image=self.URI + ":bootstrap",
+                                 state="DISABLED")
+        ok, lines = self.release(aws)
+        self.assertTrue(ok)
+        self.assertEqual(sent["schedule"]["State"], "DISABLED")
+        self.assertIn("starts nothing until enabled", lines[0])
+
+    def test_schedule_on_another_family_is_refused_before_building(self):
+        aws, calls, sent = self.fake({})
+        with patch.object(ScheduledTaskTests, "FAMILY_ARN", "arn:aws:ecs:us-west-2:123456789012:task-definition/other"), \
+                self.assertRaisesRegex(RuntimeError, "not a revision of sierra-burn-line"):
+            self.release(aws)
+        self.assertEqual(sent, {})
+
+    def test_push_only_touches_neither_ecs_nor_the_schedule(self):
+        aws, calls, sent = self.fake({"content-" + "k" * 32: DIGEST})
+        ok, lines = self.release(aws, push_only_arch="amd64")
+        self.assertTrue(ok)
+        self.assertFalse([c for c in calls if c[0] in ("ecs", "scheduler")])
+        self.assertIn("push only", lines[0])
 
 
 if __name__ == "__main__":

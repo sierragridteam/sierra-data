@@ -14,13 +14,16 @@ Python 3 standard library only, in two halves:
                 revision from the family's latest with only that container's
                 image changed, UpdateService, and follow the ECS service
                 deployment (blue/green bake, automatic rollback) to its end.
+                The burn line is a scheduled task, not a service: its image
+                and revision are made the same way, and then its EventBridge
+                Scheduler schedule is pointed at the revision.
 
 Also `resolve` (the workflow's check of what it is asked to deploy) and
 `check-config` (refuses when a required repository variable is unset).
 
 Terraform (sierra-infra, grid/compute) owns the services, the task
-definitions' content and the deployment configuration; this only swaps
-images. The old account's stack (SQLite on EFS, the coordinator Lambda,
+definitions' content, the deployment configuration and the burn line's
+schedule (when it fires, whether it is on); this only swaps images. The old account's stack (SQLite on EFS, the coordinator Lambda,
 `make ecs-deploy`) is archived at the tag legacy-efs-archived and retired:
 nothing here can reach the old account. docs/deploy-handoff.md has the flow.
 """
@@ -54,7 +57,7 @@ FLOOR_TAG = "legacy-efs-final"
 # go on while any is unset or malformed. The relay's three are OPTIONAL as a
 # group (the Grid service exists in the new account before the relay does):
 # all unset skips the relay with a notice, some set is refused, all set
-# deploys it.
+# deploys it. The burn line's three are optional in the same way.
 SETTINGS = {
     "DEPLOY_ROLE_ARN": (r"arn:aws:iam::[0-9]{12}:role/[\w+=,.@/-]+",
                         "role the workflow assumes through GitHub OIDC (sierra-infra grid/deploy)"),
@@ -68,9 +71,15 @@ SETTINGS = {
     "DEPLOY_RELAY_TASK_FAMILY": (r"[A-Za-z0-9_-]{1,255}", "the relay task-definition family"),
     "DEPLOY_RELAY_ECR_REPOSITORY": (r"[a-z0-9]+(?:[._-][a-z0-9]+)*(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)*",
                                     "ECR repository name for the relay image"),
+    "DEPLOY_BURN_LINE_TASK_FAMILY": (r"[A-Za-z0-9_-]{1,255}", "the burn line task-definition family"),
+    "DEPLOY_BURN_LINE_ECR_REPOSITORY": (r"[a-z0-9]+(?:[._-][a-z0-9]+)*(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)*",
+                                        "ECR repository name for the burn-line image"),
+    "DEPLOY_BURN_LINE_SCHEDULE": (r"[0-9A-Za-z_.-]{1,64}",
+                                  "the EventBridge Scheduler schedule (default group) that runs the burn line task"),
 }
 
-# What goes into each image (Dockerfile stages `grid` and `relay`). The
+# What goes into each image (Dockerfile stages `grid`, `relay` and
+# `burn-line`). The
 # content key hashes these binaries, built reproducibly, plus these files:
 # an image whose key is already in ECR is reused, not rebuilt, and a service
 # whose image did not change is not redeployed. test_deploy.py holds this to
@@ -80,9 +89,16 @@ TARGETS = {
              "files": ["Dockerfile", "prefab.yaml", "api/v1/*.swagger.json", "certs/rds-global-bundle.pem"]},
     "relay": {"stage": "relay", "binaries": [("./cmd/mesh-relay", "mesh-relay")],
               "files": ["Dockerfile", "prefab.yaml"]},
+    # Not a service: `runs` says what starts it, and so what a release moves.
+    "burn-line": {"stage": "burn-line", "binaries": [("./cmd/burn-line", "burn-line")],
+                  "files": ["Dockerfile", "prefab.yaml"], "runs": "schedule"},
 }
 
-OPTIONAL_GROUPS = {"relay": ["DEPLOY_RELAY_SERVICE", "DEPLOY_RELAY_TASK_FAMILY", "DEPLOY_RELAY_ECR_REPOSITORY"]}
+OPTIONAL_GROUPS = {"relay": ["DEPLOY_RELAY_SERVICE", "DEPLOY_RELAY_TASK_FAMILY", "DEPLOY_RELAY_ECR_REPOSITORY"],
+                   "burn-line": ["DEPLOY_BURN_LINE_TASK_FAMILY", "DEPLOY_BURN_LINE_ECR_REPOSITORY",
+                                 "DEPLOY_BURN_LINE_SCHEDULE"]}
+# What a release without each optional image leaves as it was.
+SKIPPED_MEANS = {"relay": "deploying the Grid only", "burn-line": "the burn line schedule is left alone"}
 
 SHA_RE = re.compile(r"[0-9a-f]{7,40}")
 FULL_SHA_RE = re.compile(r"[0-9a-f]{40}")
@@ -101,6 +117,10 @@ READ_ONLY = {"taskDefinitionArn", "revision", "status", "requiresAttributes", "c
 
 ACTIVE_DEPLOYMENT = ["PENDING", "IN_PROGRESS", "STOP_REQUESTED", "ROLLBACK_REQUESTED", "ROLLBACK_IN_PROGRESS"]
 FAILED_DEPLOYMENT = {"STOPPED", "ROLLBACK_SUCCESSFUL", "ROLLBACK_FAILED"}
+
+# Fields of a described schedule that UpdateSchedule refuses. UpdateSchedule
+# replaces the schedule whole, so everything else is sent back as it was read.
+SCHEDULE_READ_ONLY = {"Arn", "CreationDate", "LastModificationDate"}
 
 
 class Refused(Exception):
@@ -293,8 +313,8 @@ def skipped_targets(environ):
 
 
 def skip_notice(target):
-    return ("%s: skipped, %s are all unset; deploying the Grid only"
-            % (target, ", ".join(OPTIONAL_GROUPS[target])))
+    return ("%s: skipped, %s are all unset; %s"
+            % (target, ", ".join(OPTIONAL_GROUPS[target]), SKIPPED_MEANS[target]))
 
 
 def config_problems(environ, check_format=True):
@@ -334,10 +354,15 @@ class Config:
         self.region = environ["DEPLOY_AWS_REGION"]
         self.cluster = environ["DEPLOY_ECS_CLUSTER"]
         self.skipped = skipped_targets(environ)
-        self.targets = {name: {"service": environ["DEPLOY_%s_SERVICE" % name.upper()],
-                               "family": environ["DEPLOY_%s_TASK_FAMILY" % name.upper()],
-                               "repository": environ["DEPLOY_%s_ECR_REPOSITORY" % name.upper()]}
-                        for name in TARGETS if name not in self.skipped}
+        self.targets = {}
+        for name, spec in TARGETS.items():
+            if name in self.skipped:
+                continue
+            prefix = "DEPLOY_%s_" % name.upper().replace("-", "_")
+            runs = spec.get("runs", "service")
+            self.targets[name] = {runs: environ[prefix + runs.upper()],
+                                  "family": environ[prefix + "TASK_FAMILY"],
+                                  "repository": environ[prefix + "ECR_REPOSITORY"]}
 
 
 # --- AWS -----------------------------------------------------------------------
@@ -580,6 +605,72 @@ def follow(cfg, arn, timeout, log=print):
     return False
 
 
+def describe_schedule(cfg, name):
+    return aws(cfg.region, "scheduler", "get-schedule", "--name", name)
+
+
+def with_task_definition(schedule, definition_arn):
+    """An UpdateSchedule request: the described schedule with only the task
+    definition its target runs replaced (when it fires, its time zone and
+    whether it is on stay as Terraform wrote them)."""
+    request = {k: v for k, v in schedule.items() if k not in SCHEDULE_READ_ONLY}
+    target = dict(schedule["Target"])
+    target["EcsParameters"] = dict(target["EcsParameters"], TaskDefinitionArn=definition_arn)
+    request["Target"] = target
+    return request
+
+
+def update_schedule(cfg, request):
+    with tempfile.TemporaryDirectory(prefix="sierra-deploy-") as directory:
+        path = Path(directory) / "schedule.json"
+        path.write_text(json.dumps(request))
+        aws(cfg.region, "scheduler", "update-schedule", "--cli-input-json", "file://" + str(path))
+
+
+def release_scheduled(cfg, name, sha, git_tag, source, uri, log=print):
+    """Deploy the image of a scheduled task: nothing is running to replace,
+    so the release is the schedule's next run using the new revision.
+    Returns (ok, summary lines)."""
+    target = cfg.targets[name]
+    repository = target["repository"]
+    schedule = describe_schedule(cfg, target["schedule"])
+    ecs = (schedule.get("Target") or {}).get("EcsParameters") or {}
+    current_arn = ecs.get("TaskDefinitionArn") or ""
+    if family_of(current_arn) != target["family"]:
+        raise RuntimeError("schedule %s runs %s, not a revision of %s; check DEPLOY_%s_TASK_FAMILY and _SCHEDULE"
+                           % (target["schedule"], current_arn or "no ECS task", target["family"],
+                              name.upper().replace("-", "_")))
+    latest, tags = task_definition(cfg, target["family"])
+    current = latest if latest["taskDefinitionArn"] == current_arn else task_definition(cfg, current_arn)[0]
+    arch = ARCHITECTURES.get((latest.get("runtimePlatform") or {}).get("cpuArchitecture") or "X86_64")
+    if not arch:
+        raise RuntimeError("%s: unsupported cpuArchitecture %r" % (name, latest["runtimePlatform"]))
+
+    docker_login(cfg, uri.split("/", 1)[0])
+    key = content_key(name, arch, source)
+    digest = ensure_image(cfg, name, uri, key, sha, git_tag, arch, source, log)
+    image = "%s@%s" % (uri, digest)
+
+    running = current["containerDefinitions"][container_index(current, uri, name)]["image"]
+    if current_arn == latest["taskDefinitionArn"] and image_digest(cfg, repository, uri, running) == digest:
+        return True, ["%s: unchanged, schedule %s keeps running %s with %s"
+                      % (name, target["schedule"], short_arn(current_arn), short_digest(digest))]
+
+    index = container_index(latest, uri, name)
+    if latest["containerDefinitions"][index]["image"] == image:
+        new_arn = latest["taskDefinitionArn"]
+        log("%s: %s already runs this image" % (name, short_arn(new_arn)))
+    else:
+        new_arn = register(cfg, with_image(latest, tags, index, image))
+        log("%s: registered %s from %s (image only)" % (name, short_arn(new_arn), short_arn(latest["taskDefinitionArn"])))
+    update_schedule(cfg, with_task_definition(schedule, new_arn))
+    state = schedule.get("State") or "?"
+    return True, ["%s: schedule %s now runs %s (was %s); it is %s%s"
+                  % (name, target["schedule"], short_arn(new_arn), short_arn(current_arn), state,
+                     ", so its next run uses this image" if state == "ENABLED" else " and starts nothing until enabled"),
+                  "%s: to go back, redeploy what ran before (make deploy REF=<commit>)" % name]
+
+
 def duration(seconds):
     minutes, secs = divmod(int(max(seconds, 0)), 60)
     return "%dm%02ds" % (minutes, secs) if minutes else "%ds" % secs
@@ -596,6 +687,8 @@ def release_one(cfg, name, sha, git_tag, source, timeout, log=print, push_only_a
         key = content_key(name, push_only_arch, source)
         digest = ensure_image(cfg, name, uri, key, sha, git_tag, push_only_arch, source, log)
         return True, ["%s: pushed %s@%s (push only; ECS untouched)" % (name, uri, digest)]
+    if "schedule" in target:
+        return release_scheduled(cfg, name, sha, git_tag, source, uri, log)
 
     service = describe_service(cfg, target["service"])
     current_arn = service["taskDefinition"]
@@ -676,7 +769,7 @@ def release(args, environ=os.environ):
         summary += lines
         if not ok:
             failed = True
-            break  # never move on to the next service after a failed one
+            break  # never move on to the next image after a failed one
     print("\n".join(summary), flush=True)
     if environ.get("GITHUB_STEP_SUMMARY"):
         with open(environ["GITHUB_STEP_SUMMARY"], "a") as out:

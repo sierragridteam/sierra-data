@@ -1,5 +1,5 @@
 # Live Data API Server - Build, Test, and Deployment Tasks
-.PHONY: openapi test-mesh-relay mesh-relay run-relay relay-token docker-build-relay ecr-push ecr-push-grid ecr-push-relay ingest-token test-pge test-llm burn-line-dry-run build test proto proto-tools clean server tools run dev lint fmt docker docker-build docker-run docker-run-dev docker-push docker-clean deploy install help test-meshcore
+.PHONY: openapi test-mesh-relay mesh-relay run-relay relay-token docker-build-relay docker-build-burn-line ecr-push ecr-push-grid ecr-push-relay ingest-token test-pge test-llm burn-line-dry-run build test proto proto-tools clean server tools run dev lint fmt docker docker-build docker-run docker-run-dev docker-push docker-clean deploy install help test-meshcore
 
 # Go parameters
 GOCMD=go
@@ -44,6 +44,8 @@ TEST_ROUTE_MATCHER_BINARY=$(BUILD_DIR)/test-route-matcher
 DOCKER_IMAGE_NAME=sierra-data
 # The mesh relay's image (Dockerfile --target relay), its own ECR repository.
 RELAY_IMAGE_NAME?=sierra-mesh-relay
+# The burn line task's image (Dockerfile --target burn-line), its own repository.
+BURN_LINE_IMAGE_NAME?=sierra-burn-line
 DOCKER_TAG?=latest
 DOCKER_REGISTRY?=
 
@@ -263,7 +265,8 @@ test-llm: $(TEST_LLM_BINARY)
 
 # Call the configured county burn lines and print the readings WITHOUT pushing.
 # This places REAL phone calls and spends Twilio + OpenAI credit, so it is
-# dry-run only here; the pushing path runs from .github/workflows/burn-line.yml.
+# dry-run only here; the pushing path is the scheduled task (the burn-line
+# image) and, by hand, .github/workflows/burn-line.yml.
 #
 # Lines come from grid.burn.lines in prefab.yaml (the single source of truth), so
 # there is nothing to pass; LINE=<id> narrows it to one.
@@ -494,6 +497,13 @@ docker-build-relay:
 	docker build --platform linux/amd64 --target relay -t $(RELAY_IMAGE_NAME):$(DOCKER_TAG) .
 	@echo "✅ Docker image built: $(RELAY_IMAGE_NAME):$(DOCKER_TAG)"
 
+# The burn line image: the scheduled task that phones the county burn lines.
+# Building it calls nobody; running it without -dry-run and with credentials
+# does (see burn-line-dry-run).
+docker-build-burn-line:
+	docker build --platform linux/amd64 --target burn-line -t $(BURN_LINE_IMAGE_NAME):$(DOCKER_TAG) .
+	@echo "✅ Docker image built: $(BURN_LINE_IMAGE_NAME):$(DOCKER_TAG)"
+
 # Login to ECR and push the relay image (to its own repository).
 ecr-push-relay: docker-build-relay
 	@if [ -z "$(DOCKER_REGISTRY)" ]; then \
@@ -656,6 +666,7 @@ help:
 	@echo "Docker targets:"
 	@echo "  docker-build     - Build Docker container image"
 	@echo "  docker-build-relay - Build the mesh relay image (Dockerfile --target relay)"
+	@echo "  docker-build-burn-line - Build the burn line task image (Dockerfile --target burn-line)"
 	@echo "  docker-run       - Run Docker container with API keys from environment"
 	@echo "  docker-run-dev   - Run Docker container with mounted config for development"
 	@echo "  ecr-push         - Login to ECR and push both images"
