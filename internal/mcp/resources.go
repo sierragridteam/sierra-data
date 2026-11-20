@@ -23,6 +23,11 @@ Public, read-only, keyless hazard/road/weather data for the central Sierra
 - grid_places(kind?, q?) — the place directory (discover valid slugs).
 - grid_sources() — upstream feed health.
 - grid_history(location?, layer?, from?, to?, q?, every_revision?, limit?) — revision timeline; with q, when an event's text first and last said something.
+- grid_mesh_status(location?, show?, radius_km?, limit?) — the MeshCore radio mesh around a place: who was heard, who is quiet, silent or unknown and since when, which nodes did not answer their monitor, and whether the Grid is hearing the mesh at all.
+- grid_mesh_node(node, window?, limit?) — one node by name, short id or key: its clocks, its monitor's last reading, and the links to its neighbours.
+- grid_mesh_path(from, to, window?, radius_km?) — an observed route between two nodes or places, hop by hop, with a second route when there is one.
+- grid_mesh_telemetry(node, hours?) — a monitored node's battery, temperature and noise-floor trend.
+- grid_mesh_changes(location?, hours?) — nodes first recorded, expired, back, renamed, or read through a different gateway.
 - search(query) / fetch(id) — the generic pair some clients require by name; thin forms of grid_search and grid_event. Prefer the grid_* tools when you can call them.
 
 ## Severity scale (rank 0–4)
@@ -58,19 +63,34 @@ in any spelling ("hwy 4", "SR-4", "state route 4").
 - Scope with the broadest place that covers the question (county/area), not a
   street: an address resolves to its containing places, so it scopes to the
   county/area, not to that one street.
-- "Is <node> up / when did <node> last advertise?" (MeshCore mesh nodes) —
-  grid_events with layer=mesh (legacy alias "network") and q set to the node's
-  name or the start of its public key; unscoped is fine, the mesh spans
-  places. Each row is one node: name in headline/areaLabel, pubkey + radio
-  telemetry in detail. Freshness
-  is mesh.telemetry.lastRelayedAt (when a packet the node RELAYED last reached the
-  Grid; for a repeater this is near-constant) and mesh.telemetry.lastHeardAt
-  (when its own advert last did); take the later. Both are the Grid's clock and
-  null means none on record, not "down". NOT the row's observedAt, which only
-  moves when the node's identity, position or reachability changes, so it can
-  be days old for a node that is talking now. mesh.telemetry.lastAdvertAt is
-  the node's own advert stamp and is diagnostic only (node clocks skew). A
-  node missing from the list is not proof it's down.
+- "Is the mesh healthy / which repeaters are down?" — grid_mesh_status. It
+  never says "down": a node is active (heard, relayed or read by a monitor in
+  the last 12 h), quiet (12 to 48 h), silent (longer) or unknown (no activity on
+  record), and separately a monitor that logs in to it is answering or got no
+  answer. Read summary.health first: "unknown" means the Grid's own feed is not
+  reporting, and then every state is only the last it knew.
+- "Is <node> up / what does it hear / how good are its links?" —
+  grid_mesh_node with the node's name, its short id (first 8 hex of its key) or
+  a key prefix. A name that matches several nodes returns the candidates and
+  reads none. Freshness is last_active_at (the later of its advert reaching the
+  Grid, a packet it relayed reaching the Grid, and a monitor's successful
+  read), never an event's observedAt.
+- "Is there a path from <A> to <B>?" — grid_mesh_path. The answer is an
+  inference from links observed carrying traffic, not a guarantee, and
+  found=false means none was observed, not that none exists: links are learned
+  only from packet paths the Grid could resolve without guessing, so real ones
+  are missing. Check from.read_as / to.read_as: "Arnold" is the town (the nodes
+  near it), "SIERRA Arnold Summit" is one repeater.
+- "How is <node>'s battery?" — grid_mesh_telemetry. Only monitored nodes have
+  readings; for the rest the answer is unknown, and a reading is the node as it
+  was when read (see its age).
+- "What changed on the mesh today?" — grid_mesh_changes.
+- "Which nodes cover <place>?" — grid_mesh_status with the place and show=all.
+  It lists nodes located in or near the place; radio coverage is not modelled.
+- grid_events with layer=mesh still lists the raw node records (one INFO row
+  per node, liveness in mesh.telemetry.lastRelayedAt / lastHeardAt, both the
+  Grid's clock; null means none on record, not "down"). Prefer the grid_mesh_*
+  tools: they name the nodes, give ages, and state what the data cannot show.
 
 ## Map layers (URLs for a maps client — not data to reason over)
 These tools deliberately omit geometry (they return a centroid + bbox instead);
@@ -101,7 +121,12 @@ consistent.
   UNKNOWN, not clear. Never present absence of data as an all-clear. This cuts
   both ways for mesh: a healthy MeshCore feed (grid_sources) means the Grid
   reached the bridge, not that any given node is up — node liveness is per-node
-  in grid_events layer=mesh, never the feed's poll time.
+  (grid_mesh_status, grid_mesh_node), never the feed's poll time. And an
+  unhealthy feed means every node's state is only the last the Grid knew.
+- Mesh: there is no "down". Silence is the Grid not hearing a node, a monitor's
+  failed login is the node not answering that monitor, and an old reading is the
+  node as it was. A link or path that is not listed was not observed, which is
+  not proof it does not exist; a path that is listed is not a promise of delivery.
 - Evacuation: activeEvacuations is an explicit null (source errored → UNKNOWN,
   render "check Genasys"), 0 (Cal OES healthy, no active zones — a caveated
   confirmed-empty, not a guarantee), or N (active). null and 0 are different;

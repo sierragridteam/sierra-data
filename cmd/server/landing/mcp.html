@@ -14,8 +14,8 @@
 <p class="prompt">sierra@grid:~$ <span class="cmd">cat MCP</span> · <a href="/">data.sierragridteam.org</a></p>
 <h1>The Grid over MCP</h1>
 <p class="lede">Ask Claude, ChatGPT or Gemini about fires, evacuations, roads,
-weather and power on the Ebbetts Pass / Highway 4 corridor. The assistant
-reads The Grid through the Model Context Protocol (MCP).</p>
+weather, power and the radio mesh on the Ebbetts Pass / Highway 4 corridor.
+The assistant reads The Grid through the Model Context Protocol (MCP).</p>
 <p class="meta">public · read-only · no sign-in · Streamable HTTP</p>
 </header>
 
@@ -116,6 +116,10 @@ protocol revision <code>2025-06-18</code>.</p>
 <li>Are there evacuation orders or warnings in Calaveras County?</li>
 <li>How did the last road closure near Murphys unfold?</li>
 <li>Which of The Grid's sources are down?</li>
+<li>Is the mesh healthy? Which repeaters have not been heard, and since
+when?</li>
+<li>Is there a mesh path from Arnold to Bear Valley, and through which
+nodes?</li>
 </ul>
 </section>
 
@@ -131,6 +135,11 @@ protocol revision <code>2025-06-18</code>.</p>
 <li><code>grid_resolve</code> <span>an address or lat,lng to the places containing it</span></li>
 <li><code>grid_places</code> <span>the place directory</span></li>
 <li><code>grid_sources</code> <span>the health of every upstream feed</span></li>
+<li><code>grid_mesh_status</code> <span>the radio mesh around a place: who was heard, who was not, and since when</span></li>
+<li><code>grid_mesh_node</code> <span>one mesh node: last heard, its monitor's reading, the links to its neighbours</span></li>
+<li><code>grid_mesh_path</code> <span>an observed route between two nodes or places, hop by hop</span></li>
+<li><code>grid_mesh_telemetry</code> <span>a monitored node's battery and temperature trend</span></li>
+<li><code>grid_mesh_changes</code> <span>what changed on the mesh lately</span></li>
 <li><code>search</code>, <code>fetch</code> <span>the same search, in the shape research modes expect</span></li>
 </ul>
 <p>The data is the same as the <a href="/">HTTP API</a>, with map geometry
@@ -145,6 +154,9 @@ link in the answer and check the official page.</li>
 <li><b>No data is not an all-clear.</b> A source marked
 <code>UNAVAILABLE</code> means its status is unknown. Every result says so,
 but an assistant can still summarize it wrongly.</li>
+<li><b>The mesh is only what was heard.</b> A node The Grid has not heard
+is not known to be off, a link it has not observed may still exist, and a
+path it finds is an inference, not a promise that a message gets through.</li>
 <li><b>Read-only.</b> The server has no account, takes no input beyond the
 question's parameters, and changes nothing.</li>
 </ul>

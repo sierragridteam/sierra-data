@@ -61,9 +61,16 @@ func (g *GridServer) RegisterGatewayRoutes(mux *runtime.ServeMux, wrap func(runt
 	// series of numbers is exactly what proto3 models well, so it gets the
 	// generated contract, the reflection entry and the OpenAPI row like every
 	// other read. Hand-building is for geometry.)
-	return mux.HandlePath("GET", "/api/v1/mesh/links",
+	if err := mux.HandlePath("GET", "/api/v1/mesh/links",
 		wrap(func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
 			g.svc.serveMeshLinks(w, r)
+		})); err != nil {
+		return err
+	}
+	// A route between two sets of nodes over those links (mesh_path.go).
+	return mux.HandlePath("GET", "/api/v1/mesh/path",
+		wrap(func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+			g.svc.serveMeshPath(w, r)
 		}))
 }
 
