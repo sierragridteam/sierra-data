@@ -454,7 +454,8 @@ func TestGetEventSamplesJSON(t *testing.T) {
 			 "durationMinutes": null, "durationMinutesMin": null, "durationMinutesMax": null, "delayMinutes": null, "delayMinutesMax": null},
 			{"at": "2026-11-10T00:30:00Z", "samples": 1, "status": "OPEN", "congestion": "CLEAR",
 			 "durationMinutes": 30, "durationMinutesMin": 30, "durationMinutesMax": 30, "delayMinutes": 3, "delayMinutesMax": 3}
-		]}`, string(body))
+		],
+		"weather": []}`, string(body))
 
 	bucketed, err := g.GetEventSamples(rpcBG(), samplesReq(id, from, to, 2))
 	require.NoError(t, err)
@@ -472,7 +473,8 @@ func TestGetEventSamplesJSON(t *testing.T) {
 			 "durationMinutes": 28, "durationMinutesMin": 28, "durationMinutesMax": 28, "delayMinutes": 1, "delayMinutesMax": 1},
 			{"at": "2026-11-10T00:30:00Z", "samples": 1, "status": "OPEN", "congestion": "CLEAR",
 			 "durationMinutes": 30, "durationMinutesMin": 30, "durationMinutesMax": 30, "delayMinutes": 3, "delayMinutesMax": 3}
-		]}`, string(body))
+		],
+		"weather": []}`, string(body))
 }
 
 func samplesCall(g *GridServer, req *gridv1.GetEventSamplesRequest) func(context.Context) error {

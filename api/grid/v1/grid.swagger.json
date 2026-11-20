@@ -193,7 +193,8 @@
                 "BURN_STATUS",
                 "SOURCE_HEALTH",
                 "CHAIN_CONTROL",
-                "ROAD_SEGMENT"
+                "ROAD_SEGMENT",
+                "WEATHER"
               ]
             },
             "collectionFormat": "multi"
@@ -502,7 +503,7 @@
     "/api/v1/events/{id}/samples": {
       "get": {
         "summary": "Get an event's samples.",
-        "description": "The dense numeric series behind an event whose layer has one, shaped for\na chart. The event's revisions record when its state changed; its samples\nare the readings in between. Today one layer has samples: ROAD_SEGMENT\n(`road:{road id}`), recorded at each roads refresh (about every 15\nminutes) and kept 400 days.\n\nThe answer is at most `maxPoints` points (default 500, at most 2000).\nWhen the window holds no more samples than that, each point is one\nsample and `bucketSeconds` is 0. Otherwise the samples are grouped into\nbuckets of `bucketSeconds`: the narrowest of 5, 15 and 30 minutes, 1, 2,\n3, 6 and 12 hours and 1 day that fits (then whole days). Buckets are\naligned to the Unix epoch, so a bucket's start does not depend on the\nwindow. `coverage` says what the window holds and `gaps` where the\nseries has holes, so a chart can break its line there instead of joining\nacross them.\n\nA closed road has no travel time: a sample taken while the segment was\nCLOSED carries `null` for travel time and delay, and is left out of a\nbucket's figures.\n\nDefault window: the 7 days before `to` (default now); windows over 400\ndays are clamped. Supports ETag / If-None-Match: the validator changes\nwhen a sample lands in the window. The raw rows, one per refresh and\nunbounded, remain at `GET /api/v1/roads/{road}/history`.",
+        "description": "The dense numeric series behind an event whose layer has one, shaped for\na chart. The event's revisions record when its state changed; its samples\nare the readings in between. Two layers have samples, each recorded\nabout every 15 minutes and kept 400 days: ROAD_SEGMENT (`road:{road id}`,\none per roads refresh, in `road`) and WEATHER (`weather:{location id}`,\none per successful read of the location's current weather, in\n`weather`).\n\nThe answer is at most `maxPoints` points (default 500, at most 2000).\nWhen the window holds no more samples than that, each point is one\nsample and `bucketSeconds` is 0. Otherwise the samples are grouped into\nbuckets of `bucketSeconds`: the narrowest of 5, 15 and 30 minutes, 1, 2,\n3, 6 and 12 hours and 1 day that fits (then whole days). Buckets are\naligned to the Unix epoch, so a bucket's start does not depend on the\nwindow. `coverage` says what the window holds and `gaps` where the\nseries has holes, so a chart can break its line there instead of joining\nacross them.\n\nA closed road has no travel time: a sample taken while the segment was\nCLOSED carries `null` for travel time and delay, and is left out of a\nbucket's figures.\n\nA weather point's figures are as OpenWeatherMap reported them, to its\ndecimals; `GET /api/v1/conditions` serves the latest reading in whole\nnumbers. A figure the source did not report is `null`, not 0.\n\nDefault window: the 7 days before `to` (default now); windows over 400\ndays are clamped. Supports ETag / If-None-Match: the validator changes\nwhen a sample lands in the window. The raw rows, one per refresh and\nunbounded, remain at `GET /api/v1/roads/{road}/history`.",
         "operationId": "GridService_GetEventSamples",
         "responses": {
           "200": {
@@ -529,7 +530,7 @@
         "parameters": [
           {
             "name": "id",
-            "description": "The event id, e.g. `road:hwy4-arnold-bearvalley`.",
+            "description": "The event id, e.g. `road:hwy4-arnold-bearvalley` or `weather:bearvalley`.",
             "in": "path",
             "required": true,
             "type": "string",
@@ -667,7 +668,8 @@
                 "BURN_STATUS",
                 "SOURCE_HEALTH",
                 "CHAIN_CONTROL",
-                "ROAD_SEGMENT"
+                "ROAD_SEGMENT",
+                "WEATHER"
               ]
             },
             "collectionFormat": "multi"
@@ -1921,7 +1923,7 @@
         "id": {
           "type": "string",
           "example": "chp:261106ST0341",
-          "description": "Stable event id, `{source}:{native id}`. It never changes over the event's\nlife, so it is safe as a client key. Namespaces: `calfire:`, `firis:`\n(wildfire), `evac:` (evacuation zone), `wx:` (NWS alert), `usgs:`\n(earthquake), `chp:` (CHP incident), `caltrans:` (Caltrans lane-closure\nwindow), `pge:` (outage), `psps:` (power shutoff), `meshcore:` (mesh node),\n`burn:` (county burn status). Ids can contain colons; URL-encode them in a\npath."
+          "description": "Stable event id, `{source}:{native id}`. It never changes over the event's\nlife, so it is safe as a client key. Namespaces: `calfire:`, `firis:`\n(wildfire), `evac:` (evacuation zone), `wx:` (NWS alert), `usgs:`\n(earthquake), `chp:` (CHP incident), `caltrans:` (Caltrans lane-closure\nwindow), `pge:` (outage), `psps:` (power shutoff), `meshcore:` (mesh node),\n`burn:` (county burn status), `weather:` (weather location). Ids can\ncontain colons; URL-encode them in a path."
         },
         "layer": {
           "$ref": "#/definitions/v1Layer",
@@ -1931,7 +1933,7 @@
         "category": {
           "type": "string",
           "example": "incident",
-          "description": "Source sub-type, lowercase except for weather alerts. By layer: WILDFIRE\n`wildfire`; EVACUATION `order` | `warning` | `advisory` | `shelter_in_place`;\nWEATHER_ALERT the NWS event name verbatim (`Red Flag Warning`, `Winter Storm\nWatch`, ...); EARTHQUAKE `earthquake`; ROAD_INCIDENT `incident` | `closure` |\n`construction` | `weather` (CHP types) or `closure` (Caltrans windows);\nPOWER `unplanned` | `planned` | `psps`; MESH the node type (`repeater`,\n`companion`, `room_server`, `sensor`); BURN_STATUS `burn_status`;\nROAD_SEGMENT the road's state in one word: `open` | `chains` (open, under\na chain requirement) | `restricted` | `maintenance` | `closed`."
+          "description": "Source sub-type, lowercase except for weather alerts. By layer: WILDFIRE\n`wildfire`; EVACUATION `order` | `warning` | `advisory` | `shelter_in_place`;\nWEATHER_ALERT the NWS event name verbatim (`Red Flag Warning`, `Winter Storm\nWatch`, ...); EARTHQUAKE `earthquake`; ROAD_INCIDENT `incident` | `closure` |\n`construction` | `weather` (CHP types) or `closure` (Caltrans windows);\nPOWER `unplanned` | `planned` | `psps`; MESH the node type (`repeater`,\n`companion`, `room_server`, `sensor`); BURN_STATUS `burn_status`;\nROAD_SEGMENT the road's state in one word: `open` | `chains` (open, under\na chain requirement) | `restricted` | `maintenance` | `closed`; WEATHER\n`weather`."
         },
         "severity": {
           "$ref": "#/definitions/v1Severity",
@@ -2067,6 +2069,10 @@
         },
         "roadSegment": {
           "$ref": "#/definitions/v1RoadSegmentDetail"
+        },
+        "weather": {
+          "$ref": "#/definitions/v1WeatherDetail",
+          "description": "WEATHER detail (one weather location)."
         },
         "nature": {
           "$ref": "#/definitions/v1EventNature",
@@ -2307,6 +2313,14 @@
             "$ref": "#/definitions/v1RoadSamplePoint"
           },
           "description": "ROAD_SEGMENT: the points, oldest first."
+        },
+        "weather": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1WeatherSamplePoint"
+          },
+          "description": "WEATHER: the points, oldest first."
         }
       },
       "description": "EventSamples is one event's samples over a window. The envelope is the same\nfor every layer; the list that is filled depends on the event's layer.",
@@ -2685,7 +2699,7 @@
         "WEATHER"
       ],
       "default": "LAYER_UNSPECIFIED",
-      "description": "Layer is the event taxonomy. Response values are these UPPERCASE names; the\n`layer` query parameter also accepts lowercase slugs (`road_incident`).\n\nOnly event layers appear here. The condition layers (`road_segment`,\n`chain_control`, `fire_weather`, `message_sign`) are map layers and summary\ninputs, never events.\n\n - LAYER_UNSPECIFIED: Never returned.\n - WILDFIRE: Wildfires: CAL FIRE incidents joined with FIRIS/NIFC perimeters (sources\n`calfire`, `firis`). Scoped wider than other layers, so a fire approaching\nthe region shows up before it arrives.\n - EVACUATION: Evacuation zones under an order, warning, advisory or shelter-in-place,\nfrom Cal OES / Genasys (source `caloes`). Life-safety: see the summary's\n`activeEvacuations`.\n - WEATHER_ALERT: National Weather Service watches, warnings and advisories for the region's\nforecast zones (source `nws`). No geometry; attached to places by zone.\n - FIRE_WEATHER: Reserved. Fire weather is a condition (`GET /api/v1/conditions`), not an\nevent layer; no event carries it.\n - EARTHQUAKE: USGS earthquakes of magnitude 2.5 or more in the last 7 days (source `usgs`).\n - ROAD_INCIDENT: CHP traffic incidents (source `chp`, AI-summarized) and Caltrans planned\nlane-closure windows (source `caltrans`). Planned windows not yet set up are\nSCHEDULED.\n - POWER: PG\u0026E electric outages (source `pge`) and Public Safety Power Shutoffs\n(source `psps`). Most outages affect one customer and are INFO.\n - GAUGE: Reserved for stream gauges; no events today.\n - AIR_QUALITY: Reserved for air quality; no events today.\n - MESH: MeshCore community radio nodes (source `meshcore`), one event per node.\nAmbient INFO state, not a hazard. It dominates an unscoped event query.\n - ANNOUNCEMENT: Reserved for announcements; no events today.\n - BURN_STATUS: One event per tracked county saying whether residential burning is allowed\ntoday (sources `burnline`, `calfire-burn`). Ambient, permanently ACTIVE,\nalways INFO; its revision history is the record of changes.\n - SOURCE_HEALTH: One event per upstream feed (`source:{source id}`), saying whether the Grid\ncan read it (source `grid`). Ambient, permanently ACTIVE, always INFO, in\nno place; a revision is a change of the source's status, so its history\nis the record of outages. Written only when the Grid has source-health\nrecording on.\n - CHAIN_CONTROL: One event per stretch of highway under a chain requirement, from Caltrans\n(source `caltrans-cc`): the same stretches, with the same ids, as the\n`chain_control` map layer. RESOLVED when Caltrans lifts the requirement; a\nchange of level is a new event, so the events on a highway are a storm's\nsequence. Written only when the Grid has chain-control recording on.\n - ROAD_SEGMENT: One event per monitored road (`road:{road id}`, source `roads`), revised\nwhen its status or a seasonal closure past its end changes: its history\nis when the road closed and reopened. No geometry\n(the shape is the `road_segment` map layer). The travel-time series is\n`GET /api/v1/events/{id}/samples`. Written only when the Grid has\nroad-segment recording on.\n - WEATHER: Reserved for one event per weather location, revised when its state\nchanges (precipitation, freezing); no events today."
+      "description": "Layer is the event taxonomy. Response values are these UPPERCASE names; the\n`layer` query parameter also accepts lowercase slugs (`road_incident`).\n\nOnly event layers appear here. The condition layers (`road_segment`,\n`chain_control`, `fire_weather`, `message_sign`) are map layers and summary\ninputs, never events.\n\n - LAYER_UNSPECIFIED: Never returned.\n - WILDFIRE: Wildfires: CAL FIRE incidents joined with FIRIS/NIFC perimeters (sources\n`calfire`, `firis`). Scoped wider than other layers, so a fire approaching\nthe region shows up before it arrives.\n - EVACUATION: Evacuation zones under an order, warning, advisory or shelter-in-place,\nfrom Cal OES / Genasys (source `caloes`). Life-safety: see the summary's\n`activeEvacuations`.\n - WEATHER_ALERT: National Weather Service watches, warnings and advisories for the region's\nforecast zones (source `nws`). No geometry; attached to places by zone.\n - FIRE_WEATHER: Reserved. Fire weather is a condition (`GET /api/v1/conditions`), not an\nevent layer; no event carries it.\n - EARTHQUAKE: USGS earthquakes of magnitude 2.5 or more in the last 7 days (source `usgs`).\n - ROAD_INCIDENT: CHP traffic incidents (source `chp`, AI-summarized) and Caltrans planned\nlane-closure windows (source `caltrans`). Planned windows not yet set up are\nSCHEDULED.\n - POWER: PG\u0026E electric outages (source `pge`) and Public Safety Power Shutoffs\n(source `psps`). Most outages affect one customer and are INFO.\n - GAUGE: Reserved for stream gauges; no events today.\n - AIR_QUALITY: Reserved for air quality; no events today.\n - MESH: MeshCore community radio nodes (source `meshcore`), one event per node.\nAmbient INFO state, not a hazard. It dominates an unscoped event query.\n - ANNOUNCEMENT: Reserved for announcements; no events today.\n - BURN_STATUS: One event per tracked county saying whether residential burning is allowed\ntoday (sources `burnline`, `calfire-burn`). Ambient, permanently ACTIVE,\nalways INFO; its revision history is the record of changes.\n - SOURCE_HEALTH: One event per upstream feed (`source:{source id}`), saying whether the Grid\ncan read it (source `grid`). Ambient, permanently ACTIVE, always INFO, in\nno place; a revision is a change of the source's status, so its history\nis the record of outages. Written only when the Grid has source-health\nrecording on.\n - CHAIN_CONTROL: One event per stretch of highway under a chain requirement, from Caltrans\n(source `caltrans-cc`): the same stretches, with the same ids, as the\n`chain_control` map layer. RESOLVED when Caltrans lifts the requirement; a\nchange of level is a new event, so the events on a highway are a storm's\nsequence. Written only when the Grid has chain-control recording on.\n - ROAD_SEGMENT: One event per monitored road (`road:{road id}`, source `roads`), revised\nwhen its status or a seasonal closure past its end changes: its history\nis when the road closed and reopened. No geometry\n(the shape is the `road_segment` map layer). The travel-time series is\n`GET /api/v1/events/{id}/samples`. Written only when the Grid has\nroad-segment recording on.\n - WEATHER: One event per weather location (`weather:{location id}`, source\n`openweather`), permanently ACTIVE and always INFO. Today it carries no\nstate of its own and is never revised: it is the handle the location's\nreadings are read through, `GET /api/v1/events/{id}/samples`. States\nderived from the readings (freezing, precipitation) will be revisions of\nit. Written only when the Grid has weather recording on."
     },
     "v1LayerStats": {
       "type": "object",
@@ -3304,7 +3318,8 @@
             "calfire-burn",
             "grid",
             "caltrans-cc",
-            "roads"
+            "roads",
+            "openweather"
           ],
           "description": "Source registry id; joins to `Source.id` on `/api/v1/sources`."
         },
@@ -4685,6 +4700,22 @@
       },
       "description": "WeatherConditions is current weather at one location, from OpenWeatherMap.\nWhole numbers, metric units. A value that could not be read is 0."
     },
+    "v1WeatherDetail": {
+      "type": "object",
+      "properties": {
+        "locationId": {
+          "type": "string",
+          "example": "bearvalley",
+          "description": "The location id: `WeatherConditions.locationId` and `WeatherLocation.id`\non `GET /api/v1/conditions`."
+        },
+        "locationName": {
+          "type": "string",
+          "example": "Bear Valley, CA",
+          "description": "Display name."
+        }
+      },
+      "description": "WeatherDetail is one weather location (layer WEATHER, event id\n`weather:{location id}`). The event stands for the location: it is ACTIVE\nwhile the location is configured and holds no reading and, today, no\nderived state, so it is written once and not revised. The readings are its\nsamples, `GET /api/v1/events/{id}/samples`, and the latest one is in\n`GET /api/v1/conditions` (joined on `locationId`). The event's geometry is\nthe point the readings are for."
+    },
     "v1WeatherForecast": {
       "type": "object",
       "properties": {
@@ -4781,6 +4812,152 @@
         }
       },
       "description": "WeatherLocation is one monitored town."
+    },
+    "v1WeatherSampleCondition": {
+      "type": "object",
+      "properties": {
+        "weatherMain": {
+          "type": "string",
+          "example": "Snow",
+          "description": "OpenWeatherMap condition group, as `WeatherConditions.weatherMain`:\n\"Clear\", \"Clouds\", \"Rain\", \"Snow\", \"Thunderstorm\", \"Drizzle\", \"Mist\", ..."
+        },
+        "weatherDescription": {
+          "type": "string",
+          "example": "light snow",
+          "description": "OpenWeatherMap description, lowercase, e.g. \"light snow\"."
+        },
+        "samples": {
+          "type": "integer",
+          "format": "int32",
+          "example": 1,
+          "description": "How many of the point's readings had this condition."
+        }
+      },
+      "description": "WeatherSampleCondition is one OpenWeatherMap condition among a point's\nreadings."
+    },
+    "v1WeatherSamplePoint": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The reading's time (when the Grid read it), or the start of the bucket."
+        },
+        "samples": {
+          "type": "integer",
+          "format": "int32",
+          "example": 1,
+          "description": "How many readings the point stands for: 1 when `bucketSeconds` is 0."
+        },
+        "temperatureCelsius": {
+          "type": "number",
+          "format": "double",
+          "example": -0.62,
+          "description": "Air temperature, degrees Celsius: the mean, to two decimals."
+        },
+        "temperatureCelsiusMin": {
+          "type": "number",
+          "format": "double",
+          "example": -0.62,
+          "description": "The lowest air temperature among the readings."
+        },
+        "temperatureCelsiusMax": {
+          "type": "number",
+          "format": "double",
+          "example": -0.62,
+          "description": "The highest air temperature among the readings."
+        },
+        "feelsLikeCelsius": {
+          "type": "number",
+          "format": "double",
+          "example": -5.4,
+          "description": "Feels-like temperature, degrees Celsius: the mean, to two decimals."
+        },
+        "feelsLikeCelsiusMin": {
+          "type": "number",
+          "format": "double",
+          "example": -5.4,
+          "description": "The lowest feels-like temperature among the readings."
+        },
+        "humidityPercent": {
+          "type": "number",
+          "format": "double",
+          "example": 93,
+          "description": "Relative humidity, percent: the mean, to one decimal."
+        },
+        "windSpeedKmh": {
+          "type": "number",
+          "format": "double",
+          "example": 16.6,
+          "description": "Sustained wind speed, km/h: the mean, to one decimal."
+        },
+        "windSpeedKmhMax": {
+          "type": "number",
+          "format": "double",
+          "example": 16.6,
+          "description": "The highest sustained wind speed among the readings."
+        },
+        "windGustKmhMax": {
+          "type": "number",
+          "format": "double",
+          "example": 41.8,
+          "description": "The highest gust among the readings that reported one, km/h."
+        },
+        "windDirectionDegrees": {
+          "type": "integer",
+          "format": "int32",
+          "example": 250,
+          "description": "Direction the wind blows FROM, degrees clockwise from north, 0 to 359:\nfor a bucket, the direction of the readings' mean wind vector. `null`\nwhen no reading had both a direction and wind."
+        },
+        "visibilityKm": {
+          "type": "number",
+          "format": "double",
+          "example": 0.8,
+          "description": "Visibility, km: the mean, to two decimals (OpenWeatherMap caps it at 10)."
+        },
+        "visibilityKmMin": {
+          "type": "number",
+          "format": "double",
+          "example": 0.8,
+          "description": "The lowest visibility among the readings."
+        },
+        "rainMmPerHour": {
+          "type": "number",
+          "format": "double",
+          "example": 0.25,
+          "description": "Rain over the hour before a reading, mm: the mean over the readings that\nreported rain, to two decimals."
+        },
+        "rainMmPerHourMax": {
+          "type": "number",
+          "format": "double",
+          "example": 0.25,
+          "description": "The highest rain rate among the readings that reported rain."
+        },
+        "snowMmPerHour": {
+          "type": "number",
+          "format": "double",
+          "example": 1.27,
+          "description": "Snow over the hour before a reading, mm of water: the mean over the\nreadings that reported snow, to two decimals."
+        },
+        "snowMmPerHourMax": {
+          "type": "number",
+          "format": "double",
+          "example": 1.27,
+          "description": "The highest snow rate among the readings that reported snow."
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1WeatherSampleCondition"
+          },
+          "description": "What the sky was doing: each OpenWeatherMap condition among the\nreadings with how many readings had it, most frequent first (ties: the\none seen latest first). One entry for one reading. Empty when no reading\nnamed a condition."
+        }
+      },
+      "description": "WeatherSamplePoint is one point of a weather location's series: one\nreading, or one bucket of them. The shape is the same either way; for one\nreading the minimum, the maximum and the value are equal.\n\nFigures are as OpenWeatherMap reported them (metric), not the whole numbers\nof `GET /api/v1/conditions`. Each counts only the readings that carried\nit, and is `null` when none did: OpenWeatherMap reports a gust only where\nit has one, and leaves rain and snow out when it reports none, so a `null`\nrate is \"nothing reported\", not a measured 0.",
+      "required": [
+        "at"
+      ]
     },
     "v1WildfireDetail": {
       "type": "object",

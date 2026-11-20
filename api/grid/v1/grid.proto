@@ -257,8 +257,8 @@ message Event {
   // (wildfire), `evac:` (evacuation zone), `wx:` (NWS alert), `usgs:`
   // (earthquake), `chp:` (CHP incident), `caltrans:` (Caltrans lane-closure
   // window), `pge:` (outage), `psps:` (power shutoff), `meshcore:` (mesh node),
-  // `burn:` (county burn status). Ids can contain colons; URL-encode them in a
-  // path.
+  // `burn:` (county burn status), `weather:` (weather location). Ids can
+  // contain colons; URL-encode them in a path.
   string id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"chp:261106ST0341\""}];
 
   // Which layer this event belongs to. It decides which detail block is
@@ -273,7 +273,8 @@ message Event {
   // POWER `unplanned` | `planned` | `psps`; MESH the node type (`repeater`,
   // `companion`, `room_server`, `sensor`); BURN_STATUS `burn_status`;
   // ROAD_SEGMENT the road's state in one word: `open` | `chains` (open, under
-  // a chain requirement) | `restricted` | `maintenance` | `closed`.
+  // a chain requirement) | `restricted` | `maintenance` | `closed`; WEATHER
+  // `weather`.
   string category = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"incident\""}];
 
   // Unified severity, INFO..EXTREME. Response urgency, not magnitude. See the
@@ -403,6 +404,8 @@ message Event {
     SourceHealthDetail source_health = 33;
     ChainControlDetail chain_control = 34;
     RoadSegmentDetail road_segment = 35;
+    // WEATHER detail (one weather location).
+    WeatherDetail weather = 38;
   }
 
   // What kind of thing this event is, which follows from its `layer`:
@@ -484,8 +487,12 @@ enum Layer {
   // `GET /api/v1/events/{id}/samples`. Written only when the Grid has
   // road-segment recording on.
   ROAD_SEGMENT = 18;
-  // Reserved for one event per weather location, revised when its state
-  // changes (precipitation, freezing); no events today.
+  // One event per weather location (`weather:{location id}`, source
+  // `openweather`), permanently ACTIVE and always INFO. Today it carries no
+  // state of its own and is never revised: it is the handle the location's
+  // readings are read through, `GET /api/v1/events/{id}/samples`. States
+  // derived from the readings (freezing, precipitation) will be revisions of
+  // it. Written only when the Grid has weather recording on.
   WEATHER = 19;
 }
 
@@ -598,7 +605,7 @@ message Provenance {
   // Source registry id; joins to `Source.id` on `/api/v1/sources`.
   string source_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     example: "\"chp\""
-    enum: ["calfire", "firis", "caloes", "nws", "usgs", "chp", "caltrans", "pge", "psps", "meshcore", "burnline", "calfire-burn", "grid", "caltrans-cc", "roads"]
+    enum: ["calfire", "firis", "caloes", "nws", "usgs", "chp", "caltrans", "pge", "psps", "meshcore", "burnline", "calfire-burn", "grid", "caltrans-cc", "roads", "openweather"]
   }];
   // Display name of the publisher, e.g. "CAL FIRE", "NWS Sacramento CA",
   // "CHP / Caltrans".
@@ -1397,6 +1404,21 @@ message RoadSegmentDetail {
   repeated RoadSegmentChain chains = 8;
 }
 
+// WeatherDetail is one weather location (layer WEATHER, event id
+// `weather:{location id}`). The event stands for the location: it is ACTIVE
+// while the location is configured and holds no reading and, today, no
+// derived state, so it is written once and not revised. The readings are its
+// samples, `GET /api/v1/events/{id}/samples`, and the latest one is in
+// `GET /api/v1/conditions` (joined on `locationId`). The event's geometry is
+// the point the readings are for.
+message WeatherDetail {
+  // The location id: `WeatherConditions.locationId` and `WeatherLocation.id`
+  // on `GET /api/v1/conditions`.
+  string location_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"bearvalley\""}];
+  // Display name.
+  string location_name = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"Bear Valley, CA\""}];
+}
+
 // RoadSegmentChain is one chain requirement on a monitored road.
 message RoadSegmentChain {
   // `R1`, `R2` or `R3`.
@@ -1908,9 +1930,11 @@ service GridService {
   //
   // The dense numeric series behind an event whose layer has one, shaped for
   // a chart. The event's revisions record when its state changed; its samples
-  // are the readings in between. Today one layer has samples: ROAD_SEGMENT
-  // (`road:{road id}`), recorded at each roads refresh (about every 15
-  // minutes) and kept 400 days.
+  // are the readings in between. Two layers have samples, each recorded
+  // about every 15 minutes and kept 400 days: ROAD_SEGMENT (`road:{road id}`,
+  // one per roads refresh, in `road`) and WEATHER (`weather:{location id}`,
+  // one per successful read of the location's current weather, in
+  // `weather`).
   //
   // The answer is at most `maxPoints` points (default 500, at most 2000).
   // When the window holds no more samples than that, each point is one
@@ -1925,6 +1949,10 @@ service GridService {
   // A closed road has no travel time: a sample taken while the segment was
   // CLOSED carries `null` for travel time and delay, and is left out of a
   // bucket's figures.
+  //
+  // A weather point's figures are as OpenWeatherMap reported them, to its
+  // decimals; `GET /api/v1/conditions` serves the latest reading in whole
+  // numbers. A figure the source did not report is `null`, not 0.
   //
   // Default window: the 7 days before `to` (default now); windows over 400
   // days are clamped. Supports ETag / If-None-Match: the validator changes
@@ -2349,7 +2377,7 @@ message GetRoadHistoryRequest {
 // GetEventSamplesRequest names an event, a window and how many points to
 // answer with.
 message GetEventSamplesRequest {
-  // The event id, e.g. `road:hwy4-arnold-bearvalley`.
+  // The event id, e.g. `road:hwy4-arnold-bearvalley` or `weather:bearvalley`.
   string id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"road:hwy4-arnold-bearvalley\""}];
   // Window start, RFC 3339, inclusive. Default: 7 days before `to`.
   google.protobuf.Timestamp from = 2;
@@ -2397,6 +2425,8 @@ message EventSamples {
   repeated SampleGap gaps = 8;
   // ROAD_SEGMENT: the points, oldest first.
   repeated RoadSamplePoint road = 9;
+  // WEATHER: the points, oldest first.
+  repeated WeatherSamplePoint weather = 10;
 }
 
 // SampleCoverage is what a window of samples holds.
@@ -2448,6 +2478,75 @@ message RoadSamplePoint {
   google.protobuf.DoubleValue delay_minutes = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "0.5"}];
   // The longest delay among the samples that count.
   google.protobuf.Int32Value delay_minutes_max = 9 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "2"}];
+}
+
+// WeatherSamplePoint is one point of a weather location's series: one
+// reading, or one bucket of them. The shape is the same either way; for one
+// reading the minimum, the maximum and the value are equal.
+//
+// Figures are as OpenWeatherMap reported them (metric), not the whole numbers
+// of `GET /api/v1/conditions`. Each counts only the readings that carried
+// it, and is `null` when none did: OpenWeatherMap reports a gust only where
+// it has one, and leaves rain and snow out when it reports none, so a `null`
+// rate is "nothing reported", not a measured 0.
+message WeatherSamplePoint {
+  // The reading's time (when the Grid read it), or the start of the bucket.
+  google.protobuf.Timestamp at = 1 [(google.api.field_behavior) = REQUIRED];
+  // How many readings the point stands for: 1 when `bucketSeconds` is 0.
+  int32 samples = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "1"}];
+  // Air temperature, degrees Celsius: the mean, to two decimals.
+  google.protobuf.DoubleValue temperature_celsius = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "-0.62"}];
+  // The lowest air temperature among the readings.
+  google.protobuf.DoubleValue temperature_celsius_min = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "-0.62"}];
+  // The highest air temperature among the readings.
+  google.protobuf.DoubleValue temperature_celsius_max = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "-0.62"}];
+  // Feels-like temperature, degrees Celsius: the mean, to two decimals.
+  google.protobuf.DoubleValue feels_like_celsius = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "-5.4"}];
+  // The lowest feels-like temperature among the readings.
+  google.protobuf.DoubleValue feels_like_celsius_min = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "-5.4"}];
+  // Relative humidity, percent: the mean, to one decimal.
+  google.protobuf.DoubleValue humidity_percent = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "93"}];
+  // Sustained wind speed, km/h: the mean, to one decimal.
+  google.protobuf.DoubleValue wind_speed_kmh = 9 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "16.6"}];
+  // The highest sustained wind speed among the readings.
+  google.protobuf.DoubleValue wind_speed_kmh_max = 10 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "16.6"}];
+  // The highest gust among the readings that reported one, km/h.
+  google.protobuf.DoubleValue wind_gust_kmh_max = 11 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "41.8"}];
+  // Direction the wind blows FROM, degrees clockwise from north, 0 to 359:
+  // for a bucket, the direction of the readings' mean wind vector. `null`
+  // when no reading had both a direction and wind.
+  google.protobuf.Int32Value wind_direction_degrees = 12 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "250"}];
+  // Visibility, km: the mean, to two decimals (OpenWeatherMap caps it at 10).
+  google.protobuf.DoubleValue visibility_km = 13 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "0.8"}];
+  // The lowest visibility among the readings.
+  google.protobuf.DoubleValue visibility_km_min = 14 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "0.8"}];
+  // Rain over the hour before a reading, mm: the mean over the readings that
+  // reported rain, to two decimals.
+  google.protobuf.DoubleValue rain_mm_per_hour = 15 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "0.25"}];
+  // The highest rain rate among the readings that reported rain.
+  google.protobuf.DoubleValue rain_mm_per_hour_max = 16 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "0.25"}];
+  // Snow over the hour before a reading, mm of water: the mean over the
+  // readings that reported snow, to two decimals.
+  google.protobuf.DoubleValue snow_mm_per_hour = 17 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "1.27"}];
+  // The highest snow rate among the readings that reported snow.
+  google.protobuf.DoubleValue snow_mm_per_hour_max = 18 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "1.27"}];
+  // What the sky was doing: each OpenWeatherMap condition among the
+  // readings with how many readings had it, most frequent first (ties: the
+  // one seen latest first). One entry for one reading. Empty when no reading
+  // named a condition.
+  repeated WeatherSampleCondition conditions = 19;
+}
+
+// WeatherSampleCondition is one OpenWeatherMap condition among a point's
+// readings.
+message WeatherSampleCondition {
+  // OpenWeatherMap condition group, as `WeatherConditions.weatherMain`:
+  // "Clear", "Clouds", "Rain", "Snow", "Thunderstorm", "Drizzle", "Mist", ...
+  string weather_main = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"Snow\""}];
+  // OpenWeatherMap description, lowercase, e.g. "light snow".
+  string weather_description = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"light snow\""}];
+  // How many of the point's readings had this condition.
+  int32 samples = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "1"}];
 }
 
 // RoadSample is a segment at one roads refresh.
@@ -2785,7 +2884,7 @@ message ListEventsRequest {
   // (for MESH) also work. FIRE_WEATHER, GAUGE, AIR_QUALITY and ANNOUNCEMENT are
   // accepted but no events carry them. Default: every layer.
   repeated string layer = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    enum: ["WILDFIRE", "EVACUATION", "WEATHER_ALERT", "EARTHQUAKE", "ROAD_INCIDENT", "POWER", "MESH", "BURN_STATUS", "SOURCE_HEALTH", "CHAIN_CONTROL", "ROAD_SEGMENT"]
+    enum: ["WILDFIRE", "EVACUATION", "WEATHER_ALERT", "EARTHQUAKE", "ROAD_INCIDENT", "POWER", "MESH", "BURN_STATUS", "SOURCE_HEALTH", "CHAIN_CONTROL", "ROAD_SEGMENT", "WEATHER"]
   }];
   // Only these statuses. Repeat the parameter or comma-separate.
   // Case-insensitive. Default: ACTIVE and SCHEDULED. Pass `ACTIVE` alone to drop
@@ -3036,7 +3135,7 @@ message ListHistoryRequest {
   string place = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"calaveras-county\""}];
   // Only these layers; same rules as on `/api/v1/events`.
   repeated string layer = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    enum: ["WILDFIRE", "EVACUATION", "WEATHER_ALERT", "EARTHQUAKE", "ROAD_INCIDENT", "POWER", "MESH", "BURN_STATUS", "SOURCE_HEALTH", "CHAIN_CONTROL", "ROAD_SEGMENT"]
+    enum: ["WILDFIRE", "EVACUATION", "WEATHER_ALERT", "EARTHQUAKE", "ROAD_INCIDENT", "POWER", "MESH", "BURN_STATUS", "SOURCE_HEALTH", "CHAIN_CONTROL", "ROAD_SEGMENT", "WEATHER"]
   }];
   // Window start on each revision's `observedAt`, RFC 3339, inclusive. Default:
   // no lower bound.
