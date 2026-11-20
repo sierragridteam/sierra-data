@@ -378,6 +378,15 @@ func (a *gridApp) startTerm(actx context.Context, lease *store.Lease) (*writerTe
 			Interval:   gridPollInterval(appConfig, ingest.RoadSegmentSourceID),
 		})
 	}
+	// One standing event per weather location: the handle its samples are
+	// read through (weather_samples, written by the scheduler's weather
+	// sampler below). No fetch of its own.
+	if appConfig.Grid.Weather.Record && a.weatherService != nil {
+		pollers = append(pollers, ingest.PollerSpec{
+			Normalizer: ingest.NewWeatherLocationNormalizer(appConfig, a.weatherService),
+			Interval:   gridPollInterval(appConfig, ingest.WeatherSourceID),
+		})
+	}
 	if appConfig.Grid.ChainControl.Record {
 		pollers = append(pollers, ingest.PollerSpec{
 			Normalizer: ingest.NewChainControlNormalizer(appConfig, a.hazards, placesAt),
@@ -512,6 +521,7 @@ func (a *gridApp) startTerm(actx context.Context, lease *store.Lease) (*writerTe
 		BudgetPerTick:   appConfig.Grid.Enhancement.BudgetPerTick,
 		MeshMaintenance: meshMaintenanceConfig(appConfig),
 		RoadSampling:    roadSamplingConfig(a.roadsService),
+		WeatherSampling: weatherSamplingConfig(appConfig, a.weatherService),
 	})
 	scheduler.Start(runCtx)
 	a.w.mu.Lock()

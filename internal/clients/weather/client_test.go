@@ -252,3 +252,71 @@ func TestGetWeatherAlerts_InvalidJSON(t *testing.T) {
 
 	mockHTTP.AssertExpectations(t)
 }
+
+// The reading is the response as reported: decimals kept (a temperature
+// just below zero is not 0), the gust and the hourly precipitation the
+// whole-number WeatherData drops, and nil for what the response left out.
+func TestGetCurrentReading(t *testing.T) {
+	const snowing = `{"coord":{"lon":-120.0424,"lat":38.461},
+		"weather":[{"id":600,"main":"Snow","description":"light snow","icon":"13n"}],
+		"main":{"temp":-0.62,"feels_like":-5.4,"pressure":1012,"humidity":93},
+		"visibility":800,"wind":{"speed":4.6,"deg":250,"gust":11.6},
+		"snow":{"1h":1.27},"clouds":{"all":100},"dt":1795161600,"name":"Bear Valley"}`
+	mockHTTP := &MockHTTPDoer{}
+	mockHTTP.On("Do", mock.AnythingOfType("*http.Request")).Return(createMockResponse(200, snowing), nil)
+	client := NewClientWithHTTPDoer("test-api-key", "https://api.openweathermap.org", mockHTTP)
+
+	data, reading, err := client.GetCurrentReading(context.Background(), &api.Coordinates{Latitude: 38.461, Longitude: -120.0424})
+	require.NoError(t, err)
+	assert.Equal(t, -0.62, reading.TemperatureCelsius)
+	assert.Equal(t, -5.4, reading.FeelsLikeCelsius)
+	assert.Equal(t, int32(93), reading.HumidityPercent)
+	assert.Equal(t, 16.6, reading.WindSpeedKmh, "4.6 m/s")
+	assert.Equal(t, int32(250), *reading.WindDirectionDegrees)
+	assert.Equal(t, 41.8, *reading.WindGustKmh, "11.6 m/s")
+	assert.Equal(t, int32(800), *reading.VisibilityMeters)
+	assert.Equal(t, 1.27, *reading.SnowMmPerHour)
+	assert.Nil(t, reading.RainMmPerHour, "no rain block: nothing reported, not 0")
+	assert.Equal(t, "Snow", reading.WeatherMain)
+	assert.Equal(t, "light snow", reading.WeatherDescription)
+
+	// The served message is unchanged by the reading beside it.
+	assert.Equal(t, int32(0), data.TemperatureCelsius)
+	assert.Equal(t, int32(16), data.WindSpeedKmh)
+	assert.Equal(t, int32(250), data.WindDirectionDegrees)
+	assert.Equal(t, int32(0), data.VisibilityKm)
+	assert.Equal(t, "Snow", data.WeatherMain)
+}
+
+func TestGetCurrentReading_AbsentFields(t *testing.T) {
+	const calm = `{"weather":[{"main":"Clear","description":"clear sky","icon":"01d"}],
+		"main":{"temp":12.34,"feels_like":11.5,"humidity":40},"wind":{"speed":0},"dt":1795161600}`
+	mockHTTP := &MockHTTPDoer{}
+	mockHTTP.On("Do", mock.AnythingOfType("*http.Request")).Return(createMockResponse(200, calm), nil)
+	client := NewClientWithHTTPDoer("test-api-key", "https://api.openweathermap.org", mockHTTP)
+
+	data, reading, err := client.GetCurrentReading(context.Background(), &api.Coordinates{})
+	require.NoError(t, err)
+	assert.Equal(t, 12.34, reading.TemperatureCelsius)
+	assert.Nil(t, reading.WindDirectionDegrees)
+	assert.Nil(t, reading.WindGustKmh)
+	assert.Nil(t, reading.VisibilityMeters)
+	assert.Nil(t, reading.RainMmPerHour)
+	assert.Nil(t, reading.SnowMmPerHour)
+	assert.Equal(t, int32(12), data.TemperatureCelsius)
+	assert.Equal(t, int32(0), data.VisibilityKm, "absent reads as 0 on the served message, as before")
+}
+
+// A 200 that carries no weather is an error, not a reading of 0 C: it would
+// be archived as a freezing, calm, dry sample nobody measured.
+func TestGetCurrentReading_NoWeatherInResponse(t *testing.T) {
+	for _, body := range []string{`{}`, `{"cod":200,"message":"ok"}`, `{"main":{"temp":3},"name":"x"}`, `{"dt":1795161600}`} {
+		mockHTTP := &MockHTTPDoer{}
+		mockHTTP.On("Do", mock.AnythingOfType("*http.Request")).Return(createMockResponse(200, body), nil)
+		client := NewClientWithHTTPDoer("test-api-key", "https://api.openweathermap.org", mockHTTP)
+		_, _, err := client.GetCurrentReading(context.Background(), &api.Coordinates{})
+		assert.Error(t, err, body)
+		_, err = client.GetCurrentWeather(context.Background(), &api.Coordinates{})
+		assert.Error(t, err, body)
+	}
+}

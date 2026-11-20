@@ -21,6 +21,86 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-20 (weather samples)
+
+### Added, off for now: weather readings as a series, through a `WEATHER` event per location
+
+The Grid kept no weather history: `GET /api/v1/conditions` is the latest
+reading and nothing else. Behind a configuration flag
+(`grid.weather.record`, **off in this release**) it now keeps every reading
+of every weather location and serves the series the way it serves a road's.
+Nothing changes on the API until the flag is turned on, except the two
+additions to existing shapes listed last.
+
+With the flag on:
+
+- **One `WEATHER` event per weather location**, id `weather:{location id}`
+  (`weather:bearvalley`), source `openweather`. It is a standing event:
+  `ACTIVE`, `INFO`, `nature: STATE`, `category: "weather"`, headline
+  "Weather at Bear Valley, CA", the location's point as its geometry, and
+  attached to the location's town place. Its detail is
+
+  ```json
+  "weather": {"locationId": "bearvalley", "locationName": "Bear Valley, CA"}
+  ```
+
+  **It carries no reading and no state**, so it is written once and has no
+  history yet. It is the handle the readings are read through. States
+  derived from the readings (freezing, precipitation) will be added to it
+  later as revisions, behind their own flag. Like every `STATE` event it is
+  left out of the summary's hazard counts.
+- **`GET /api/v1/events/weather:{location id}/samples`** returns the
+  location's readings in the envelope road samples use: `from`, `to`,
+  `maxPoints`, `bucketSeconds`, `coverage`, `gaps` and the ETag all behave
+  as documented on 2026-11-19. The points are in a new list, `weather`:
+
+  ```json
+  {"at": "2026-11-20T08:00:03Z", "samples": 1,
+   "temperatureCelsius": -0.62, "temperatureCelsiusMin": -0.62, "temperatureCelsiusMax": -0.62,
+   "feelsLikeCelsius": -5.4, "feelsLikeCelsiusMin": -5.4, "humidityPercent": 93,
+   "windSpeedKmh": 16.6, "windSpeedKmhMax": 16.6, "windGustKmhMax": 41.8, "windDirectionDegrees": 250,
+   "visibilityKm": 0.8, "visibilityKmMin": 0.8,
+   "rainMmPerHour": null, "rainMmPerHourMax": null, "snowMmPerHour": 1.27, "snowMmPerHourMax": 1.27,
+   "conditions": [{"weatherMain": "Snow", "weatherDescription": "light snow", "samples": 1}]}
+  ```
+
+  - **Figures are as OpenWeatherMap reported them, with decimals.**
+    `/api/v1/conditions` goes on serving whole numbers, so the latest sample
+    and the conditions entry of one reading can differ by up to a degree.
+  - **`null` is "not reported", never 0.** OpenWeatherMap reports a gust only
+    where it has one and leaves rain and snow out when it reports none. A
+    figure counts only the readings that carried it.
+  - **In a bucket** the plain field is the mean, `...Min` and `...Max` the
+    extremes, `windDirectionDegrees` the direction of the mean wind vector
+    (`null` when calm), and `conditions` every condition seen with how many
+    readings had it, most frequent first.
+  - **One sample per successful read of a location**, about every 15
+    minutes, kept 400 days. A location whose read fails gets no sample, and
+    after 45 minutes that is a `gap`. The series begins when the flag is
+    turned on; there is nothing earlier.
+- **A source row `openweather`** on `GET /api/v1/sources`. It is not
+  healthy while a location's last reading is older than 1.5 times the
+  refresh interval, the rule behind `conditions.weatherStatus`.
+
+Two additions are visible with the flag off:
+
+- **Every `GET /api/v1/events/{id}/samples` response has a `weather` key**,
+  an empty list for a road, as a weather response has an empty `road`.
+- **The spec** lists `WEATHER` among the `layer` filter values, `openweather`
+  among `provenance.sourceId` values, and the `weather` detail block and
+  `WeatherSamplePoint` schemas.
+
+No request made to OpenWeatherMap is added: the samples are the readings the
+service already takes for `/api/v1/conditions`.
+
+### Fixed: a current-weather response with no weather in it is a failed read
+
+An OpenWeatherMap answer with status 200 and no `main` block (or no `dt`
+stamp) was read as 0 C, calm and clear, and served on
+`/api/v1/conditions` as that location's weather. It is now a failed read:
+the location keeps its previous reading and `weatherStatus` follows its age,
+as with any other failure.
+
 ## 2026-11-20 (meshrelay v0.15.0)
 
 ### BREAKING: mesh relay tokens are `admin` or `host`; `operator` and `agent` tokens are refused

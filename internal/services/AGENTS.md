@@ -47,6 +47,17 @@ TTL cannot drift; a fresh hit is a no-op). It makes the documented worst case th
 actual case: 7 locations x 96 ticks/day = 672 calls/day, every day. Adding
 `weather.locations` raises that linearly.
 
+**`CurrentReadings` is the last successful read per location, unrounded.**
+The refresh keeps `weather.Reading` (decimals, gust, hourly rain and snow)
+beside the whole-number `api.WeatherData` it caches, under the lock and the
+times `ReadingTimes` reports. It is what the weather sample archive stores
+(`internal/ingest/weather_location.go`), it never fetches, and it is
+per-process memory: only the process running the periodic refresher (the
+writer) has readings. A location whose fetch fails keeps its previous
+reading AND its previous time; that pairing is what stops the sampler
+writing the same reading twice, so do not stamp a carried-forward reading
+with the time of the failed attempt.
+
 **Forecasts are warmed first at process start, on their own goroutine**
 (`warmForecastsAtStart`). The request path never fetches NWS, so a new process
 has no forecast until the refresher warms it, and the refresher reaches the

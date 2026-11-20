@@ -1,7 +1,7 @@
 package main
 
-// Store-backed wiring for background readers: road sampling and the
-// wildfire poller's ended-incident lookup.
+// Store-backed wiring for background readers: road and weather sampling and
+// the wildfire poller's ended-incident lookup.
 
 import (
 	"strings"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	api "github.com/sierragridteam/sierra-data/api/v1"
+	"github.com/sierragridteam/sierra-data/internal/config"
 	"github.com/sierragridteam/sierra-data/internal/ingest"
 	"github.com/sierragridteam/sierra-data/internal/services"
 	"github.com/sierragridteam/sierra-data/internal/store"
@@ -61,6 +62,26 @@ func roadSamples(resp *api.ListRoadsResponse) ([]store.RoadSample, error) {
 		out = append(out, s)
 	}
 	return out, nil
+}
+
+// Weather samples are kept as long as road samples.
+const weatherSampleRetention = roadSampleRetention
+
+// weatherSamplingConfig samples the weather service's last successful
+// readings (grid.weather.record; off, nothing is sampled). It reads what the
+// periodic refresher last fetched and never fetches itself, so it adds no
+// OpenWeatherMap calls.
+func weatherSamplingConfig(cfg *config.Config, wx *services.WeatherService) ingest.WeatherSampling {
+	if wx == nil || !cfg.Grid.Weather.Record {
+		return ingest.WeatherSampling{}
+	}
+	return ingest.WeatherSampling{
+		Interval:  ingest.WeatherSampleInterval,
+		Retention: weatherSampleRetention,
+		Sample: func(context.Context) ([]store.WeatherSample, error) {
+			return ingest.WeatherSamples(cfg.Weather.Locations, wx.CurrentReadings()), nil
+		},
+	}
 }
 
 // endedFires lists CAL FIRE incidents that ended since a time, for the

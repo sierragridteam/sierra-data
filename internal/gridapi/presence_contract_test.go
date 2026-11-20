@@ -131,6 +131,16 @@ func TestResponsesHonorFieldPresence(t *testing.T) {
 	})
 	es, err := g.GetEventSamples(rpcBG(), &gridv1.GetEventSamplesRequest{Id: "road:" + s.Cfg.Roads.MonitoredRoads[0].ID})
 	check("GetEventSamples", es, err)
+	require.NoError(t, s.Store.SeedSources(context.Background(), []store.SourceSeed{{ID: "openweather", Name: "OpenWeatherMap", PollInterval: 5 * time.Minute}}))
+	upsert(t, s.Store, &gridv1.Event{
+		Id: "weather:murphys", Layer: gridv1.Layer_WEATHER, Category: "weather",
+		Severity: gridv1.Severity_INFO, Status: gridv1.EventStatus_ACTIVE, Headline: "Weather at Murphys, CA",
+		Provenance: &gridv1.Provenance{SourceId: "openweather", SourceName: "OpenWeatherMap", FetchedAt: timestamppb.New(base)},
+		Detail:     &gridv1.Event_Weather{Weather: &gridv1.WeatherDetail{LocationId: "murphys", LocationName: "Murphys, CA"}},
+	})
+	require.NoError(t, s.Store.InsertWeatherSamples(rpcBG(), []store.WeatherSample{{LocationID: "murphys", At: base.Add(-time.Hour), TemperatureCelsius: 9.4, WeatherMain: "Clouds"}}))
+	ws, err := g.GetEventSamples(rpcBG(), &gridv1.GetEventSamplesRequest{Id: "weather:murphys"})
+	check("GetEventSamples (weather)", ws, err)
 	scan, err := g.ListScanners(rpcBG(), &gridv1.ListScannersRequest{})
 	check("ListScanners", scan, err)
 

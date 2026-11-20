@@ -165,6 +165,7 @@ var gridSourceInfo = map[string]struct{ name, attribution, homepage string }{
 	"caltrans":                  {"Caltrans (chain control + lane closures)", caltrans.SourceQuickMap, quickMapURL}, // attribution: see caltransAttribution
 	ingest.ChainControlSourceID: {"Caltrans (chain control)", caltrans.SourceCWWP2 + " · " + caltrans.SourceQuickMap, quickMapURL},
 	ingest.RoadSegmentSourceID:  {"Road conditions (monitored roads)", "Google · quickmap.dot.ca.gov", quickMapURL},
+	ingest.WeatherSourceID:      {"OpenWeatherMap (current weather)", ingest.WeatherAttribution, ingest.WeatherSourceURL},
 	"meshcore":                  {"MeshCore Mesh", "MeshCore community mesh", "https://map.meshcore.io"},
 	"pge":                       {"PG&E (electric outages)", "Pacific Gas and Electric", pge.OutageMapURL},
 	"psps":                      {"PG&E (public safety power shutoffs)", "Pacific Gas and Electric", pge.PSPSUpdatesURL},
@@ -424,6 +425,7 @@ func retireDisabledLayers(ctx context.Context, st *store.Store, cfg *config.Conf
 		store.GridSourceID:          !cfg.Grid.SourceHealth.Enabled,
 		ingest.ChainControlSourceID: !cfg.Grid.ChainControl.Record,
 		ingest.RoadSegmentSourceID:  !cfg.Grid.RoadSegments.Record,
+		ingest.WeatherSourceID:      !cfg.Grid.Weather.Record,
 	}
 	for id, disabled := range off {
 		if !disabled {
@@ -454,7 +456,8 @@ func gridSourceSeeds(cfg *config.Config) []store.SourceSeed {
 	seeds := make([]store.SourceSeed, 0, len(ids)+len(cfg.Grid.Ingest.Reporters))
 	for _, id := range ids {
 		if (id == ingest.ChainControlSourceID && !cfg.Grid.ChainControl.Record) ||
-			(id == ingest.RoadSegmentSourceID && !cfg.Grid.RoadSegments.Record) {
+			(id == ingest.RoadSegmentSourceID && !cfg.Grid.RoadSegments.Record) ||
+			(id == ingest.WeatherSourceID && !cfg.Grid.Weather.Record) {
 			// Tuned in config, but not a source until its events are recorded:
 			// a registry row nothing polls would read as a feed that is down.
 			continue

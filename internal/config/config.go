@@ -212,9 +212,15 @@ type GridConfig struct {
 	// its congestion level changes. Turn it on only once every deployed
 	// consumer of the SDK knows the ROAD_SEGMENT layer.
 	RoadSegments ChainControlRecordConfig `koanf:"roadSegments"`
-	Power        PowerConfig              `koanf:"power"`
-	Burn         BurnConfig               `koanf:"burn"`
-	Ingest       IngestConfig             `koanf:"ingest"`
+	// Weather.Record archives each weather location's readings in
+	// weather_samples and stores one WEATHER event per location (source
+	// openweather), the handle the samples are read through. The event has
+	// no derived state yet. Turn it on only once every deployed consumer of
+	// the SDK knows the WEATHER detail block and the openweather source.
+	Weather ChainControlRecordConfig `koanf:"weather"`
+	Power   PowerConfig              `koanf:"power"`
+	Burn    BurnConfig               `koanf:"burn"`
+	Ingest  IngestConfig             `koanf:"ingest"`
 }
 
 // GridDatabaseConfig is the Grid store's PostgreSQL connection.

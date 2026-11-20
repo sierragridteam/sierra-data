@@ -25,7 +25,8 @@ const (
 	maxSamplePoints = 2000
 	// sampleGapFactor: consecutive samples further apart than this many
 	// sampling intervals are a gap. One missed refresh is not (the sampler and
-	// the roads refresh are two 15-minute clocks that can slip a tick).
+	// the roads refresh are two 15-minute clocks that can slip a tick; one
+	// town's weather fetch can fail once).
 	sampleGapFactor = 3
 )
 
@@ -33,12 +34,80 @@ const (
 // narrowest first. Past a day the width is a whole number of days.
 var sampleBucketLadder = []int64{300, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400}
 
+// sampleSeries is one event's series, whichever table holds it: what
+// GetEventSamples needs of a layer to answer in the shared envelope.
+type sampleSeries struct {
+	// cadence is how far apart samples normally are; a gap is
+	// sampleGapFactor of them.
+	cadence time.Duration
+	// coverage is the window's sample count and bounds: one index-only read,
+	// the validator, made before the rows are loaded.
+	coverage func(ctx context.Context, from, to time.Time) (first, last time.Time, n int, err error)
+	// load reads the window's rows and returns their times, oldest first,
+	// and fill, which writes the points for a bucket width onto the answer.
+	load func(ctx context.Context, from, to time.Time) (times []time.Time, fill func(out *gridv1.EventSamples, width int64), err error)
+}
+
+// seriesFor is the series behind ev, or ok false when its layer keeps none.
+func (g *GridServer) seriesFor(ev *gridv1.Event) (sampleSeries, bool) {
+	st := g.svc.Store
+	switch ev.GetLayer() {
+	case gridv1.Layer_ROAD_SEGMENT:
+		road := ev.GetRoadSegment().GetRoadId()
+		if road == "" {
+			return sampleSeries{}, false
+		}
+		return sampleSeries{
+			cadence: g.roadSampleCadence(),
+			coverage: func(ctx context.Context, from, to time.Time) (time.Time, time.Time, int, error) {
+				return st.RoadSampleCoverage(ctx, road, from, to)
+			},
+			load: func(ctx context.Context, from, to time.Time) ([]time.Time, func(*gridv1.EventSamples, int64), error) {
+				samples, err := st.RoadSamples(ctx, road, from, to)
+				if err != nil {
+					return nil, nil, err
+				}
+				times := make([]time.Time, len(samples))
+				for i, s := range samples {
+					times[i] = s.At
+				}
+				return times, func(out *gridv1.EventSamples, width int64) { out.Road = roadSamplePoints(samples, width) }, nil
+			},
+		}, true
+	case gridv1.Layer_WEATHER:
+		loc := ev.GetWeather().GetLocationId()
+		if loc == "" {
+			return sampleSeries{}, false
+		}
+		return sampleSeries{
+			cadence: g.weatherSampleCadence(),
+			coverage: func(ctx context.Context, from, to time.Time) (time.Time, time.Time, int, error) {
+				return st.WeatherSampleCoverage(ctx, loc, from, to)
+			},
+			load: func(ctx context.Context, from, to time.Time) ([]time.Time, func(*gridv1.EventSamples, int64), error) {
+				samples, err := st.WeatherSamples(ctx, loc, from, to)
+				if err != nil {
+					return nil, nil, err
+				}
+				times := make([]time.Time, len(samples))
+				for i, s := range samples {
+					times[i] = s.At
+				}
+				return times, func(out *gridv1.EventSamples, width int64) { out.Weather = weatherSamplePoints(samples, width) }, nil
+			},
+		}, true
+	}
+	return sampleSeries{}, false
+}
+
 // GetEventSamples returns the series behind an event whose layer keeps one,
-// as at most maxPoints points. Today that is ROAD_SEGMENT, from the table
-// GetRoadHistory reads (which answers every row, unbucketed).
+// as at most maxPoints points: ROAD_SEGMENT, from the table GetRoadHistory
+// reads (which answers every row, unbucketed), and WEATHER, from
+// weather_samples. The envelope, the bucket ladder, the gaps and the
+// validator are the same for both (sampleSeries).
 //
 // The window's rows are read whole and bucketed here: the window is clamped to
-// the archive's 400 days, about 38,000 rows of five integers for one road.
+// the archive's 400 days, about 38,000 rows for one road or one location.
 func (g *GridServer) GetEventSamples(ctx context.Context, req *gridv1.GetEventSamplesRequest) (*gridv1.EventSamples, error) {
 	maxPoints := defaultSamplePoints
 	if req.MaxPoints != nil {
@@ -54,19 +123,18 @@ func (g *GridServer) GetEventSamples(ctx context.Context, req *gridv1.GetEventSa
 	if err != nil {
 		return nil, internalErr(ctx, err)
 	}
-	road := ev.GetRoadSegment().GetRoadId()
-	if ev.GetLayer() != gridv1.Layer_ROAD_SEGMENT || road == "" {
-		return nil, notFoundErr("events on the %s layer keep no samples (ROAD_SEGMENT events do)", ev.GetLayer())
+	series, ok := g.seriesFor(ev)
+	if !ok {
+		return nil, notFoundErr("events on the %s layer keep no samples (ROAD_SEGMENT and WEATHER events do)", ev.GetLayer())
 	}
 	from, to, err := g.roadWindow(req.GetFrom(), req.GetTo())
 	if err != nil {
 		return nil, err
 	}
 	now := g.svc.Now()
-	cadence := g.roadSampleCadence()
 
 	// The validator, from one index-only read, before the rows are loaded.
-	first, last, n, err := g.svc.Store.RoadSampleCoverage(ctx, road, from, to)
+	first, last, n, err := series.coverage(ctx, from, to)
 	if err != nil {
 		return nil, internalErr(ctx, err)
 	}
@@ -75,33 +143,43 @@ func (g *GridServer) GetEventSamples(ctx context.Context, req *gridv1.GetEventSa
 		return nil, internalErr(ctx, err)
 	}
 	tag := fmt.Sprintf("%s:samples:%s:%d:%s:%d.%d.%d", prefix, ev.GetId(), maxPoints,
-		sampleWindowKey(req, from, to, now, cadence), n, first.Unix(), last.Unix())
+		sampleWindowKey(req, from, to, now, series.cadence), n, first.Unix(), last.Unix())
 	if err := etag.Guard(ctx, etag.Weak(tag)); err != nil {
 		return nil, err
 	}
 
-	samples, err := g.svc.Store.RoadSamples(ctx, road, from, to)
+	times, fill, err := series.load(ctx, from, to)
 	if err != nil {
 		return nil, internalErr(ctx, err)
-	}
-	times := make([]time.Time, len(samples))
-	for i, s := range samples {
-		times[i] = s.At
 	}
 	width := sampleBucketWidth(times, maxPoints)
 	out := &gridv1.EventSamples{
 		EventId: ev.GetId(), Layer: ev.GetLayer(),
 		From: timestamppb.New(from), To: timestamppb.New(to),
-		Coverage:      &gridv1.SampleCoverage{Samples: int32(len(samples))},
+		Coverage:      &gridv1.SampleCoverage{Samples: int32(len(times))},
 		BucketSeconds: int32(width),
-		Gaps:          sampleGaps(times, from, minTime(to, now), sampleGapFactor*cadence),
-		Road:          roadSamplePoints(samples, width),
+		Gaps:          sampleGaps(times, from, minTime(to, now), sampleGapFactor*series.cadence),
 	}
-	if len(samples) > 0 {
+	fill(out, width)
+	if len(times) > 0 {
 		out.Coverage.First = timestamppb.New(times[0])
 		out.Coverage.Last = timestamppb.New(times[len(times)-1])
 	}
 	return out, nil
+}
+
+// defaultWeatherRefresh is the weather refresh interval when the
+// configuration has none: the cadence prefab.yaml ships.
+const defaultWeatherRefresh = 15 * time.Minute
+
+// weatherSampleCadence is how far apart weather samples normally are: the
+// weather refresh interval. A sample is stamped with its reading's time, so
+// one refresh is one sample however often the sampler looks.
+func (g *GridServer) weatherSampleCadence() time.Duration {
+	if g.svc.Cfg != nil && g.svc.Cfg.Weather.RefreshInterval > 0 {
+		return g.svc.Cfg.Weather.RefreshInterval
+	}
+	return defaultWeatherRefresh
 }
 
 // roadSampleCadence is how far apart road samples normally are: the sampler's

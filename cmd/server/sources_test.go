@@ -1,14 +1,20 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	gridv1 "github.com/sierragridteam/sierra-data/api/grid/v1"
 	"github.com/sierragridteam/sierra-data/internal/config"
+	"github.com/sierragridteam/sierra-data/internal/ingest"
 	"github.com/sierragridteam/sierra-data/internal/pushingest"
+	"github.com/sierragridteam/sierra-data/internal/services"
 	"github.com/sierragridteam/sierra-data/internal/store"
 )
 
@@ -63,4 +69,58 @@ func TestGridSourceSeeds_Reporters(t *testing.T) {
 		assert.Equal(t, want, byID[id].PollInterval, id)
 	}
 	assert.Equal(t, 30*time.Hour, byID["burn-line"].StaleAfter)
+}
+
+// A recorded-state layer's source is a registry row only while its flag is
+// on: a row nothing polls would read as a feed that is down. And with
+// grid.weather.record off nothing is sampled either.
+func TestWeatherRecordingIsOffUntilFlagged(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.Grid.Sources = map[string]config.SourceTuning{
+		ingest.WeatherSourceID: {PollInterval: 5 * time.Minute},
+		"usgs":                 {PollInterval: time.Minute},
+	}
+	ids := func() []string {
+		var out []string
+		for _, seed := range gridSourceSeeds(cfg) {
+			out = append(out, seed.ID)
+		}
+		return out
+	}
+	wx := &services.WeatherService{}
+
+	assert.Equal(t, []string{"usgs"}, ids())
+	assert.Zero(t, weatherSamplingConfig(cfg, wx).Interval, "off: no sampler")
+
+	cfg.Grid.Weather.Record = true
+	assert.Equal(t, []string{"openweather", "usgs"}, ids())
+	on := weatherSamplingConfig(cfg, wx)
+	assert.Equal(t, ingest.WeatherSampleInterval, on.Interval)
+	assert.Equal(t, 400*24*time.Hour, on.Retention)
+	assert.NotNil(t, on.Sample)
+	assert.Zero(t, weatherSamplingConfig(cfg, nil).Interval, "no weather service: no sampler")
+}
+
+// The shipped configuration: weather recording is off, and its source is
+// tuned for the day it is turned on.
+func TestShippedConfigKeepsWeatherRecordingOff(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "prefab.yaml"))
+	require.NoError(t, err)
+	var doc struct {
+		Grid struct {
+			Weather struct {
+				Record bool `yaml:"record"`
+			} `yaml:"weather"`
+			Sources map[string]struct {
+				PollInterval  string `yaml:"pollInterval"`
+				Disappearance string `yaml:"disappearance"`
+			} `yaml:"sources"`
+		} `yaml:"grid"`
+	}
+	require.NoError(t, yaml.Unmarshal(raw, &doc))
+	assert.False(t, doc.Grid.Weather.Record, "grid.weather.record ships off")
+	src, ok := doc.Grid.Sources[ingest.WeatherSourceID]
+	require.True(t, ok, "grid.sources.%s is tuned", ingest.WeatherSourceID)
+	assert.Equal(t, "5m", src.PollInterval)
+	assert.Equal(t, "resolve", src.Disappearance)
 }

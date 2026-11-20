@@ -231,6 +231,7 @@ func presencePollers(t *testing.T) map[string]Normalizer {
 			road("hwy49-angels-sonora", api.RoadStatus_CLOSED, api.CongestionLevel_CLEAR, 25),
 		}}, nil),
 		"chain control": NewChainControlNormalizer(testConfig(), &fakeChainSource{stretches: []hazards.Feature{hwy4()}}, nil),
+		"weather":       NewWeatherLocationNormalizer(weatherLocationConfig(), fakeWxReadings{}),
 	}
 }
 
