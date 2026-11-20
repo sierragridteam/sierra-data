@@ -493,6 +493,18 @@ grid:
   roadSegments:
     record: true
 
+  # Weather readings as a series: each weather.locations entry's current
+  # conditions go to weather_samples at every successful read (about every 15
+  # minutes, kept 400 days), as OpenWeatherMap reported them, and one WEATHER
+  # event per location (`weather:<id>`) is the way to read them back:
+  # GET /api/v1/events/{id}/samples. The event carries no state yet; the
+  # derived states (freezing, precipitation) come later behind their own
+  # flag, once their thresholds are checked against these samples. It adds no
+  # OpenWeatherMap calls. Off, nothing is sampled and there are no WEATHER
+  # events.
+  weather:
+    record: false
+
   # PG&E power layer. No geography knobs: unlike fire, an outage outside the
   # footprint is not a threat to it, so the layer uses the plain hazards union.
   #
@@ -585,6 +597,14 @@ grid:
       # which refreshes every 15 minutes; 5m bounds how late a closure is
       # recorded after that refresh. resolve: a road removed from
       # roads.monitoredRoads ends its event.
+      pollInterval: "5m"
+      disappearance: "resolve"
+    openweather:
+      # Weather locations as events (grid.weather.record; not a source row
+      # while that is off). No fetch of its own: it reads the weather
+      # service's last readings, which refresh every 15 minutes, and fails
+      # while a location's reading is older than 1.5x that. resolve: a
+      # location removed from weather.locations ends its event.
       pollInterval: "5m"
       disappearance: "resolve"
     caltrans-cc:

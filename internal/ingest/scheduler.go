@@ -75,6 +75,17 @@ type RoadSampling struct {
 	Sample    func(ctx context.Context) ([]store.RoadSample, error)
 }
 
+// WeatherSampling archives each weather location's readings (store
+// weather_samples). Sample reads the weather service's last successful
+// readings; it must not fetch upstream itself. Each sample is stamped with
+// its reading's own time, so a tick that finds no new reading writes nothing.
+// A zero Interval or nil Sample disables it.
+type WeatherSampling struct {
+	Interval  time.Duration
+	Retention time.Duration // samples older than this are pruned daily (0 = keep)
+	Sample    func(ctx context.Context) ([]store.WeatherSample, error)
+}
+
 // SchedulerConfig wires a Scheduler. Tuning keys are source ids; missing
 // entries default to the resolve policy with no expire grace. A nil Enhancer
 // (or a zero BudgetPerTick) disables weather-alert enhancement.
@@ -86,6 +97,7 @@ type SchedulerConfig struct {
 	BudgetPerTick   int             // max Enhance calls (attempts, not successes) per tick
 	MeshMaintenance MeshMaintenance // relay-observation compaction + prune (Interval 0 = off)
 	RoadSampling    RoadSampling    // road segment history (Interval 0 = off)
+	WeatherSampling WeatherSampling // weather location history (Interval 0 = off)
 }
 
 // Scheduler drives the ingest pollers: one goroutine per PollerSpec, each
@@ -100,6 +112,7 @@ type Scheduler struct {
 	budgetPerTick int
 	meshMaint     MeshMaintenance
 	roadSampling  RoadSampling
+	weatherSamp   WeatherSampling
 
 	// Lifecycle (Start/Stop). stopCh asks the loops to exit between ticks;
 	// cancel aborts a tick in progress; wg counts every goroutine Start ran.
@@ -122,6 +135,7 @@ func NewScheduler(st *store.Store, cfg SchedulerConfig) *Scheduler {
 		budgetPerTick: cfg.BudgetPerTick,
 		meshMaint:     cfg.MeshMaintenance,
 		roadSampling:  cfg.RoadSampling,
+		weatherSamp:   cfg.WeatherSampling,
 		now:           time.Now,
 		startJitter:   maxStartJitter,
 	}
@@ -147,6 +161,9 @@ func (s *Scheduler) Start(ctx context.Context) {
 	goTracked(func() { s.runSearchBackfill(ctx) })
 	if s.roadSampling.Interval > 0 && s.roadSampling.Sample != nil {
 		goTracked(func() { s.runRoadSampling(ctx) })
+	}
+	if s.weatherSamp.Interval > 0 && s.weatherSamp.Sample != nil {
+		goTracked(func() { s.runWeatherSampling(ctx) })
 	}
 	logging.Infow(ctx, "Ingest scheduler started", "pollers", len(s.pollers),
 		"meshMaintenance", s.meshMaint.Interval > 0)
@@ -247,6 +264,60 @@ func (s *Scheduler) runRoadSampling(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// runWeatherSampling archives weather readings on its interval, and prunes
+// old ones once a day. Best-effort, as runRoadSampling: a failed read or write
+// logs and waits for the next tick (a gap in the series, never a fabricated
+// sample).
+func (s *Scheduler) runWeatherSampling(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Errorw(ctx, "Weather sampling: recovered from panic", "error", r)
+		}
+	}()
+	var lastPrune time.Time
+	timer := time.NewTimer(time.Minute) // after the weather cache has warmed
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-s.stopping():
+			return
+		case <-timer.C:
+		}
+		timer.Reset(s.weatherSamp.Interval)
+		lastPrune = s.sampleWeather(ctx, lastPrune)
+	}
+}
+
+// sampleWeather is one weather-sampling tick: read, write, and prune when the
+// last prune (lastPrune) is over a day old. It returns the time of the last
+// prune.
+func (s *Scheduler) sampleWeather(ctx context.Context, lastPrune time.Time) time.Time {
+	ws := s.weatherSamp
+	samples, err := ws.Sample(ctx)
+	if err != nil {
+		logging.Warnw(ctx, "Weather sampling: no readings; no sample this tick", "error", err)
+		return lastPrune
+	}
+	if err := s.store.InsertWeatherSamples(ctx, samples); err != nil {
+		logging.Errorw(ctx, "Weather sampling: write failed", "error", err)
+		return lastPrune
+	}
+	if ws.Retention > 0 && s.now().Sub(lastPrune) > 24*time.Hour {
+		n, err := s.store.PruneWeatherSamples(ctx, s.now().Add(-ws.Retention))
+		if err != nil {
+			logging.Errorw(ctx, "Weather sampling: prune failed", "error", err)
+			return lastPrune
+		}
+		lastPrune = s.now()
+		if n > 0 {
+			logging.Infow(ctx, "Weather sampling: pruned", "rows", n)
+		}
+	}
+	return lastPrune
 }
 
 // Lite backfill pacing: start after the boot burst, then small batches with

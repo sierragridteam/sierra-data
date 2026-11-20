@@ -108,9 +108,11 @@ type GridServiceClient interface {
 	//
 	// The dense numeric series behind an event whose layer has one, shaped for
 	// a chart. The event's revisions record when its state changed; its samples
-	// are the readings in between. Today one layer has samples: ROAD_SEGMENT
-	// (`road:{road id}`), recorded at each roads refresh (about every 15
-	// minutes) and kept 400 days.
+	// are the readings in between. Two layers have samples, each recorded
+	// about every 15 minutes and kept 400 days: ROAD_SEGMENT (`road:{road id}`,
+	// one per roads refresh, in `road`) and WEATHER (`weather:{location id}`,
+	// one per successful read of the location's current weather, in
+	// `weather`).
 	//
 	// The answer is at most `maxPoints` points (default 500, at most 2000).
 	// When the window holds no more samples than that, each point is one
@@ -125,6 +127,10 @@ type GridServiceClient interface {
 	// A closed road has no travel time: a sample taken while the segment was
 	// CLOSED carries `null` for travel time and delay, and is left out of a
 	// bucket's figures.
+	//
+	// A weather point's figures are as OpenWeatherMap reported them, to its
+	// decimals; `GET /api/v1/conditions` serves the latest reading in whole
+	// numbers. A figure the source did not report is `null`, not 0.
 	//
 	// Default window: the 7 days before `to` (default now); windows over 400
 	// days are clamped. Supports ETag / If-None-Match: the validator changes
@@ -585,9 +591,11 @@ type GridServiceServer interface {
 	//
 	// The dense numeric series behind an event whose layer has one, shaped for
 	// a chart. The event's revisions record when its state changed; its samples
-	// are the readings in between. Today one layer has samples: ROAD_SEGMENT
-	// (`road:{road id}`), recorded at each roads refresh (about every 15
-	// minutes) and kept 400 days.
+	// are the readings in between. Two layers have samples, each recorded
+	// about every 15 minutes and kept 400 days: ROAD_SEGMENT (`road:{road id}`,
+	// one per roads refresh, in `road`) and WEATHER (`weather:{location id}`,
+	// one per successful read of the location's current weather, in
+	// `weather`).
 	//
 	// The answer is at most `maxPoints` points (default 500, at most 2000).
 	// When the window holds no more samples than that, each point is one
@@ -602,6 +610,10 @@ type GridServiceServer interface {
 	// A closed road has no travel time: a sample taken while the segment was
 	// CLOSED carries `null` for travel time and delay, and is left out of a
 	// bucket's figures.
+	//
+	// A weather point's figures are as OpenWeatherMap reported them, to its
+	// decimals; `GET /api/v1/conditions` serves the latest reading in whole
+	// numbers. A figure the source did not report is `null`, not 0.
 	//
 	// Default window: the 7 days before `to` (default now); windows over 400
 	// days are clamped. Supports ETag / If-None-Match: the validator changes
