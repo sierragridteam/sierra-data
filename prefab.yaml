@@ -32,6 +32,25 @@ server:
       - content-type
       - x-requested-with
       - x-csrf-protection
+      # Conditional GET from a page on another origin. A script that sets
+      # If-None-Match makes the request non-simple, so the browser asks first
+      # (preflight) and sends it only if the header is listed here. Listing a
+      # header also makes prefab pass it to the RPCs as "pf-header-*" metadata
+      # in place of the gateway's "grpcgateway-*"; prefab's etag plugin reads
+      # both (serverutil.HTTPHeader).
+      - if-none-match
+    # Response headers a cross-origin script may read. Without this list a
+    # browser shows it only the CORS-safelisted ones (Cache-Control,
+    # Content-Type, Content-Length, Content-Language, Expires, Last-Modified,
+    # Pragma): the ETag was on the wire and invisible, so no page could
+    # revalidate. Both lists must hold for a 304: ETag here to learn the tag,
+    # if-none-match above to send it back. Retry-After is what a 503 (closed
+    # admission gate during a deploy) carries. Add a header here when the API
+    # starts sending one a page should read; we send no Last-Modified.
+    # TestConditionalGetFromAnotherOrigin pins both lists on every kind of route.
+    corsExposeHeaders:
+      - ETag
+      - Retry-After
     # Hard invariant, not a preference — see the corsOrigins note above: a "*"
     # origin is only legal with credentials off, and prefab refuses to start if
     # this is true while corsOrigins contains "*".

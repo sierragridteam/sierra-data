@@ -52,6 +52,12 @@ func (s *Service) serveMeshLinks(w http.ResponseWriter, r *http.Request) {
 		invalidArgument(w, err.Error())
 		return
 	}
+	// ?node= is one node's links with the nodes they name (mesh_path.go).
+	// Without it the body is the whole edge list, unchanged.
+	if r.URL.Query().Has("node") {
+		s.serveMeshNodeLinks(w, r, window, r.URL.Query().Get("node"))
+		return
+	}
 	now := s.Now()
 	links, err := s.Store.MeshLinks(ctx, now.Add(-window))
 	if err != nil {
@@ -64,15 +70,7 @@ func (s *Service) serveMeshLinks(w http.ResponseWriter, r *http.Request) {
 		Links:       make([]meshLinkJSON, 0, len(links)),
 	}
 	for _, l := range links {
-		resp.Links = append(resp.Links, meshLinkJSON{
-			A:            l.A,
-			B:            l.B,
-			Observations: l.Observations,
-			DaysActive:   l.DaysActive,
-			FirstSeen:    l.FirstSeen.Format(time.RFC3339),
-			LastSeen:     l.LastSeen.Format(time.RFC3339),
-			BestSnr:      l.BestSNR,
-		})
+		resp.Links = append(resp.Links, toMeshLinkJSON(l))
 	}
 	// The validator covers the window and the links, not generatedAt (which
 	// moves every second and would defeat If-None-Match).

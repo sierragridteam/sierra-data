@@ -52,7 +52,8 @@ feed is returned as a failure, never as a fabricated all-clear, and
 max-age=30</code> (map layers 60); most also carry an <code>ETag</code>, so a conditional GET
 with <code>If-None-Match</code> returns <code>304</code>.</li>
 <li><b>Open to browsers.</b> CORS is open for <code>GET</code>, and no key or
-signup is needed. The one authenticated write endpoint exists only for
+signup is needed. A script on another origin can read <code>ETag</code> and
+<code>Retry-After</code> and send <code>If-None-Match</code>. The one authenticated write endpoint exists only for
 operator-run monitors and reporters.</li>
 </ul>
 </section>

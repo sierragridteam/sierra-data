@@ -66,13 +66,18 @@ type gridHandler interface {
 type Server struct {
 	grid  gridHandler
 	tools []tool
+	// clock is now, for the ages the mesh tools print beside every time.
+	// Tests pin it.
+	clock func() time.Time
 }
+
+func (s *Server) now() time.Time { return s.clock().UTC() }
 
 // NewHandler builds the MCP handler mounted at /mcp. grid is the /api/v1
 // gRPC-Gateway mux (an http.Handler) the tools query in-process.
 func NewHandler(grid gridHandler) *Server {
-	s := &Server{grid: grid}
-	s.tools = s.registerTools()
+	s := &Server{grid: grid, clock: time.Now}
+	s.tools = append(s.registerTools(), s.meshTools()...)
 	return s
 }
 
@@ -170,7 +175,10 @@ func (s *Server) dispatch(ctx context.Context, req rpcRequest) rpcResponse {
 			"serverInfo": map[string]interface{}{"name": "sierra-grid", "version": "1"},
 			"instructions": "The Grid: public, read-only hazard/road/weather data for the " +
 				"central Sierra (Calaveras & Tuolumne). Start with grid_situation for a place " +
-				"or address. All data is reference-only; never present absence as safety.",
+				"or address. For the MeshCore radio mesh (is it healthy, what a node hears, a " +
+				"path between two places, a battery trend) use the grid_mesh_* tools, starting " +
+				"with grid_mesh_status. All data is reference-only; never present absence as " +
+				"safety, and never report a mesh node as down: the Grid knows only what it heard.",
 		}}
 	case "ping":
 		return rpcResponse{Result: map[string]interface{}{}}

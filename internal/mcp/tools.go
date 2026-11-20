@@ -113,7 +113,9 @@ func (s *Server) registerTools() []tool {
 				"which moves only when the node's identity, position or reachability changes and can be " +
 				"days old for a node that is talking now. mesh.telemetry.lastAdvertAt is the node's " +
 				"self-reported advert time and is diagnostic only (clocks skew). Absence of a " +
-				"node here is not proof it's down. Raise limit (max 200) and follow " +
+				"node here is not proof it's down. For mesh health, one node's links, a path between " +
+				"places or a battery trend, use the grid_mesh_* tools instead of reading these rows. " +
+				"Raise limit (max 200) and follow " +
 				"nextPageToken to get the full set. (grid_situation already gives per-domain active counts " +
 				"for a single place.)",
 			InputSchema: json.RawMessage(`{"type":"object","properties":{"location":{"type":"string","description":"place slug/id, address, or lat,lng to scope to"},"layer":{"type":"string","description":"wildfire|evacuation|weather_alert|earthquake|road_incident|power|mesh|burn_status|source_health|chain_control|road_segment|weather (weather = one standing event per weather location, with no state of its own: the handle its readings are read through; current weather is in conditions, not here; source_health = one event per upstream feed whose history is that feed's outages; chain_control = one event per stretch of highway under a chain requirement; road_segment = one event per monitored road, revised when it closes, reopens, or chains are required or lifted on it (category open|chains|restricted|closed); power = PG&E outages AND Public Safety Power Shutoffs, separated by each row's category: unplanned|planned|psps. Most outages are tiny — the statewide median affects ONE customer — so pair layer=power with severity_min unless you want every service call. mesh = MeshCore node presence; \"network\" is a legacy alias)"},"severity_min":{"type":"string","description":"INFO|MINOR|MODERATE|SEVERE|EXTREME"},"status":{"type":"string","description":"ACTIVE|SCHEDULED|RESOLVED|EXPIRED, comma-separated, or \"any\". Default ACTIVE,SCHEDULED; with q the default is any"},"since":{"type":"string","description":"RFC3339; only events observed at/after"},"q":{"type":"string","description":"text search over headline, location, summary, description, incident log, typed facts, node names and keys; e.g. \"hwy 4 collision\", \"lime kiln flooded\", \"wires down OR power lines\""},"count":{"type":"boolean","description":"also return total and counts by layer/category without q"},"limit":{"type":"integer"},"page_token":{"type":"string"}}}`),
@@ -151,7 +153,8 @@ func (s *Server) registerTools() []tool {
 		{
 			Name: "fetch",
 			Description: "Fetch one record found by search, by its id: the full text of an event (headline, status, " +
-				"severity, location, summary, the source's own description) or a place's current situation.",
+				"severity, location, summary, the source's own description), a mesh node's last activity and " +
+				"monitor state, or a place's current situation.",
 			InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string","description":"an id returned by search"}},"required":["id"]}`),
 			Handler:     s.handleGenericFetch,
 		},
@@ -261,6 +264,9 @@ func (s *Server) handleEvents(ctx context.Context, args map[string]interface{}) 
 	}
 	if text != "" {
 		q.Set("q", text)
+		if looksLikeKeyPrefix(text) {
+			q.Set("q_typing", "true")
+		}
 	}
 	if argBool(args, "count") {
 		q.Set("counts", "true")
@@ -305,6 +311,9 @@ func (s *Server) handleSearch(ctx context.Context, args map[string]interface{}) 
 		return nil, fmt.Errorf("q is required (what to find)")
 	}
 	q := url.Values{"q": {text}}
+	if looksLikeKeyPrefix(text) {
+		q.Set("q_typing", "true")
+	}
 	if k := argStr(args, "kind"); k != "" {
 		q.Set("kind", k)
 	}
@@ -330,7 +339,9 @@ func (s *Server) handleSearch(ctx context.Context, args map[string]interface{}) 
 		id, _ := hit["id"].(string)
 		title, _ := hit["title"].(string)
 		switch kind {
-		case "EVENT", "MESH_NODE":
+		case "MESH_NODE":
+			hit["next"] = "grid_mesh_node node=" + id
+		case "EVENT":
 			hit["next"] = "grid_event id=" + id
 		case "PLACE":
 			hit["next"] = "grid_situation location=" + id
@@ -382,6 +393,9 @@ func (s *Server) handleGenericSearch(ctx context.Context, args map[string]interf
 		return nil, fmt.Errorf("query is required")
 	}
 	q := url.Values{"q": {text}, "kind": {"EVENT,MESH_NODE,PLACE"}, "limit": {"10"}}
+	if looksLikeKeyPrefix(text) {
+		q.Set("q_typing", "true")
+	}
 	body, err := s.callAPIJSON(ctx, "/api/v1/search?"+q.Encode())
 	if err != nil {
 		return nil, err
@@ -471,6 +485,13 @@ func (s *Server) handleGenericFetch(ctx context.Context, args map[string]interfa
 		link = publicBaseURL + path
 	}
 	meta := map[string]interface{}{"kind": "event"}
+	if str("layer") == "MESH" {
+		// A mesh node's record time is not when it was last heard, and its
+		// event text is empty: say what the node's clocks and monitor say.
+		text.Reset()
+		text.WriteString(meshNodeText(parseMeshNode(body), s.now()))
+		meta["kind"] = "mesh_node"
+	}
 	for _, k := range []string{"layer", "category", "status", "severity", "observedAt"} {
 		if v := str(k); v != "" {
 			meta[k] = v
