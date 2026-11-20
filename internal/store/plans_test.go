@@ -208,6 +208,16 @@ func hotCalls(ids hotIDs) []planTarget {
 			_, _, _, err := s.TypicalRoadMinutes(ctx, ids.road, 1, time.Now(), long, time.Now(), time.UTC, 5)
 			return err
 		}, []string{"idx_road_samples_status|road_samples_pkey"}},
+		// A fixed location id: the scale database may hold no weather samples
+		// yet, and the plan does not depend on the id matching.
+		{"weather samples", func(ctx context.Context, s *Store) error {
+			_, err := s.WeatherSamples(ctx, "murphys", long, time.Now())
+			return err
+		}, []string{"weather_samples_pkey"}},
+		{"weather sample coverage", func(ctx context.Context, s *Store) error {
+			_, _, _, err := s.WeatherSampleCoverage(ctx, "murphys", long, time.Now())
+			return err
+		}, []string{"weather_samples_pkey"}},
 		// The scheduler's per-tick statements.
 		{"tick: prior active by source", func(ctx context.Context, s *Store) error {
 			_, err := s.ActiveEventsBySource(ctx, ids.source)
@@ -408,7 +418,7 @@ func keys(m map[string]bool) []string {
 // growing are the tables that only get bigger with time. A hot statement that
 // reads one sequentially is a latency bomb that a test-size database never
 // shows.
-var growing = []string{"event_revisions", "mesh_observations", "mesh_telemetry", "mesh_link_rollup", "road_samples"}
+var growing = []string{"event_revisions", "mesh_observations", "mesh_telemetry", "mesh_link_rollup", "road_samples", "weather_samples"}
 
 // seqScanned lists the relations a plan reads sequentially.
 func seqScanned(p planNode) []string {

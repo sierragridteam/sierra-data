@@ -167,7 +167,17 @@ carries it, so `UpsertEvent` copies the stored count onto a change.
 
 A reading revision is not a sample table: each is a full snapshot, affordable
 only for sparse readings (two burn calls a day). A dense series goes to a
-typed table with its subject as an event (`mesh_telemetry`, `road_samples`).
+typed table with its subject as an event (`mesh_telemetry`, `road_samples`,
+`weather_samples`).
+
+`weather_samples` (migration 0008, `weather.go`) is `road_samples` for a
+weather location: primary key `(location_id, at)`, `at` the reading's own
+time, inserts that ignore a row already stored, and
+`WeatherSampleCoverage` as the samples endpoint's validator. Its values are
+what the source reported, unrounded, and **a nullable column is NULL when
+the response did not carry the field** (gust, visibility, wind direction,
+rain, snow): do not default them to 0, which would read as a dry, calm
+measurement.
 
 ## Source health as events (`source_health.go`)
 
