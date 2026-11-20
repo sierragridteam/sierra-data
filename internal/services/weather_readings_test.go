@@ -59,7 +59,7 @@ func TestCurrentReadingsKeepTheLastGoodRead(t *testing.T) {
 	data, err := svc.refreshWeatherData(testCtx())
 	require.NoError(t, err)
 	require.Len(t, data, 2)
-	assert.Equal(t, int32(0), data[0].GetTemperatureCelsius(), "the served message is whole degrees")
+	assert.Equal(t, int32(-1), data[0].GetTemperatureCelsius(), "the served message is whole degrees, rounded")
 	first := svc.CurrentReadings()
 	require.Len(t, first, 2)
 	assert.Equal(t, -0.62, first["high"].Reading.TemperatureCelsius, "the reading is not")

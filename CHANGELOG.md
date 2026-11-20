@@ -21,6 +21,16 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-20 (later: weather rounding)
+
+### Whole-number weather values are rounded, not truncated
+
+`GET /api/v1/conditions`: `weather[].temperatureCelsius`, `feelsLikeCelsius`
+and `windSpeedKmh` are now rounded to the nearest whole number, halves away
+from zero. They were truncated toward zero, so -0.9 C read 0 and 16.6 km/h
+read 16. Expect values to differ by one from before, mostly below freezing.
+Same fields, same types.
+
 ## 2026-11-20 (retired mesh nodes)
 
 ### Changed: a mesh node taken out of service is `RESOLVED`, and stays that way

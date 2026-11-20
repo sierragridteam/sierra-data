@@ -280,9 +280,11 @@ func TestGetCurrentReading(t *testing.T) {
 	assert.Equal(t, "Snow", reading.WeatherMain)
 	assert.Equal(t, "light snow", reading.WeatherDescription)
 
-	// The served message is unchanged by the reading beside it.
-	assert.Equal(t, int32(0), data.TemperatureCelsius)
-	assert.Equal(t, int32(16), data.WindSpeedKmh)
+	// The served message is whole numbers, rounded (never truncated toward
+	// zero: -0.62 C is below freezing and reads -1, not 0).
+	assert.Equal(t, int32(-1), data.TemperatureCelsius)
+	assert.Equal(t, int32(-5), data.FeelsLikeCelsius)
+	assert.Equal(t, int32(17), data.WindSpeedKmh, "16.56 km/h")
 	assert.Equal(t, int32(250), data.WindDirectionDegrees)
 	assert.Equal(t, int32(0), data.VisibilityKm)
 	assert.Equal(t, "Snow", data.WeatherMain)
