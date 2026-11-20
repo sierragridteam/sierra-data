@@ -215,6 +215,13 @@ curl -s http://localhost:8181/api/v1/events?layer=road_incident | jq .
   preflights are denied) and `corsAllowCredentials: false` (required with `*`;
   prefab refuses to start on `*` + credentials). Never reflect an origin *with*
   credentials — that's the CORS hole this deliberately avoids.
+  A cross-origin script sees only what the two header lists grant:
+  `corsAllowHeaders` includes `if-none-match` (the preflight a script's
+  conditional GET triggers) and `corsExposeHeaders` is `ETag`, `Retry-After`
+  (a browser hides every other non-safelisted response header from the page).
+  They work as a pair, and a response header a page should read must be added
+  to the second; `TestConditionalGetFromAnotherOrigin` (`cmd/server`) pins
+  both on every kind of route, including the 304.
 - Consistent JSON response format
 - No authentication required
 - Cache-friendly with appropriate TTLs
