@@ -143,6 +143,14 @@ type NetworkNormalizer struct {
 	expired    map[string]*gridv1.Event
 	expiredAt  time.Time
 	relaySeen  map[string]time.Time
+
+	// retired is grid.meshcore.retired by public key: nodes their operator
+	// took out of service. No input presents one, and retiring hands the
+	// scheduler any the store still shows (see "Retired nodes" in AGENTS.md).
+	// retiredSent is when each was last handed over, so the ten minutes an
+	// already-resolved node lingers in the expired catalog do not repeat it.
+	retired     map[string]bool
+	retiredSent map[string]time.Time
 }
 
 // MeshCatalog lists the stored mesh events that are no longer ACTIVE.
@@ -173,7 +181,9 @@ func NewNetworkNormalizer(cfg *config.Config, registry MeshRegistry, push MeshPu
 	for _, b := range cfg.Grid.Meshcore.Brokers {
 		ops[b.URL] = b
 	}
-	return &NetworkNormalizer{cfg: cfg, registry: registry, push: push, brokerOps: ops, now: time.Now}
+	// A malformed entry already stopped the server in config.LoadConfig.
+	retired, _ := cfg.Grid.Meshcore.RetiredKeys()
+	return &NetworkNormalizer{cfg: cfg, registry: registry, push: push, brokerOps: ops, now: time.Now, retired: retired}
 }
 
 // SourceIDs implements Normalizer: the mesh source itself, plus one row per
@@ -283,7 +293,15 @@ func (n *NetworkNormalizer) Poll(ctx context.Context, prior Prior) (*PollResult,
 	prior = withExpired(prior, expired)
 	var relays map[string]time.Time
 	if n.registry != nil {
-		relays = n.registry.DrainRelays(append(knownMeshNodes(prior), knownExpired(expired)...))
+		// A retired node is not offered as a candidate: it is gone, so a hop
+		// that fits it belongs to another node or to nobody, and any credit
+		// that still names it (the registry heard its advert) is dropped.
+		relays = n.registry.DrainRelays(n.withoutRetired(append(knownMeshNodes(prior), knownExpired(expired)...)))
+		for key := range relays {
+			if n.retired[key] {
+				delete(relays, key)
+			}
+		}
 	}
 	relaySeen := n.noteRelays(relays, now)
 	if n.registry != nil && (delivering > 0 || snap.PacketLive > 0) {
@@ -313,6 +331,11 @@ func (n *NetworkNormalizer) Poll(ctx context.Context, prior Prior) (*PollResult,
 		if !enumerated[nd.PubKey] && (!nd.HasLocation || !inAnyBounds(nd.Lat, nd.Lng, boxes)) {
 			continue
 		}
+		// Retired by its operator: not even its own advert presents it. The
+		// advert most likely to arrive is an old one a gateway's radio kept.
+		if n.retired[nd.PubKey] {
+			continue
+		}
 		merged[nd.PubKey] = &mergedNode{key: nd.PubKey, mqtt: &nd}
 	}
 
@@ -323,6 +346,12 @@ func (n *NetworkNormalizer) Poll(ctx context.Context, prior Prior) (*PollResult,
 	catalog := n.fullKeyCatalog(merged, prior)
 	for _, rep := range snap.Reports {
 		key := rep.NodeID
+		// Matched before resolution: with the retired node out of the way its
+		// prefix could resolve to a neighbour that shares it, and hand that
+		// node the retired one's failed reads.
+		if n.isRetired(key) {
+			continue
+		}
 		if len(key) < meshPubKeyHex {
 			if full, ok := resolveUnique(catalog, key); ok {
 				key = full
@@ -400,6 +429,7 @@ func (n *NetworkNormalizer) Poll(ctx context.Context, prior Prior) (*PollResult,
 		Events:                events,
 		ForceWrite:            forceWrite,
 		Superseded:            supersededIDs(promotions),
+		Retired:               n.retiring(prior, now),
 		MeshObservations:      n.drainObservations(),
 		MeshActivity:          n.meshActivity(merged, prior, relays),
 		MeshActivityUnwritten: n.forgetMeshActivity,
@@ -411,6 +441,60 @@ func (n *NetworkNormalizer) Poll(ctx context.Context, prior Prior) (*PollResult,
 		result.SweepSuppress = append(result.SweepSuppress, meshSourceID)
 	}
 	return result, nil
+}
+
+// isRetired reports whether a reported node id, a full key or a prefix of
+// one, names a retired node.
+func (n *NetworkNormalizer) isRetired(id string) bool {
+	id = strings.ToLower(id)
+	if id == "" {
+		return false
+	}
+	for key := range n.retired {
+		if strings.HasPrefix(key, id) {
+			return true
+		}
+	}
+	return false
+}
+
+// withoutRetired drops retired nodes from a relay-candidate list.
+func (n *NetworkNormalizer) withoutRetired(known []meshcore.KnownNode) []meshcore.KnownNode {
+	if len(n.retired) == 0 {
+		return known
+	}
+	out := known[:0]
+	for _, k := range known {
+		if !n.retired[strings.ToLower(k.PubKey)] {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
+// retiring lists the retired nodes the store still shows as ACTIVE or
+// EXPIRED, for PollResult.Retired. `prior` is the store's active mesh events
+// plus the expired catalog, which lags the store by up to expiredTTL; a node
+// handed over is not listed again inside twice that, so one retirement is one
+// transition and one log line, and a failed write is tried again.
+func (n *NetworkNormalizer) retiring(prior Prior, now time.Time) []string {
+	var out []string
+	for key := range n.retired {
+		id := meshSourceID + ":" + key
+		if priorByID(prior, id) == nil {
+			continue
+		}
+		if at, ok := n.retiredSent[id]; ok && now.Sub(at) < 2*expiredTTL {
+			continue
+		}
+		if n.retiredSent == nil {
+			n.retiredSent = make(map[string]time.Time, len(n.retired))
+		}
+		n.retiredSent[id] = now
+		out = append(out, id)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // meshActivity returns the activity clocks that advanced this tick, for the

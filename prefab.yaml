@@ -855,6 +855,20 @@ grid:
     # relays all day, and without this it expired between adverts. A relay can
     # only extend a node a signed advert established. Negative turns it off.
     relayPresence: "14h"
+    # Nodes their operator has taken out of service for good. A mesh has no
+    # goodbye packet and the Grid reads liveness liberally, so a node that is
+    # gone can come back: on a relay hop that fits its stored key, a monitor
+    # that still lists it, or an old advert a gateway's radio kept. An entry
+    # here settles it: the node's event is RESOLVED (its history, timeline and
+    # readings stay), and no advert, relay or report presents it again until
+    # the entry is removed. `key` is the full 64-character public key (a prefix
+    # stops the server); name, since and note are the record of the decision.
+    # See "Retired nodes" in internal/ingest/AGENTS.md.
+    retired:
+      - key: "ca57b9577ee6ee8444ffaa632c1bcaab62cd1cb3f8c0d0090b55c9ded65bbb25"
+        name: "SIERRA Eagle One"
+        since: "2026-11-20"
+        note: "Decommissioned, not expected back. A monitor last reached it on 2026-10-22."
     # Relay-topology store (docs/design/mesh-topology-design.md). Every received advert is
     # kept as an append-only observation (Tier 0); a maintenance tick folds those
     # into a per-link-per-day rollup (Tier 1) and prunes. spamFloor caps the raw

@@ -352,17 +352,24 @@ func (r *Registry) Seed(nodes []SeedNode) {
 		if sn.LastReceived.After(e.ReceivedAt) {
 			e.ReceivedAt = sn.LastReceived
 		}
-		// The advert window runs from the last real advert. last_seen_at is
-		// only a fallback for a node with no reception on record: it advances
-		// while relays alone keep a node present, so using it whenever it is
-		// later would turn a few hours of relay presence into a whole advert
-		// window (up to GraceCeil) at every restart.
-		e.LastHeardAt = e.ReceivedAt
-		if e.LastHeardAt.IsZero() {
-			e.LastHeardAt = sn.LastHeard
-		}
 		if sn.LastRelayed.After(e.LastRelayedAt) {
 			e.LastRelayedAt = sn.LastRelayed
+		}
+		// The advert window runs from the last real advert. last_seen_at is
+		// only a fallback for a node with NO activity on record, neither a
+		// reception nor a relay: it advances for as long as anything keeps
+		// the node present, so it is our own bookkeeping, not evidence. Using
+		// it whenever it is later would turn a few hours of relay presence
+		// into a whole advert window (up to GraceCeil) at every restart. Using
+		// it for a node that has a relay on record but no reception did the
+		// same from GraceFloor: each restart inside the window started
+		// another, so a node one relay had revived stayed ACTIVE for as long
+		// as deploys came less than GraceFloor apart (SIERRA Eagle One,
+		// 2026-11-18 to 20, eleven deploys). Such a node is present on its
+		// relay clock, restored above, and on nothing else.
+		e.LastHeardAt = e.ReceivedAt
+		if e.LastHeardAt.IsZero() && e.LastRelayedAt.IsZero() {
+			e.LastHeardAt = sn.LastHeard
 		}
 	}
 }

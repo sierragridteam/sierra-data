@@ -480,6 +480,51 @@ more of data. To measure, diff CoreScope's `/api/nodes?limit=5000` (geofence,
 `min(last_heard, last_relayed)` < 24h) against our ACTIVE/EXPIRED mesh events'
 `lastHeardAt`/`lastRelayedAt`.
 
+### Retired nodes: the operator's word ends a node (2026-11-20)
+
+`grid.meshcore.retired` lists nodes their operator took out of service, by
+full public key. Reading liveness liberally has a cost the sweep cannot pay
+back: SIERRA Eagle One was decommissioned, expired on 2026-11-10, and came
+back ACTIVE on 2026-11-18 on one relay credit (CoreScope had no record of the
+node at all by then). Nothing the mesh sends can say a node is gone for good,
+so the list does:
+
+- **No input presents a retired node.** `Poll` drops its advert (the one most
+  likely to arrive is an old one a gateway's radio kept and the relay
+  forwards), any monitor report for it by full key or by prefix (matched
+  BEFORE prefix resolution, or the prefix could resolve to a neighbour and
+  hand it the retired node's failed reads), and any relay credit. It is not
+  offered to `DrainRelays` as a candidate either: the node is gone, so a hop
+  that fits its key is another node's or nobody's.
+- **Its event is RESOLVED, not deleted.** `PollResult.Retired` names the ids
+  the store still shows ACTIVE or EXPIRED and the scheduler transitions them
+  (`retire`), outside the sweep's clean-fetch guard: the list is not read off
+  the feed, so a deaf broker changes nothing about it. History, timeline and
+  the telemetry archive stay. RESOLVED also takes it out of the expired
+  catalog, so it stops being a relay candidate for good.
+- **It is reversible.** Remove the entry and the next signed advert presents
+  the node again, as an ACTIVE revision of the same event.
+- **Deleting the rows instead would not work.** A delete removes the record
+  and leaves every way back open: the next forwarded advert mints the node
+  again, with no history.
+
+A mesh event RESOLVED is therefore one of two things: a retired node (full
+key), or a prefix-keyed event promoted to its full key (`Superseded`). A
+malformed key stops the server (`MeshcoreConfig.RetiredKeys`). What the list
+does not do: tell a monitor to stop polling the node. alanpi went on trying
+Eagle One every half hour; that list is on the operator's Pi.
+
+**A restart must not renew presence** (same incident). `Registry.Seed` backed
+a node's advert clock with the store's `last_seen_at` whenever it had no
+advert reception on record. For a node present on relay credit alone that
+started a `graceFloor` (14h) advert window at every restart, from a stamp that
+advances for as long as the node is present, so with deploys less than 14h
+apart it never left: Eagle One stayed ACTIVE through eleven deploys, 42 hours
+past its one relay. The fallback now applies only to a node with no activity
+on record at all (neither clock), which is what keeps the mesh from emptying
+at a restart when `mesh_activity` cannot be read
+(`TestRegistrySeedDoesNotRenewRelayPresence`).
+
 ### A monitor is additional data, never canonical (2026-11-03)
 
 A `mesh.repeater` monitor decorates nodes the MESH establishes (signed adverts,

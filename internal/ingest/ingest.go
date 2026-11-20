@@ -83,6 +83,16 @@ type PollResult struct {
 	// the event's detail has a field for it (today WeatherAlertDetail's
 	// replaced_by_event_id). Ids without an entry are retired without a pointer.
 	ReplacedBy map[string]string
+	// Retired lists event ids the poller's own CONFIGURATION says are over:
+	// a mesh node its operator took out of service (grid.meshcore.retired).
+	// They transition to RESOLVED from whatever status they hold, ACTIVE or
+	// EXPIRED, and the poller stops emitting them, so nothing reactivates
+	// them while the entry stands.
+	//
+	// Unlike Superseded this does not wait for a clean fetch: it is not read
+	// off the feed, so a failed or suppressed source changes nothing about
+	// it. The scheduler only accepts ids of the poller's own sources.
+	Retired []string
 	// MeshObservations is the mesh-node reception firehose drained from the push
 	// source's buffer this tick (nil for every other poller). Receptions are
 	// measurements, not events — the scheduler batch-inserts them into the
