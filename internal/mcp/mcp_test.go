@@ -75,8 +75,8 @@ func TestInitializeAndList(t *testing.T) {
 		t.Errorf("protocolVersion = %v", init["protocolVersion"])
 	}
 	tools := call(t, s, "tools/list", "")["tools"].([]interface{})
-	if len(tools) != 11 {
-		t.Errorf("got %d tools, want 11", len(tools))
+	if len(tools) != 16 {
+		t.Errorf("got %d tools, want 16", len(tools))
 	}
 	if len(call(t, s, "resources/list", "")["resources"].([]interface{})) == 0 {
 		t.Error("no resources")

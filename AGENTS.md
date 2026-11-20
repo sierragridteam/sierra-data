@@ -6,7 +6,7 @@ path and GitHub repo are `github.com/sierragridteam/sierra-data` (renamed 2026-0
 `github.com/dpup/info.ersn.net/server`).
 
 These notes live in `AGENTS.md` files (this one and one per subsystem:
-`internal/{clients,hazards,ingest,services,store}/`). Each sits beside a
+`internal/{clients,hazards,ingest,mcp,services,store}/`). Each sits beside a
 one-line `CLAUDE.md` containing `@AGENTS.md`, so Claude Code loads the same text.
 Edit the `AGENTS.md`; leave the `CLAUDE.md` stubs alone.
 
@@ -52,6 +52,7 @@ Last updated: 2026-07-06
 │   ├── ingest/                # Poller scheduler + per-source normalizers → the store
 │   ├── pushingest/            # Authenticated push ingest (POST /api/v1/ingest/{stream})
 │   ├── gridapi/               # /api/v1 GridService impl (gRPC) + hand-built GeoJSON
+│   ├── mcp/                   # /mcp: MCP tools for LLM clients, each a view of /api/v1
 │   ├── places/                # Grid place directory seeder (areas/counties/towns/corridors)
 │   └── lib/                   # Shared libraries (incl. lib/geojson: geometry + PIP)
 ├── data/places/               # Checked-in Census county polygons (counties.geojson)
@@ -79,7 +80,8 @@ the same things. `cmd/server/site_test.go` pins the routes. The MCP setup
 page (`landing/mcp.html`: adding the server to Claude, ChatGPT and Gemini) is
 served at `/mcp` itself, only to a GET that asks for `text/html` and not for
 an event stream (`mcpRoute` in `site.go`); every other request reaches the MCP
-handler unchanged, so do not loosen that rule to `*/*`. Its steps quote each
+handler unchanged, so do not loosen that rule to `*/*`. The page lists the
+MCP tools; `internal/mcp/AGENTS.md` names every place that does. Its steps quote each
 vendor's menus and go stale: re-check them against the linked help pages when
 touching the page. The data explorer
 that used to live here (an Astro site under `web/`) was removed on 2026-11-12;
@@ -569,7 +571,7 @@ the generated `grid.swagger.json` plus the hand-written
 `api/grid/v1/openapi.overlay.yaml` (`make proto` runs it; `make openapi` alone
 after an overlay edit). Proto-defined RPCs are documented in `grid.proto`
 comments and `openapiv2_*` annotations; hand-built routes (`.geojson`,
-`/mesh/links`, ingest, `/mcp`) in the overlay. CI fails if the committed spec is
+`/mesh/links`, `/mesh/path`, ingest, `/mcp`) in the overlay. CI fails if the committed spec is
 stale or a hand-mounted route has no spec path. When you change behaviour,
 update its description and examples in the same PR.
 
@@ -719,7 +721,10 @@ gateway's `EmitUnpopulated` marshaler.
   never reads it: the text is context, mostly safety-campaign boilerplate.
   See `docs/design/hazard-aggregation-design.md` and `internal/hazards/AGENTS.md`.
   Two more layers are served by `gridapi` itself: `mesh_link` (relay topology,
-  `internal/gridapi/mesh.go`) and `camera` (Caltrans traffic cameras,
+  `internal/gridapi/mesh.go`; the same links as the hand-built JSON routes
+  `GET /api/v1/mesh/links`, its `?node=` form for one node's links with the
+  nodes they name, and `GET /api/v1/mesh/path` for a route between two sets of
+  nodes, `internal/gridapi/mesh_path.go`) and `camera` (Caltrans traffic cameras,
   `serveCameraLayer` in `internal/gridapi/cameras.go`). `camera` is the place-scoped
   `ListCameras` as GeoJSON — same cameras, distances and ids, every feature
   `INFO`, `sourceStatus` from the camera directory — and stays out of the
