@@ -114,6 +114,28 @@ A `grid_search` hit of kind `MESH_NODE` now says `next: grid_mesh_node node=…`
 state and monitor reading as text; it used to print the record's `observedAt`
 as "Observed", which is not when the node was last heard.
 
+## 2026-11-20
+
+### Fixed: a page on another origin can use `ETag` and `If-None-Match`
+
+The API has sent validators since 2026-11-12, but its CORS answers kept them
+from scripts in a browser: the preflight did not allow the `If-None-Match`
+request header, so a `fetch` that set it was blocked before it was sent, and
+no response header was exposed, so `response.headers.get("ETag")` was `null`
+on a cross-origin page. Both are fixed, on every route:
+
+- the preflight answers `Access-Control-Allow-Headers: Content-Type,
+  X-Requested-With, X-Csrf-Protection, If-None-Match`;
+- every response, the `304` included, answers
+  `Access-Control-Expose-Headers: ETag, Retry-After`, so a page can also read
+  how long to wait on a `503`.
+
+Nothing else moves: `Access-Control-Allow-Origin` is still `*`, `GET` is
+still the only method allowed cross-origin, and the validators themselves are
+unchanged. Clients outside a browser were never affected. A browser client
+that already sends `If-None-Match` (the TypeScript SDK's `etag` option) starts
+getting `304`s with no change on its side.
+
 ## 2026-11-19 (MCP setup page)
 
 ### Added: `/mcp` shows setup instructions to a browser
