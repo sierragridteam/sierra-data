@@ -931,6 +931,9 @@ holds the state, a table holds the series.** The road sampler
   every row, unbucketed, closed travel times included, no ETag. It may have
   outside readers (`TestRoadHistoryShapeIsFixed`). Add a layer's series to
   the samples envelope as another list beside `road`, not to that route.
+  Weather was the first (`weather`, 2026-11-20): a layer supplies a
+  `sampleSeries` (cadence, coverage, rows) in `seriesFor` and the envelope,
+  bucket ladder, gaps and validator are shared.
 
 - **Hashed: status, its causes, the seasonal closures past its ends and the
   chain requirements on it.** Travel time,
@@ -1029,6 +1032,63 @@ holds the state, a table holds the series.** The road sampler
 - **Fail-loud.** The roads service failing is a hard error; a monitored road
   it has no status for is a `PerSource` error and keeps its stored event; no
   monitored roads is `errEmptyScope`.
+
+## Weather locations as events, and their samples (`weather_location.go`)
+
+With `grid.weather.record` (off as shipped), two things run, and neither
+fetches anything: both read `WeatherService.CurrentReadings`, the last
+successful read of each location that the periodic refresher already makes
+for `/api/v1/conditions`.
+
+- **The sampler** (`Scheduler.runWeatherSampling`, `WeatherSampling` in
+  `SchedulerConfig`, wired by `weatherSamplingConfig` in `cmd/server`)
+  writes `weather_samples`: one row per location per successful read.
+  **A sample's time is its reading's time**, not the tick's, so the sampler
+  looks every 5 minutes (`WeatherSampleInterval`) and the store ignores a
+  reading it already has. A location whose fetch keeps failing therefore
+  leaves a gap, never a repeated value. Values are the unrounded
+  `weather.Reading`, with NULL for what the response did not carry; do not
+  write the whole numbers of `api.WeatherData` here (see
+  `internal/clients/AGENTS.md`). Kept 400 days, pruned daily.
+- **`WeatherLocationNormalizer`** (source `openweather`, 5m) stores one
+  standing event per `weather.locations` entry, layer `WEATHER`, id
+  `weather:<id>`: the mesh-node and road-segment pattern, **the event is the
+  subject and a table holds the series**. `GET /api/v1/events/{id}/samples`
+  serves the rows in the shared envelope, in the `weather` list
+  (`internal/gridapi/weather_samples.go`); gaps use `weather.refreshInterval`
+  as the cadence.
+
+**The event has no derived state yet, on purpose** (workspace note
+`2026-11-19-weather-states-and-samples.md`, "Decided"): the samples had to
+be readable before the state thresholds could be checked against real
+readings, and the event is the agreed way in. Everything on it comes from
+configuration, so it is written once per location and never revised. When
+the states are built (freezing: in at 0 C, out at +2 C; precipitation: ends
+after 2 dry hours, a change of type holds 1 hour), they are fields of
+`WeatherDetail` and revisions of this event, behind their own flag, and
+their hysteresis memory is the stored event plus the last hours of
+`weather_samples`, not process memory. **Never put a reading on the event**:
+a number here is a revision every 15 minutes per location, which is what the
+table is for.
+
+- **Geometry is the location's point; the town place is preset**
+  (`town:<id>`: a town is a point place, which no geometry match attaches).
+- **Health is the readings' age**, since the poller fetches nothing: a
+  `PerSource` error while a configured location has no reading younger than
+  1.5 times `weather.refreshInterval` (the `/api/v1/conditions`
+  `weatherStatus` rule). A location not read yet is a failure only once the
+  normalizer is that old: a new writer's first poll runs before the weather
+  cache is warm. The events stand through a failure; no locations is
+  `errEmptyScope`; a location removed from configuration is resolved by the
+  sweep.
+- **Readings live in the writer's process.** `CurrentReadings` is filled by
+  the refresh the writer's periodic refresher runs; a reader process has
+  none and samples nothing (the scheduler only runs on the writer). A new
+  writer has no readings until its own first refresh, which the periodic
+  refresher starts as soon as the term begins.
+- **Off is a real off switch**: `retireDisabledLayers` expires the events
+  and hides the source row; the samples stay in the table until they age
+  out.
 
 ## Weather-alert headline: deterministic, never AI
 

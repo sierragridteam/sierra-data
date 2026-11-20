@@ -332,7 +332,13 @@ stays listed but nothing authenticates as it, so a local server still starts
   see the PG&E notes below. And `grid.burn` — the tracked `counties`, the
   recorded `lines` (id, phone, the counties each speaks for, and whether we dial
   it) plus `burnDayStaleAfter`, the equivalent freeze detector for a pushed
-  burn-line reading.
+  burn-line reading. And the recorded-state flags, each of which turns a
+  layer's events on (`grid.sourceHealth.enabled`, `grid.chainControl.record`,
+  `grid.roadSegments.record`, `grid.weather.record`); off, the layer's events
+  are expired and its source row hidden at the next start.
+  `grid.weather.record` (off as shipped) also starts the weather sampler
+  (`weather_samples`); see "Weather locations as events" in
+  `internal/ingest/AGENTS.md`.
 - Environment variables override config file values for secrets
 - Use the parent workspace `.envrc` for local development (loaded by direnv; keep secrets outside the repository)
 
@@ -353,7 +359,8 @@ stays listed but nothing authenticates as it, so a local server still starts
 - Rate limit: 60 calls/minute (free tier)
 - Current weather: `/data/2.5/weather` — the ONLY endpoint the server uses.
   One call per location per `weather.refreshInterval` (15m), request-driven:
-  7 locations ≈ 672 calls/day worst case.
+  7 locations ≈ 672 calls/day worst case. The weather sample archive
+  (`grid.weather.record`) stores those same reads and adds no calls.
 - **Do NOT use `/data/3.0/onecall`** (One Call 3.0): it has a separate 1,000
   calls/day free cap that per-location alert fetching blew through (2026-07).
   For US locations its alerts are relabeled NWS data — alerts come from NWS
