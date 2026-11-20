@@ -21,6 +21,28 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-20
+
+### Fixed: a page on another origin can use `ETag` and `If-None-Match`
+
+The API has sent validators since 2026-11-12, but its CORS answers kept them
+from scripts in a browser: the preflight did not allow the `If-None-Match`
+request header, so a `fetch` that set it was blocked before it was sent, and
+no response header was exposed, so `response.headers.get("ETag")` was `null`
+on a cross-origin page. Both are fixed, on every route:
+
+- the preflight answers `Access-Control-Allow-Headers: Content-Type,
+  X-Requested-With, X-Csrf-Protection, If-None-Match`;
+- every response, the `304` included, answers
+  `Access-Control-Expose-Headers: ETag, Retry-After`, so a page can also read
+  how long to wait on a `503`.
+
+Nothing else moves: `Access-Control-Allow-Origin` is still `*`, `GET` is
+still the only method allowed cross-origin, and the validators themselves are
+unchanged. Clients outside a browser were never affected. A browser client
+that already sends `If-None-Match` (the TypeScript SDK's `etag` option) starts
+getting `304`s with no change on its side.
+
 ## 2026-11-19 (MCP setup page)
 
 ### Added: `/mcp` shows setup instructions to a browser
