@@ -21,6 +21,41 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-20
+
+### BREAKING: mesh relay tokens are `admin` or `host`; `operator` and `agent` tokens are refused
+
+The mesh relay (`/mesh/relay/*`, a separate service from `/api/v1`) moves to
+sierra-meshrelay v0.15.0. Nothing in the Grid API changes, and bridges need
+no update: a gateway's bridge token (`smb_…`) and its pairing work as before.
+
+- **Client tokens with the `operator` or `agent` role no longer work**, on the
+  client websocket (`wss://…/mesh/relay/{gateway}`) or the API. Both answer
+  `403` with "tokens with the operator role no longer work; ask a SIERRA admin
+  for a new one". These tokens could open every gateway.
+- **New: host tokens** (`smh_…`, role `host`), which open **one** gateway
+  through `meshbridge connect` and nothing else: no API, no preempting. They
+  are named `<gateway>.<label>`, expire (180 days by default), are limited to
+  5 per gateway, record their last use, and are revoked when the gateway's
+  bridge token is rotated or the gateway is re-paired or removed. An admin
+  issues one with `meshbridge admin access grant <gateway> <label>`.
+- **Every relay API route now needs an `admin` token**, reads included
+  (`GET /mesh/relay/api/gateways`, `/gateways/{name}`, `/leases`, `/metrics`).
+  New admin routes: `POST /clients` takes `gateway`, `label`,
+  `expires_in_days` and `note`; `PATCH /clients/{name}` turns a retired-role
+  token into an admin token; `GET /clients` lists expiry, last use and issuer.
+- An expired token gets `401` "this token has expired", and its lease ends
+  when it expires.
+- **Public status** (`GET /mesh/relay/api/status`, unchanged in shape):
+  `in_use_role` is now only `operator` (a person: an admin or the host) or
+  `agent` (an automated read). It no longer says `admin`, so the page never
+  tells which kind of person is on a node.
+
+**Migration:** if you hold an `operator` or `agent` relay token, ask a SIERRA
+admin either to make it an admin token (the token itself stays the same) or to
+issue you a host token for your gateway. Code that read relay status with a
+non-admin token should use the public status route instead.
+
 ## 2026-11-19 (MCP setup page)
 
 ### Added: `/mcp` shows setup instructions to a browser
