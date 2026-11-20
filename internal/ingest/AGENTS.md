@@ -1080,7 +1080,7 @@ holds the state, a table holds the series.** The road sampler
 
 ## Weather locations as events, and their samples (`weather_location.go`)
 
-With `grid.weather.record` (off as shipped), two things run, and neither
+With `grid.weather.record` (on since 2026-11-21), two things run, and neither
 fetches anything: both read `WeatherService.CurrentReadings`, the last
 successful read of each location that the periodic refresher already makes
 for `/api/v1/conditions`.

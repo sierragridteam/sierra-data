@@ -345,7 +345,7 @@ stays listed but nothing authenticates as it, so a local server still starts
   layer's events on (`grid.sourceHealth.enabled`, `grid.chainControl.record`,
   `grid.roadSegments.record`, `grid.weather.record`); off, the layer's events
   are expired and its source row hidden at the next start.
-  `grid.weather.record` (off as shipped) also starts the weather sampler
+  `grid.weather.record` (on since 2026-11-21) also starts the weather sampler
   (`weather_samples`); see "Weather locations as events" in
   `internal/ingest/AGENTS.md`.
 - Environment variables override config file values for secrets

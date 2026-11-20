@@ -21,6 +21,17 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-21 (weather recorded)
+
+### Weather locations are recorded
+
+`grid.weather.record` is on. Each `weather.locations` entry is a `WEATHER`
+event (`weather:{location id}`, source `openweather`, listed on
+`/api/v1/sources`), always `ACTIVE` and `INFO`, and
+`GET /api/v1/events/{id}/samples` returns its readings in `weather`, one
+sample about every 15 minutes from now on (nothing before today). The event
+carries no derived state yet. It adds no OpenWeatherMap calls.
+
 ## 2026-11-20 (later: weather rounding)
 
 ### Whole-number weather values are rounded, not truncated
