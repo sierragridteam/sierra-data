@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -724,16 +723,30 @@ func TestSelfAdvertKey(t *testing.T) {
 }
 
 // waitPaused waits until the relay refuses gw's node as paused.
+// waitPaused waits until the relay has taken in a "paused" node status. It
+// reads the relay's public status and takes no lease: a probe that acquired
+// and released one every 10 ms queued an audit write each time, and on a slow
+// disk those writes kept the SQLite store busy until the relay's own read for
+// the node status timed out, so the pause it was waiting for never landed.
 func (h *harness) waitPaused(gw string) {
 	h.t.Helper()
 	eventually(h.t, func() bool {
-		l, err := h.relay.Acquire(meshrelay.LeaseRequest{Gateway: gw, Client: "probe",
-			Role: meshrelay.RoleAgent, Holder: newHolder()})
-		if err == nil {
-			h.relay.Release(l)
+		resp, err := http.Get("http://" + h.base + meshrelay.PathPrefix + "/api/status")
+		if err != nil {
 			return false
 		}
-		var u *meshrelay.UnavailableError
-		return errors.As(err, &u) && pausedCode(u.Code)
+		defer resp.Body.Close()
+		var st struct {
+			Gateways []meshrelay.PublicGateway `json:"gateways"`
+		}
+		if resp.StatusCode != http.StatusOK || json.NewDecoder(resp.Body).Decode(&st) != nil {
+			return false
+		}
+		for _, g := range st.Gateways {
+			if g.Name == gw {
+				return g.NodeState == string(meshrelay.NodePaused)
+			}
+		}
+		return false
 	}, "gateway never paused")
 }
