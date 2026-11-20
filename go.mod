@@ -14,7 +14,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.33.0
 	github.com/jackc/pgx/v5 v5.13.0
 	github.com/sashabaranov/go-openai v1.43.0
-	github.com/sierragridteam/sierra-meshrelay v0.14.0
+	github.com/sierragridteam/sierra-meshrelay v0.15.0
 	github.com/stretchr/testify v1.12.1
 	github.com/twpayne/go-polyline v1.1.2
 	github.com/yuin/goldmark v1.8.7
