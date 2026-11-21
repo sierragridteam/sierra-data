@@ -96,6 +96,11 @@ func (c *Client) GetCurrentReading(ctx context.Context, coordinates *api.Coordin
 
 // round rounds v to the given number of decimals. The response's numbers are
 // decoded as float32, so 3.4 would otherwise widen to 3.4000000953674316.
+// roundInt rounds to the nearest integer, halves away from zero.
+func roundInt(v float64) int32 {
+	return int32(math.Round(v))
+}
+
 func round(v float64, decimals int) float64 {
 	p := math.Pow(10, float64(decimals))
 	return math.Round(v*p) / p
@@ -254,10 +259,12 @@ func (c *Client) processCurrentWeatherResponse(response OpenWeatherCurrentRespon
 		WeatherMain:          weatherMain,
 		WeatherDescription:   weatherDescription,
 		WeatherIcon:          weatherIcon,
-		TemperatureCelsius:   int32(response.Main.Temp),      // Round to int
-		FeelsLikeCelsius:     int32(response.Main.FeelsLike), // Round to int
+		// Rounded to the nearest whole number, not truncated: int32(-0.9) is
+		// 0, which would read a frost as above freezing.
+		TemperatureCelsius:   roundInt(float64(response.Main.Temp)),
+		FeelsLikeCelsius:     roundInt(float64(response.Main.FeelsLike)),
 		HumidityPercent:      response.Main.Humidity,
-		WindSpeedKmh:         int32(response.Wind.Speed * 3.6), // Convert m/s to km/h
+		WindSpeedKmh:         roundInt(float64(response.Wind.Speed) * 3.6), // m/s to km/h
 		WindDirectionDegrees: windDeg,
 		VisibilityKm:         visibilityKm,
 		Alerts:               nil, // Alerts fetched separately

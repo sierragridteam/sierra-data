@@ -383,16 +383,19 @@ use-latest-test-data:
 		cd tests/testdata/google && \
 		ln -sf $$(ls -1 seattle_portland_*.json | tail -1) seattle_portland.json; \
 	fi
-	@# Update Weather data  
+	@# Update Weather data. Only dated snapshots (seattle_*_YYYYMMDD*.json):
+	@# with none, `ln -sf` gets one argument and links the name to itself.
 	@if [ -d tests/testdata/weather ]; then \
 		cd tests/testdata/weather && \
-		ln -sf $$(ls -1 seattle_current_*.json | tail -1) seattle_current.json && \
-		ln -sf $$(ls -1 seattle_alerts_*.json | tail -1) seattle_alerts.json; \
+		for kind in current alerts; do \
+			latest=$$(ls -1 seattle_$${kind}_[0-9]*.json 2>/dev/null | tail -1); \
+			if [ -n "$$latest" ]; then ln -sf "$$latest" seattle_$$kind.json; fi; \
+		done; \
 	fi
 	@echo "✅ Symlinks updated to latest snapshots"
 	@if [ -d tests/testdata/caltrans ]; then ls -la tests/testdata/caltrans/*.kml | grep -E "(lane_closures|chp_incidents|chain_controls)\.kml"; fi
 	@if [ -d tests/testdata/google ]; then ls -la tests/testdata/google/*.json | grep -E "seattle_portland\.json"; fi
-	@if [ -d tests/testdata/weather ]; then ls -la tests/testdata/weather/*.json | grep -E "(seattle_current|seattle_alerts)\.json"; fi
+	@if [ -d tests/testdata/weather ]; then ls -la tests/testdata/weather/*.json | grep -E "(seattle_current|seattle_alerts)\.json" || true; fi
 
 ## Development Targets
 
