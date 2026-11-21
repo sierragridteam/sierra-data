@@ -101,14 +101,7 @@ func (h *harness) meshBridge(gw, pubkey string, mesh *meshsim.Node) string {
 		}
 	}()
 	h.t.Cleanup(func() { ws.Close() })
-	eventually(h.t, func() bool {
-		l, err := h.relay.Acquire(meshrelay.LeaseRequest{Gateway: gw, Client: "probe",
-			Role: meshrelay.RoleAgent, Holder: newHolder()})
-		if err == nil {
-			h.relay.Release(l)
-		}
-		return err == nil
-	}, "bridge never came online")
+	h.waitReady(gw)
 	return tok
 }
 

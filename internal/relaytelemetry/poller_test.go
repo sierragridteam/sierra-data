@@ -274,14 +274,7 @@ func (h *harness) bridge(gw string, node *fakeNode) func() {
 			}
 		}
 	}()
-	eventually(h.t, func() bool {
-		l, err := h.relay.Acquire(meshrelay.LeaseRequest{Gateway: gw, Client: "probe",
-			Role: meshrelay.RoleAgent, Holder: newHolder()})
-		if err == nil {
-			h.relay.Release(l)
-		}
-		return err == nil
-	}, "bridge never came online")
+	h.waitReady(gw)
 	return func() { ws.Close() }
 }
 
@@ -428,11 +421,7 @@ func TestOfflineBridgeIsAFailedAttemptThatKeepsTheLastReading(t *testing.T) {
 	first := grid.last(t)[0]
 
 	disconnect()
-	eventually(t, func() bool {
-		_, err := h.relay.Acquire(meshrelay.LeaseRequest{Gateway: "gw-a", Client: "probe",
-			Role: meshrelay.RoleAgent, Holder: newHolder()})
-		return err != nil && !strings.Contains(err.Error(), "busy")
-	}, "bridge never went offline")
+	h.waitOffline("gw-a")
 	p.cfg.Now = func() time.Time { return time.Now().Add(time.Minute) }
 	p.Cycle(h.ctx)
 
@@ -578,11 +567,7 @@ func TestGatewayNodeAdvertIsForwardedOnChangeOrWhenOld(t *testing.T) {
 
 	// Offline: no read, so no advert, however old the last one is.
 	disconnect()
-	eventually(t, func() bool {
-		_, err := h.relay.Acquire(meshrelay.LeaseRequest{Gateway: "gw-a", Client: "probe",
-			Role: meshrelay.RoleAgent, Holder: newHolder()})
-		return err != nil && !strings.Contains(err.Error(), "busy")
-	}, "bridge never went offline")
+	h.waitOffline("gw-a")
 	now = now.Add(13 * time.Hour)
 	p.Cycle(h.ctx)
 	assert.Len(t, grid.packets(), 3, "an old advert never stands in for a read that failed")
@@ -722,31 +707,58 @@ func TestSelfAdvertKey(t *testing.T) {
 	assert.Equal(t, "", selfAdvertKey(nil))
 }
 
-// waitPaused waits until the relay refuses gw's node as paused.
-// waitPaused waits until the relay has taken in a "paused" node status. It
-// reads the relay's public status and takes no lease: a probe that acquired
-// and released one every 10 ms queued an audit write each time, and on a slow
-// disk those writes kept the SQLite store busy until the relay's own read for
-// the node status timed out, so the pause it was waiting for never landed.
+// The waits below observe the relay through its public status, which takes no
+// lease and writes nothing. A probe that acquired and released a lease every
+// 10 ms queued two audit writes each time (lease start and end), and on a slow
+// disk those writes kept the SQLite store busy until the relay's own store
+// reads (for a node status, a hello) hit the busy timeout, so the state being
+// waited for never landed.
+
+// publicGateway is gw's entry on the relay's public status board.
+func (h *harness) publicGateway(gw string) (meshrelay.PublicGateway, bool) {
+	resp, err := http.Get("http://" + h.base + meshrelay.PathPrefix + "/api/status")
+	if err != nil {
+		return meshrelay.PublicGateway{}, false
+	}
+	defer resp.Body.Close()
+	var st struct {
+		Gateways []meshrelay.PublicGateway `json:"gateways"`
+	}
+	if resp.StatusCode != http.StatusOK || json.NewDecoder(resp.Body).Decode(&st) != nil {
+		return meshrelay.PublicGateway{}, false
+	}
+	for _, g := range st.Gateways {
+		if g.Name == gw {
+			return g, true
+		}
+	}
+	return meshrelay.PublicGateway{}, false
+}
+
+// waitReady waits until the relay would grant a lease on gw: its bridge is
+// online, its node verified and connected, and nobody holds it.
+func (h *harness) waitReady(gw string) {
+	h.t.Helper()
+	eventually(h.t, func() bool {
+		g, ok := h.publicGateway(gw)
+		return ok && g.Online && g.Ready && !g.InUse
+	}, "bridge never came online")
+}
+
+// waitOffline waits until the relay has seen gw's bridge go away.
+func (h *harness) waitOffline(gw string) {
+	h.t.Helper()
+	eventually(h.t, func() bool {
+		g, ok := h.publicGateway(gw)
+		return ok && !g.Online
+	}, "bridge never went offline")
+}
+
+// waitPaused waits until the relay has taken in a "paused" node status.
 func (h *harness) waitPaused(gw string) {
 	h.t.Helper()
 	eventually(h.t, func() bool {
-		resp, err := http.Get("http://" + h.base + meshrelay.PathPrefix + "/api/status")
-		if err != nil {
-			return false
-		}
-		defer resp.Body.Close()
-		var st struct {
-			Gateways []meshrelay.PublicGateway `json:"gateways"`
-		}
-		if resp.StatusCode != http.StatusOK || json.NewDecoder(resp.Body).Decode(&st) != nil {
-			return false
-		}
-		for _, g := range st.Gateways {
-			if g.Name == gw {
-				return g.NodeState == string(meshrelay.NodePaused)
-			}
-		}
-		return false
+		g, ok := h.publicGateway(gw)
+		return ok && g.Online && g.NodeState == string(meshrelay.NodePaused)
 	}, "gateway never paused")
 }
