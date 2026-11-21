@@ -503,7 +503,7 @@ grid:
   # OpenWeatherMap calls. Off, nothing is sampled and there are no WEATHER
   # events.
   weather:
-    record: false
+    record: true
 
   # PG&E power layer. No geography knobs: unlike fire, an outage outside the
   # footprint is not a threat to it, so the layer uses the plain hazards union.

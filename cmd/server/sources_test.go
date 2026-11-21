@@ -118,7 +118,7 @@ func TestShippedConfigKeepsWeatherRecordingOff(t *testing.T) {
 		} `yaml:"grid"`
 	}
 	require.NoError(t, yaml.Unmarshal(raw, &doc))
-	assert.False(t, doc.Grid.Weather.Record, "grid.weather.record ships off")
+	assert.True(t, doc.Grid.Weather.Record, "grid.weather.record is on (since 2026-11-20)")
 	src, ok := doc.Grid.Sources[ingest.WeatherSourceID]
 	require.True(t, ok, "grid.sources.%s is tuned", ingest.WeatherSourceID)
 	assert.Equal(t, "5m", src.PollInterval)
