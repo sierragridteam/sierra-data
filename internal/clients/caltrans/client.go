@@ -410,10 +410,37 @@ func (p *FeedParser) ParseLaneClosures(ctx context.Context) ([]CaltransIncident,
 	return p.parseKMLFeed(ctx, "https://quickmap.dot.ca.gov/data/lcs2way.kml", LANE_CLOSURE)
 }
 
-// ParseCHPIncidents processes CHP incidents KML feed
-// URL from research.md line 73
+// ParseCHPIncidents processes CHP incidents KML feed, without CHP's
+// chain-control logs (see isCHPChainLog).
 func (p *FeedParser) ParseCHPIncidents(ctx context.Context) ([]CaltransIncident, error) {
-	return p.parseKMLFeed(ctx, "https://quickmap.dot.ca.gov/data/chp-only.kml", CHP_INCIDENT)
+	incidents, err := p.parseKMLFeed(ctx, "https://quickmap.dot.ca.gov/data/chp-only.kml", CHP_INCIDENT)
+	if err != nil {
+		return nil, err
+	}
+	kept := incidents[:0]
+	for _, in := range incidents {
+		if !isCHPChainLog(in.DescriptionHtml) {
+			kept = append(kept, in)
+		}
+	}
+	return kept, nil
+}
+
+// isCHPChainLog reports whether a CHP entry is a chain-control log (type
+// "CHAINS-Chain Control"). These are left out of everything CHP feeds (road
+// incidents and per-road status): Caltrans's chain feeds (cc.kml, CWWP2) are
+// the record of chain requirements, and a CHP log is a dispatcher's note that
+// stays listed long after Caltrans lifts the chains. Seen 2026-11-21: an R2 log
+// for SR-108 stayed ACTIVE hours after Caltrans lifted it, pinned at the
+// Sonora CHP office (so on the Hwy 49 corridor), beside "no chain
+// requirements" on the same page.
+func isCHPChainLog(descHTML string) bool {
+	m := iwTitlePattern.FindStringSubmatch(descHTML)
+	if len(m) < 2 {
+		return false
+	}
+	code, _, _ := strings.Cut(strings.TrimSpace(extractTextFromHTML(m[1])), "-")
+	return strings.EqualFold(strings.TrimSpace(code), "CHAINS")
 }
 
 // parseKMLFeed downloads and parses a KML feed

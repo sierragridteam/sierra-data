@@ -21,6 +21,18 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-21 (later: CHP chain-control logs left out)
+
+### CHP chain-control logs are no longer road incidents
+
+`ROAD_INCIDENT` events no longer include CHP's chain-control logs (CHP type
+"CHAINS-Chain Control"), and they no longer feed per-road status. Chain
+requirements are the `CHAIN_CONTROL` events and the `chain_control` map layer,
+from Caltrans. A CHP log stayed listed hours after Caltrans lifted the chains
+and was placed at the CHP office rather than on the highway. Any such event
+still ACTIVE is RESOLVED by the first poll after the deploy. Same fields,
+same types.
+
 ## 2026-11-21 (weather recorded)
 
 ### Weather locations are recorded

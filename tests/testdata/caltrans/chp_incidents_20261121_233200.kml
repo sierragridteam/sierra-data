@@ -1,0 +1,3680 @@
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+<name>CHP Incidents</name>
+<Style id="chp">
+  <LabelStyle><scale>0</scale></LabelStyle>
+  <IconStyle><Icon>
+    <href>https://quickmap.dot.ca.gov/img/chp-32x32.png</href>
+    <hotSpot x="0.5" y="0.5" xunits="fraction" yunits="fraction"/>
+  </Icon></IconStyle>
+</Style>
+<Style id="emergency">
+  <IconStyle><Icon>
+    <href>https://quickmap.dot.ca.gov/img/emergency.png</href>
+    <hotSpot x="0.5" y="0.5" xunits="fraction" yunits="fraction"/>
+  </Icon></IconStyle>
+</Style>
+<Style id="full-closure">
+  <IconStyle><Icon>
+    <href>https://quickmap.dot.ca.gov/img/full-closure-32x32.png</href>
+    <hotSpot x="0.5" y="0.5" xunits="fraction" yunits="fraction"/>
+  </Icon></IconStyle>
+</Style>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121HM0096
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1183-Trfc Collision-Unkn Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:28PM <br> 2370 MM199 N DN 23.70</p>
+        <p class="iw-text">Nov 21 2026  3:30PM [8] [Notification] [CHP]-Problem changed from 1125-Traffic Hazard to 1183-Trfc Collision-Unkn Inj by CHP<br />Nov 21 2026  3:30PM [7] RP ADV TRAFFIC CONTROL WILL BE NEEDED <br />Nov 21 2026  3:30PM [6] ***RP HEARD ONLY ****<br />Nov 21 2026  3:29PM [2] RP ADV CAUSING TRAFFIC TO BUILD UP <br />Nov 21 2026  3:29PM [1] MULTI VEH TC - NEG DESCRIP OF VEHS - NEG EXACT AMOUNT OF VEHS <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-123.831611,41.877817,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261120HM0209
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 20 2026 10:52PM <br> Warren Creek Rd</p>
+        <p class="iw-text">Nov 20 2026 11:44PM [24] 1039 APD  [Shared]<br />Nov 20 2026 11:43PM [22] 1039 CF  [Shared]<br />Nov 20 2026 11:43PM [20] 1039 HSO [Shared]<br />Nov 20 2026 11:41PM [17] [Notification] [CHP]-PER CORDS MULTI TREES NEEDS EQUIPMENT AND WILL BE CLOSING ROAD UNTIL TOMORROW  [Shared]<br />Nov 20 2026 10:54PM [1] TREE BLOCKING 1125 <br />Nov 20 2026 10:54PM [4] [Appended, 22:55:10] [3] TREE BLOCKING ALL LANES 1125 <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-124.042468,40.903558,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121SA0626
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:28PM <br> Sunrise Blvd / Coloma Rd</p>
+        <p class="iw-text">Nov 21 2026  3:28PM [2] CURR 1125 CD <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.268293,38.618263,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121SA0619
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:25PM <br> Sr113 S / Sr113 S I80 Con</p>
+        <p class="iw-text">Nov 21 2026  3:30PM [22] ATC <br />Nov 21 2026  3:29PM [19] POSS ON HUTTCHINSON OFR -- RP UNSURE AND IS CHECKING <br />Nov 21 2026  3:28PM [17] RP ADV IFO THEY SEE SIGN THAT SAYS UC DAVIS 1/2 MILE // RP BELIEVES THEY ARE ON UNK OFR // CHECKING THEIR LOCATION ON PHONE GPS NOW<br />Nov 21 2026  3:26PM [15] CHANGED TO 1125 DUE TO LINE 7 //<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.768732,38.53209,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121SA0557
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1144-Fatality</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:13PM <br> 0 Upper Powerhouse Canal Loop Trl</p>
+        <p class="iw-text">Nov 21 2026  2:45PM [21] 1039 FLSM - ON TRAIL BEHIND ZOO / ALL THE WAY DOWN TO LOWER RODEO GROUNDS - WILL HAVE UNIT COME UP TO FLAG DOWN<br />Nov 21 2026  2:43PM [19] 501 INQ IF PAST BRIDGE ON LOWER TRAIL<br />Nov 21 2026  2:35PM [15] [Notification] [CHP]-FLSM ADV GO TO FLSM ZOO -- PARK BY FLSM CITY ZOO AND WIKLL SEE FLSM PD VEHS <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.168497,38.684704,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121SA0537
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1181-Trfc Collision-Minor Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  1:58PM <br> 6258-6262 Hazel Ave</p>
+        <p class="iw-text">Nov 21 2026  2:51PM [43] LL FIRE ADV PTY XPORTED TO KAISER RSVL [Shared]<br />Nov 21 2026  2:30PM [39] [Rotation Request Comment] 1039 Central Valley Towing (58) (XXX) XXX-XXXX [Shared]<br />Nov 21 2026  2:29PM [37] 58-502M 1185 FOR HOND ACC [Shared]<br />Nov 21 2026  2:23PM [36] 58-502M FIRE 97 [Shared]<br />Nov 21 2026  2:23PM [35] [Notification] [CHP]-Problem changed from 1183-Trfc Collision-Unkn Inj to 1181-Trfc Collision-Minor Inj by CHP [Shared]<br />Nov 21 2026  2:16PM [30] [Appended, 14:23:43] [13] [Notification] [CHP]-Problem changed from 1182-Trfc Collision-No Inj to 1179-Trfc Collision-1141 Enrt by CHP<br />Nov 21 2026  2:00PM [7] ID 37738 RUSSIAN TRANS <br />Nov 21 2026  2:00PM [23] [Appended, 14:23:43] [6] 1 PTY MAY NEED A TOW BUT STOPPED ANSWERING QUESTIONS <br />Nov 21 2026  1:59PM [6] RP REQ RUSSIAN TRANS<br />Nov 21 2026  1:59PM [20] [Appended, 14:23:43] [3] PTYS ON THE RHS <br />Nov 21 2026  1:58PM [19] [Appended, 14:23:43] [2] NEG 1125<br />Nov 21 2026  1:58PM [18] [Appended, 14:23:43] [1] RED TOYT SD VS RED HOND SD<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.225552,38.679589,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121SA0173
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">SNOW Information</h2>
+        
+        <p class="iw-text">Nov 21 2026  5:53AM <br> Sr20 / Washington Rd</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-120.811741,39.316627,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121SA0161
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">MZP-Assist CT with Maintenance</h2>
+        
+        <p class="iw-text">Nov 21 2026  5:12AM <br> 13561 US50</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-120.300571,38.774178,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121SA0100
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">CFIRE-Car Fire</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:31AM <br> I80 W / PENRYN RD OFR</p>
+        <p class="iw-text">Nov 21 2026  4:24AM [72] 45-265 VIA LL // NEG HAZMAT SPILL SITUATION // JUST BURNED STYROFOAM MATERIALS  // WILL HAVE CT CLEAN IT UP AND DETERMINE IF CT CAN MOVE THE TRLR OR IF IS SUFFICIENTLY CLEAN FOR ALL AMERICAN TO TAKE THE TK [Shared]<br />Nov 21 2026  3:40AM [65] [Notification] [CHP]-CT ETA APPROX 30  MINS [Shared]<br />Nov 21 2026  3:29AM [59] CT SUP STILL AWAITINBG ETA // GETTING CREW TOGETHER [Shared]<br />Nov 21 2026  3:28AM [56] 45-265 ADV WILL LIKELY NEED A LOWBOY TO TOW // COMPANY MAY NEED TO RESPOND TO DETERMINE NEEDED EQUIPMENT [Shared]<br />Nov 21 2026  3:27AM [55] 1039 45-265 CPZ WILL ASCERTAIN SITUATION AND ADV [Shared]<br />Nov 21 2026  3:22AM [52] CT SUP WILL CALL BACK WITH ETA  [Shared]<br />Nov 21 2026  3:11AM [50] 45-S5 START CT FOR EXTENDED CLOSURE #3 LANE AND PENRYN OFR // MAY NEED ASSISTENCE CLEANING UP [Shared]<br />Nov 21 2026  3:05AM [49] ALL AMERICAN CPZ HD  FOR BURNED TRLR AND TRLR STILL ON FIRE [Shared]<br />Nov 21 2026  3:01AM [46] [Rotation Request Comment] *** 1039 ALL AMERICAN TOWING (XXX) XXX-XXXX ***<br />Nov 21 2026  2:57AM [41] C45-281 #3 AND PENRYN OFR CLOSED [Shared]<br />Nov 21 2026  2:57AM [40] C45-265 TK DETATCHED FROM TRLR / TRLR FULLY ENGULFED / 53 FT / WAS LOADED WITH STYROFOAM AND CONSUMABLES / START 1185 HD / TRLR STILL BURNING [Shared]<br />Nov 21 2026  2:49AM [39] C45-281 FIRE BLOCING THE #3 [Shared]<br />Nov 21 2026  2:44AM [37] PLACER FIRE 97 // ADV TRLR FULLY ENGULFED / CAB IS DISCONNECTED FROM TRLR // 80 W / AT PENRYN OFR [Shared]<br />Nov 21 2026  2:43AM [36] LL PLACER FIRE [Shared]<br />Nov 21 2026  2:43AM [34] [Appended, 02:43:28] [1] XFER FIRE <br />Nov 21 2026  2:42AM [32] RP HAS VIS OF FIRE GOING 97 [Shared]<br />Nov 21 2026  2:42AM [29] [Appended, 02:42:26] [1] XFER FIRE <br />Nov 21 2026  2:41AM [28] [Notification] [CHP]-Problem changed from 1125-Traffic Hazard to CFIRE-Car Fire by CHP [Shared]<br />Nov 21 2026  2:37AM [21] XFER PLACER FIRE ENRT  [Shared]<br />Nov 21 2026  2:37AM [22] [Appended, 02:37:45] [1] XFER FIRE <br />Nov 21 2026  2:35AM [13] BLU SEMI TK TO RHS  [Shared]<br />Nov 21 2026  2:35AM [12] RR TIRES ON FIRE  [Shared]<br />Nov 21 2026  2:35AM [9] [Notification] [CHP]-[4] RP ADV THE VEH JUST PULLED OVER ON RHS JEO PENRYN RD<br />Nov 21 2026  2:35AM [18] [Appended, 02:37:32] [2] WHEELS ON FIRE <br />Nov 21 2026  2:35AM [17] [Appended, 02:37:32] [1] SEMI TK PULLED TO RHS <br />Nov 21 2026  2:33AM [5] XFER FIRE <br />Nov 21 2026  2:33AM [4] RP ADV THE VEH JUST PULLED OVER ON RHS JEO PENRYN RD <br />Nov 21 2026  2:32AM [3] VEH IS MOVING <br />Nov 21 2026  2:32AM [2] RR TIRE ON FIRE /SEES FLAMES<br />Nov 21 2026  2:32AM [1] BLUE SEMI TK <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.165504,38.836606,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121SU0041
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1183-Trfc Collision-Unkn Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:27PM <br> 800 MM139 N LAS R8.00</p>
+        <p class="iw-text">Nov 21 2026  3:28PM [2] APPEARS TO HAVE SLID OFF RDWY <br />Nov 21 2026  3:28PM [1] VEH OFF THE RDWY<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-120.562103,40.46988,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121ST0182
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">20002-Hit and Run No Injuries</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:20PM <br> 11th St / Kasson Rd</p>
+        <p class="iw-text">Nov 21 2026  3:23PM [4] NEG 1125<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.351517,37.752995,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121YK0041
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:10PM <br> Sr89 / Snowmans Smt</p>
+        <p class="iw-text">Nov 21 2026  3:15PM [12] 1039 CT<br />Nov 21 2026  3:14PM [9] [Rotation Request Comment] 1039 BLK BUTTE // (XXX) XXX-XXXX<br />Nov 21 2026  3:13PM [8] A52-022 REQ 1185/SMALL PK 1125 IN NB LN<br />Nov 21 2026  3:11PM [3] MALE STILL IN VEH<br />Nov 21 2026  3:11PM [2] SIDEWAYS IN NB LANE ON ITS SIDE<br />Nov 21 2026  3:10PM [1] SOLO VEH SPIN<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.214717,41.268613,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121CH0204
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1183-Trfc Collision-Unkn Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:08PM <br> Abshire Ave / Dos Rios Rd</p>
+        <p class="iw-text">Nov 21 2026  3:09PM [5] DRVR OO VEH <br />Nov 21 2026  3:09PM [4] NEG 1125<br />Nov 21 2026  3:08PM [3] VEH INTO THE DITCH <br />Nov 21 2026  3:08PM [2] SOLO VEH TC<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.656948,39.421653,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121TK0070
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">20002-Hit and Run No Injuries</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:06PM <br> US50 / Johnson Pass Rd</p>
+        <p class="iw-text">Nov 21 2026  3:08PM [2] SV: SLID INTO RP VEH <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-120.044655,38.824304,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121TK0056
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">SNOW Information</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:55PM <br> 0 Sr88</p>
+        <p class="iw-text">Nov 21 2026 12:55PM [3] [Notification] [CHP]-Problem changed from SNOFL-Joint Weather Ops to SNOW Information by CHP<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-120.044446,38.700356,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121TK0015
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">SNOW Information</h2>
+        
+        <p class="iw-text">Nov 21 2026  6:01AM <br> 10152 E Keiser Ave</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-120.183004,39.331061,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121TK0014
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">SNOW Information</h2>
+        
+        <p class="iw-text">Nov 21 2026  5:48AM <br> Eb Jwo Blue Canyon</p>
+        <p class="iw-text">Nov 21 2026  5:22AM [5] [Appended, 07:18:23] [2] [Notification] [CHP]-Problem changed from 1013-Road/Weather Conditions to SNOW Information by CHP<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-120.713725,39.273467,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121TK0012
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">SNOW Information</h2>
+        
+        <p class="iw-text">Nov 21 2026  4:56AM <br> 51121 Donner Pass Rd</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-120.442656,39.316381,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121TK0008
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">SNOW Information</h2>
+        
+        <p class="iw-text">Nov 21 2026  1:44AM <br> 2243 Cornelian Dr</p>
+        <p class="iw-text">Nov 21 2026  1:44AM [1] 13-R1 POLLY VEH 1739253 BM 7520 TIL 1830<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-120.018482,38.847139,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/full-closure-32x32.png" />
+            CHP Incident 261121TK0007
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">CLOSURE-Closure of a Road</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:59AM <br> 10475 Pioneer Trl</p>
+        <p class="iw-text">Nov 21 2026  1:06AM [5] ^80 WB DONNER SUMMIT REST AREA<br />Nov 21 2026  1:06AM [4] ^ 4 EBBETTS PASS<br />Nov 21 2026  1:06AM [3] ^ 89 MONITOR PASS<br />Nov 21 2026  1:06AM [2] ^ 89WS EMERALD BAY<br />Nov 21 2026  1:05AM [1] ^ 40- DONNER PASS/ OLD 40<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#full-closure</styleUrl>
+  <Point><coordinates>-120.174906,39.338241,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121TK0003
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">CHAINS-Chain Control</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:39AM <br> 10475 Pioneer Trl</p>
+        <p class="iw-text">Nov 21 2026 12:33PM [10] ^ 88- NO CONTROLS <br />Nov 21 2026 10:10AM [8] [Notification] [CHP]-^50 - NO CONTROLS<br />Nov 21 2026 12:56AM [4] ^ 50 R2 TWIN BRIDGES TO MEYERS <br />Nov 21 2026 12:56AM [2] ^ 89 R1 MARKLEEVILLE TO WOODFORDS JUNCTION <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-120.174906,39.338241,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121UK0068
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:32PM <br> US101 N / N STATE ST OFR</p>
+        <p class="iw-text">Nov 21 2026  3:23PM [48] B18-010 1185 97 [Shared]<br />Nov 21 2026  3:04PM [45] [Rotation Request Comment] 1039 ALL IN ONE (XXX) XXX-XXXX [Shared]<br />Nov 21 2026  2:54PM [39] [Rotation Request Comment] 1039 SandS TOWING (XXX) XXX-XXXX
+ [Shared]<br />Nov 21 2026  2:54PM [38] B18-021 UU 1185 VEH APPROX 20 FT DOWN EMBANKMENT / EXPIDITE 30 FT RV [Shared]<br />Nov 21 2026  2:47PM [33] A18-010 FIRE WORKING ON EXTRICATING [Shared]<br />Nov 21 2026  2:46PM [31] A18-010 BETTER SB OFFRAMP FROM 101 [Shared]<br />Nov 21 2026  2:43PM [28] 1039 1141 [Shared]<br />Nov 21 2026  2:43PM [27] RP FLAGGED DOWN FIRE TK  [Shared]<br />Nov 21 2026  2:42PM [22] LL RP // RP IS HEADING TOWARD RD // ADVD ON MERGE TO N STATE // OFF N STATE [Shared]<br />Nov 21 2026  2:35PM [9] 1039 CDF <br />Nov 21 2026  2:35PM [15] [Appended, 14:37:32] [5] OCCUPANTS ARE IN VEH-APPEARS TO BE INJ<br />Nov 21 2026  2:35PM [14] [Appended, 14:37:32] [4] 1 VEH TC<br />Nov 21 2026  2:34PM [12] [Appended, 14:37:32] [2] POSS 1 PTY INJ <br />Nov 21 2026  2:34PM [5] [Notification] [CHP]-Problem changed from 1183-Trfc Collision-Unkn Inj to 1179-Trfc Collision-1141 Enrt by CHP<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-123.207951,39.169143,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121MY0295
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">ANIMAL-Live or Dead Animal</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:26PM <br> Exit 282a, Us 101 At Canal St</p>
+        <p class="iw-text">Nov 21 2026  3:27PM [2] ON RHS NEAR  THE LN <br />Nov 21 2026  3:26PM [1] LRG BLK DOG  <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.123803,36.202648,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121MY0285
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:13PM <br> 3350 Mission Dr</p>
+        <p class="iw-text">Nov 21 2026  3:26PM [8] B26-021  NEG TC , PARTY FELL OFF SCOTTER <br />Nov 21 2026  3:14PM [5] FIRE GOING  97<br />Nov 21 2026  3:13PM [2] POSS VEH VS PED BUT UNK <br />Nov 21 2026  3:13PM [1] PED DOWN IN THE RDWY <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.979992,36.991636,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121MY0277
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:57PM <br> Sr1 / Bixby Brdg</p>
+        <p class="iw-text">Nov 21 2026  2:58PM [3] CHP IS AT OLD COAST RD<br />Nov 21 2026  2:58PM [1] SEVERAL VEHS PULLED OVER AND OTHER VEHS W/ HAZARDS WAITING FOR A PARKING SPOT<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.902408,36.372378,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121MY0265
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1182-Trfc Collision-No Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:35PM <br> Us101 N / Cochrane Rd Ofr</p>
+        <p class="iw-text">Nov 21 2026  2:52PM [9] RP RECALLED ADVSD SUBJ TRYING TO LEAVE TO FUNERAL - ADVSD TO STAY 1097  [Shared]<br />Nov 21 2026  2:36PM [4] VEHS ON RHS <br />Nov 21 2026  2:36PM [2] BLU TESLA VS ONG LEXS <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.648421,37.149,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121MY0025
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1013-Road/Weather Conditions</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:21AM <br> Us101 N / Masten</p>
+        <p class="iw-text">Nov 21 2026  3:21AM [1] , LEVEL 2 FOG F/ MASTEN TOWARDS SAN JOSE<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.584344,37.059386,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG1613
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1183-Trfc Collision-Unkn Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:25PM <br> I580 W / Sr238 N I580 W Con</p>
+        <p class="iw-text">Nov 21 2026  3:27PM [5] 2 PTYS OO VEH<br />Nov 21 2026  3:27PM [4] CORR LINE 3 -- BLKG LN #1 <br />Nov 21 2026  3:27PM [3] BOTH IN CD <br />Nov 21 2026  3:26PM [1] 2 VEHS INVD <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.10321,37.69444,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG1602
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:24PM <br> 0 US101 S</p>
+        <p class="iw-text">Nov 21 2026  3:26PM [10] 32-23  PRTY OOG // WILL ATEMPT TO PUSH OFF TO POTERO X 24TH [Shared]<br />Nov 21 2026  3:24PM [5] [Appended, 15:25:53] [3] PTYS IN VEH <br />Nov 21 2026  3:24PM [1] ,,,,,,BLKG LN 1  // BRO ACUR //<br />Nov 21 2026  3:24PM [4] [Appended, 15:25:53] [2] BLKG LN 1<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.40358,37.756828,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG1608
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:23PM <br> Sr242 N / Sr242 N Sr4 E Con</p>
+        <p class="iw-text">Nov 21 2026  3:24PM [3] NEG ASSOC VEH <br />Nov 21 2026  3:23PM [1] TRASH CAN BLKG LN 4 <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.037725,38.000481,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG1599
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1183-Trfc Collision-Unkn Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:21PM <br> 2625 River Rd</p>
+        <p class="iw-text">Nov 21 2026  3:30PM [17] B17-030B  1185  FOR NISS KICK W/ MAJ RE DMG [Shared]<br />Nov 21 2026  3:26PM [14] [Notification] [CHP]-PER REDCOM  ---   HAVE THE CALL AT    2377 RIVER RD     IPHONE NOTIFICATION -- ERNT    [Shared]<br />Nov 21 2026  3:24PM [13] [Appended, 15:25:55] [2] VEHS PARTLY BLKG  <br />Nov 21 2026  3:23PM [6]  CORR  SIL PKTK   VS SIL SD <br />Nov 21 2026  3:23PM [4] ON RHS <br />Nov 21 2026  3:23PM [3] WHI SM SD   VS  SIL SD <br />Nov 21 2026  3:22PM [2] 2 VEH <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.799275,38.490314,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG1588
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:17PM <br> I580 E / Seminary Ave Onr</p>
+        <p class="iw-text">Nov 21 2026  3:18PM [2]  VEH IN LN 4 AND GORE POINT<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.169144,37.778568,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG1576
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1183-Trfc Collision-Unkn Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:12PM <br> 0 I280 N Us101 N Con</p>
+        <p class="iw-text">Nov 21 2026  3:13PM [5] PER RAPID - NB 280 TO NB 101 CON RAMP W/19 METERS - 90%<br />Nov 21 2026  3:12PM [1] IPHONE TC NOTIFICATION<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.407511,37.737512,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG1581
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1182-Trfc Collision-No Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:11PM <br> I80 E / I80 E Sr37 W Con</p>
+        <p class="iw-text">Nov 21 2026  3:20PM [11] [Appended, 15:21:32] [3] BOTH VEHS ON RHS<br />Nov 21 2026  3:20PM [10] [Appended, 15:21:32] [2] WHI RIVIAN VS GRY TOYT CAM<br />Nov 21 2026  3:15PM [4] TOYT INSISTS THEY DID NOT MAKE CONTACT WITH ANY VEH // RANGE ROVER ADVD OTHERWISE<br />Nov 21 2026  3:15PM [3] ON RHS <br />Nov 21 2026  3:14PM [2] GRY TOYT CAM VS WHI RANGE ROVER <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.223653,38.133272,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG1561
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:02PM <br> I680 S / Andrade Rd Ofr</p>
+        <p class="iw-text">Nov 21 2026  3:11PM [9] 1039 3A C#25022668/ LOYAL TOWING/20 MIN ETA<br />Nov 21 2026  3:07PM [4] REQ CHP FOR 1110/ ANDRADE OFR<br />Nov 21 2026  3:06PM [2] RP IN RED MERZ E300/ FT/NEG SPARE/ RHS OF ANDRADE OFR<br />Nov 21 2026  3:04PM [1] 3 LARGE POTHOLES/ SLOW LN<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.881032,37.575983,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG1563
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1182-Trfc Collision-No Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:02PM <br> Sr24 W / Wilder Rd</p>
+        <p class="iw-text">Nov 21 2026  3:06PM [7] BOTH ON RHS <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.200872,37.868261,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG1544
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">20002-Hit and Run No Injuries</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:52PM <br> 22141 Center St</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.062377,37.689014,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG1524
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:48PM <br> I680 S / Sunol Blvd Ofr</p>
+        <p class="iw-text">Nov 21 2026  3:25PM [8] B118-064 UTL ON ANY GYM EQUITMENT  ON BERNAL TO 84  // OS BASE OF A CONE SB JNO BERNAL -- WILL FLIP AROUND<br />Nov 21 2026  2:50PM [2] NEG ASSOC VEH <br />Nov 21 2026  2:49PM [1]  GYM WEIGH WEIGHT  BLKG LN 2 <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.887258,37.642905,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG1514
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:39PM <br> Graton Rd / Harrison Grade Rd</p>
+        <p class="iw-text">Nov 21 2026  2:44PM [1] METAL STAND BLKG ROAD <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.93812,38.416586,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG1179
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">20002-Hit and Run No Injuries</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:23PM <br> Us101 S / Francisco Blvd Ofr</p>
+        <p class="iw-text">Nov 21 2026  2:13PM [113] 34-50 ADV VALLEY TOW  [Shared]<br />Nov 21 2026  2:09PM [112] [Notification] [CHP]-CONFIRM 1185 INFO [Shared]<br />Nov 21 2026  2:08PM [111] [Notification] [CHP]-Problem changed from 1183-Trfc Collision-Unkn Inj to 20002-Hit and Run No Injuries by CHP [Shared]<br />Nov 21 2026  2:07PM [108] 1039 NOVATO HOSPITAL // NEG WALK-INS [Shared]<br />Nov 21 2026  2:06PM [107] 1039 KAISER SRFL // NEG WALK-INS [Shared]<br />Nov 21 2026  2:03PM [106] 1039 MARIN GENERAL // NEG WALK-INS [Shared]<br />Nov 21 2026  1:27PM [100] A34-080 ALL LNS OPEN -- 98 [Shared]<br />Nov 21 2026  1:23PM [98] 1039 SAN PABLO PD -- 06/2022 FOR 415 DOMESTIC // AND 10851 IN 2022 [Shared]<br />Nov 21 2026 12:47PM [48] [CHP] has closed their incident [261121GG1165]<br />Nov 21 2026 12:41PM [41] [Appended, 12:44:08] [2] BLKG LN 1  [Shared]<br />Nov 21 2026 12:39PM [36] A34-115 FIRE IS OUT [Shared]<br />Nov 21 2026 12:36PM [35] A34-115  FIRE IS 97 [Shared]<br />Nov 21 2026 12:34PM [34] A34-070 PRTLY BLKG LN 1 AND  2  [Shared]<br />Nov 21 2026 12:32PM [75] [Appended, 12:47:40] [31] [Appended, 12:36:54] [9] [Appended, 12:34:16] [4] PTY OO VEH <br />Nov 21 2026 12:32PM [74] [Appended, 12:47:40] [30] [Appended, 12:36:54] [8] [Appended, 12:34:16] [3] VEH ON LHS <br />Nov 21 2026 12:32PM [33] 1039 SRFL PD // CPYS ALL [Shared]<br />Nov 21 2026 12:31PM [31] XFER TO FIRE  [Shared]<br />Nov 21 2026 12:29PM [28] DRVR OF VEH IS NEAR THE TOYT DEALERSHIP  [Shared]<br />Nov 21 2026 12:29PM [69] [Appended, 12:47:40] [26] [Appended, 12:36:54] [4] PTYS ASSISTING - GETTING INV OO VEH<br />Nov 21 2026 12:28PM [67] [Appended, 12:47:40] [24] [Appended, 12:36:54] [2] BLKG LN 1<br />Nov 21 2026 12:27PM [24] INVLVD JUMPING IN THE WATER UNDER THE BRIDGE  [Shared]<br />Nov 21 2026 12:27PM [23] [Notification] [CHP]-XFER FIRE PER LINE 17 [Shared]<br />Nov 21 2026 12:27PM [21] VEH HAS SPEEDING AND I/ O LNS [Shared]<br />Nov 21 2026 12:27PM [19] [Appended, 12:27:18] [5] VEH WAS 23103 PRIOR SPEEDING AND WEAVING I/O LNS<br />Nov 21 2026 12:26PM [18] [Appended, 12:27:18] [4] MALE STANDING OO VEH / THOWING ITEMS OO VEH<br />Nov 21 2026 12:25PM [17] [Appended, 12:27:18] [3] SMOKE AND FLAMES COMING FROM UNDER VEH<br />Nov 21 2026 12:25PM [7] [Appended, 12:26:20] [2] POSSIBLY HIT CD <br />Nov 21 2026 12:25PM [16] [Appended, 12:27:18] [2] VEH ON LHS <br />Nov 21 2026 12:25PM [3] IN CD <br />Nov 21 2026 12:25PM [15] [Appended, 12:27:18] [1] WHI INFI SD VS UNK <br />Nov 21 2026 12:24PM [2] VS CD <br />Nov 21 2026 12:19PM [57] [Appended, 12:47:40] [10] [Appended, 12:21:41] [2] DOORS OPEN <br />Nov 21 2026 12:19PM [56] [Appended, 12:47:40] [9] [Appended, 12:21:41] [1] GRY  MERZ E350   BLKG LN 1  <br />Nov 21 2026 12:18PM [53] [Appended, 12:47:40] [4] VEH BLKG UNK LN<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.51269,37.964008,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG1077
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">20002-Hit and Run No Injuries</h2>
+        
+        <p class="iw-text">Nov 21 2026 11:48AM <br> 2555 Middlefield Rd</p>
+        <p class="iw-text">Nov 21 2026  2:38PM [43] A91-074 1022 1185<br />Nov 21 2026  2:35PM [41] [Rotation Request Comment] 1039 Broadway Towing (XXX) XXX-XXXX<br />Nov 21 2026  2:32PM [38] A91-074 START 1185 CHRY 300<br />Nov 21 2026  1:10PM [19] UNK IF VEH IS OCCUPIED OR 1124<br />Nov 21 2026  1:10PM [18] [Notification] [CHP]-SMSO ADV THEY HAVE VISUAL OF VEH IFO 3541 MIDDLEFIELD RD/ BEAT 91-505<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.213656,37.478182,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG0764
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">ESCORT for Road Conditions</h2>
+        
+        <p class="iw-text">Nov 21 2026  9:23AM <br> 355 Convention Way</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.225916,37.493028,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG0752
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">FOG-Foggy Conditions</h2>
+        
+        <p class="iw-text">Nov 21 2026  9:21AM <br> Sr160 N / Toll Plaza (tp)</p>
+        <p class="iw-text">Nov 21 2026  9:22AM [3] 1039 DOTCC<br />Nov 21 2026  9:22AM [2] TASK 19-404 TMCGG, FOG ADVS PLS<br />Nov 21 2026  9:21AM [1] A19-404A FOG ADVS <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-121.751484,38.015147,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG0648
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  8:31AM <br> Us101 S / Shoreline Blvd Ofr</p>
+        <p class="iw-text">Nov 21 2026  3:24PM [58] [Appended, 15:30:24] [4] RP CPY LINE 3 AND TOW INFO  FORTES BROTHERS TOWING MVW (XXX) XXX-XXXX<br />Nov 21 2026  3:17PM [55] [Appended, 15:30:24] [1] LOOKING FOR VEH <br />Nov 21 2026  9:50AM [48] Secondary Location for A91-078: 2154 REINERT RD APT 2 MVW,<br />Nov 21 2026  9:50AM [47] Secondary Location for A91-058: 2154 REINERT RD APT 2 MVW,<br />Nov 21 2026  9:49AM [46] 1039 MVW TO REMOVE VEH <br />Nov 21 2026  9:45AM [45] Secondary Location for A91-058: 2154 REINERT RD APT 2 MVW,<br />Nov 21 2026  9:45AM [44] Secondary Location for A91-078: 2154 REINERT RD APT 2 MVW,<br />Nov 21 2026  9:43AM [43] A91-035 OFR OPEN<br />Nov 21 2026  9:41AM [41] A91-058 1185 ON THEIR WAY/ WILL BE OPENING OFR SHORTLY<br />Nov 21 2026  9:22AM [39] 1039 DOTCC<br />Nov 21 2026  8:54AM [31] A91-058 1185 97 OFR CLOSED WHILE 1185 HOOKS UP VEH<br />Nov 21 2026  8:48AM [22] A91-035 FIRE BLKG OFR<br />Nov 21 2026  8:47AM [21] A91-078 1124 AND 1125 SIL BMW SUV<br />Nov 21 2026  8:44AM [19] MVW LL - SINGLE VEH OT ON SIDE / RHS / NEG PTYS INSIDE VEH<br />Nov 21 2026  8:36AM [18] [Rotation Request Comment] 1039 Fortes Brothers Towing MVW (XXX) XXX-XXXX<br />Nov 21 2026  8:35AM [16] 1039 1141<br />Nov 21 2026  8:35AM [14] A91-035 REQ 1185<br />Nov 21 2026  8:34AM [9] REAR WINDOW IS OPEN <br />Nov 21 2026  8:34AM [8] WINDOWS ARE CLOSED <br />Nov 21 2026  8:33AM [6] RHS <br />Nov 21 2026  8:32AM [1] GRY BMW SUV VS UNK <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.081123,37.413077,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/full-closure-32x32.png" />
+            CHP Incident 261121GG0509
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">CLOSURE of a Road</h2>
+        
+        <p class="iw-text">Nov 21 2026  7:12AM <br> I280 N / Westlake Ave Ofr</p>
+        <p class="iw-text">Nov 21 2026  2:42PM [7] [Notification] [CHP]-DOT 1098- OFR OPEN<br />Nov 21 2026  2:39PM [6] CLOSURE EXTENDED UNTIL 1500 HOURS<br />Nov 21 2026  7:13AM [1] OFR WILL BE CLOSED<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#full-closure</styleUrl>
+  <Point><coordinates>-122.470259,37.692917,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121GG0002
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">TADV-Traffic Advisory</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:00AM <br> 1551 Benicia Rd</p>
+        <p class="iw-text">Nov 21 2026  9:24AM [3] ^***ISSUE FOG ADV FOR ANTIOCH BRIDGE HWY 160 **** REF L 752 <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-122.203166,38.085439,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121SL0180
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1183-Trfc Collision-Unkn Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:54PM <br> SR1 / S 17th St</p>
+        <p class="iw-text">Nov 21 2026  3:06PM [10] ***CAUTION - VEHICLE MAY BE ASSOCIATED WITH WANTED PERSON(S)*** ** WANTED PERSONS SYSTEM RESPONSE **HIT #001ORI/CA0199940 FCN/(XXX) XXX-XXXX161NIC/W830182240NAM/GARCIA,RAUL GARCIA             19860814 M H 509 210 BLK BRO MX DOW/20111223 WNO/LASPA07224301 OFF/3599 DANGEROUS DRUG FEL ENT/2DOP/ BAIL/10,000 OCA/A07224301 REF/GRIFFTIH (XXX) XXX-XXXX0 LIG/5XSB026 LIS/CA LIY/2011 LIT/PCAKA/GARCIA,RAULOLG/D5963612.CA.2011SUBJECT MAY BE SAME AS  CII/A24797947 FBI/344460CC2<br />Nov 21 2026  2:55PM [2] 1039 SLOSO <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-120.612467,35.09884,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1756
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">20002-Hit and Run No Injuries</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:27PM <br> I605 N / Sr91</p>
+        <p class="iw-text">Nov 21 2026  3:29PM [4] VV 1023 ON RS NB 605 JSO 91<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.102337,33.876381,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1748
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:27PM <br> I5 N / Penrose St</p>
+        <p class="iw-text">Nov 21 2026  3:27PM [1] O/SHOT LARGE MAT 1125 #4 NB 5 JSO PENROSE<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.375472,34.226214,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1757
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">20002-Hit and Run No Injuries</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:26PM <br> 1809 Blake Ave</p>
+        <p class="iw-text">Nov 21 2026  3:26PM [2] POI: FLETCHER OFR FROM SB 2 <br />Nov 21 2026  3:26PM [1] 2 VEH TC<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.242858,34.097066,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1751
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:26PM <br> Sr134 W / Sr2 S Sr134 W Con</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.2358,34.151908,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1749
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:25PM <br> I405 S / I405 S Sr90 E Con</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.403666,33.993369,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1747
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1182-Trfc Collision-No Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:25PM <br> I405 S / Valley Vista Blvd</p>
+        <p class="iw-text">Nov 21 2026  3:26PM [2] ON RHS <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.469156,34.149131,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1750
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">20002-Hit and Run No Injuries</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:25PM <br> I210 E / Sr134 E</p>
+        <p class="iw-text">Nov 21 2026  3:27PM [4] VV - UNK - ON RS<br />Nov 21 2026  3:26PM [3] VV - WHI VAN - ON RS <br />Nov 21 2026  3:25PM [1] 3 VEH TC <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.141613,34.151692,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LAFSP0079
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1182-Trfc Collision-No Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:22PM <br> I5 S / Indiana St Ofr</p>
+        <p class="iw-text">Nov 21 2026  3:29PM [7] [Notification] [FSP]-FSP W/VISUAL - TC JSO LORENA BLKG #1 LN  [Shared]<br />Nov 21 2026  3:22PM [1] [1] GRY FORD CMAX VS TOYT TK// IN CD // TRFC COMMING IN HOT // VEHS ARE DRIVABLE // RP ADV NO INJ // HUSBAND WAS BLEEDING ON ELBOW BUT NOW HAS STOPPPED //DECLINED 1141 // SAG[Shared]<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.196585,34.021455,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1731
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1182-Trfc Collision-No Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:19PM <br> I5 S / Indiana St Ofr</p>
+        <p class="iw-text">Nov 21 2026  3:29PM [7] [Notification] [FSP]-FSP W/VISUAL - TC JSO LORENA BLKG #1 LN  [Shared]<br />Nov 21 2026  3:22PM [1] GRY FORD CMAX VS TOYT TK// IN CD // TRFC COMMING IN HOT // VEHS ARE DRIVABLE // RP ADV NO INJ // HUSBAND WAS BLEEDING ON ELBOW BUT NOW HAS STOPPPED //DECLINED 1141 // SAG<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.196585,34.021455,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1734
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">20002-Hit and Run No Injuries</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:18PM <br> S Wilmington Ave / W Victoria St</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.235678,33.867869,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1719
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1182-Trfc Collision-No Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:17PM <br> Us101 S / Woodman Ave Ofr</p>
+        <p class="iw-text">Nov 21 2026  3:18PM [2] BOTH VEHS TO THE RS -- W/ HAZ LIGHTS ON<br />Nov 21 2026  3:18PM [1] WHI RANGE ROVER VS UHAUL VAN <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.43484,34.155555,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1707
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:13PM <br> Sr57 S / Grand Ave</p>
+        <p class="iw-text">Nov 21 2026  3:24PM [9] STILL BLKG  [Shared]<br />Nov 21 2026  3:14PM [1] SIL SUBA OUTBACK BLKG FAST LN<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.823433,34.010307,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1700
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:07PM <br> Crenshaw Blvd / Palos Verdes Dr N</p>
+        <p class="iw-text">Nov 21 2026  3:18PM [9] VEH VS FENCE // ADVS MIN INJ BUT LACOFD IS CHECKING PTYS OUT [Shared]<br />Nov 21 2026  3:17PM [8] [Notification] [CHP]-LOMSO CALLING BACK // REQ ETA IF POSS  [Shared]<br />Nov 21 2026  3:10PM [5] 1039 LACOFD INC#5937<br />Nov 21 2026  3:09PM [4] LOMSO ADVS TC OCCD 500 FT JSO I/S<br />Nov 21 2026  3:07PM [1] SOLO VEH TC // 2 OCCUPANTS<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.352323,33.782399,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LAFSP0075
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:00PM <br> Sr110 N / Solano Ave Ofr</p>
+        <p class="iw-text">Nov 21 2026  2:59PM [1] [1] WHI VAN  WITH HAZARDS ON // UNK IF BLKG - RP HAD VISUAL FROM SB LNS[Shared]<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.232408,34.074682,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1681
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:56PM <br> Sr110 N / Solano Ave Ofr</p>
+        <p class="iw-text">Nov 21 2026  2:59PM [1] WHI VAN  WITH HAZARDS ON // UNK IF BLKG - RP HAD VISUAL FROM SB LNS<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.232408,34.074682,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1675
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1182-Trfc Collision-No Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:53PM <br> I105 E / Paramount Blvd</p>
+        <p class="iw-text">Nov 21 2026  3:31PM [21] [FSP] has closed their incident [261121LAFSP0080]<br />Nov 21 2026  3:29PM [18] B82-074 ADVS EB PARAMOUNT-  VEHS STILL BLK'ING - REQ RE-ROLL FSP AND ADVS SPRINGS THEIR HANDLE  [Shared]<br />Nov 21 2026  3:26PM [16] [FSP] has closed their incident [261121LAFSP0074]<br />Nov 21 2026  3:26PM [15] [Notification] [FSP]-40B ADVSD 3A 97 // RDWY CLR  [Shared]<br />Nov 21 2026  3:14PM [12] [Notification] [FSP]-40B VEH STILL BLKNG  [Shared]<br />Nov 21 2026  2:55PM [2] BLKG SLOW LN<br />Nov 21 2026  2:55PM [1] GRY TOYT HGH VS BRO HOND ACC <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.15995,33.911735,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1664
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1182-Trfc Collision-No Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:47PM <br> 4201 City Terrace Dr</p>
+        <p class="iw-text">Nov 21 2026  2:48PM [1] DRK BLU HOND CIV VS BLU SUBA -- ON RS <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.175144,34.056791,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LAFSP0068
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:41PM <br> I605 N / Telegraph Rd Onr</p>
+        <p class="iw-text">Nov 21 2026  3:28PM [44] [Notification] [CHP]-KENNYS TOW CALLED IN TO ADVS THEY ARE STUCK IN HEAVY TRAFFIC AT FIRESTONE  [Shared]<br />Nov 21 2026  3:20PM [42] [Notification] [CHP]-1039 3A  ID#722602  SO#58163162   HELMS and HILL TOW  (XXX) XXX-XXXX ETA 60 [Shared]<br />Nov 21 2026  3:13PM [39] B83-092 HOV 1 AND 2 CONNED OFF 3 AND 4 OPEN  [Shared]<br />Nov 21 2026  3:12PM [38] B83-650 1185 THRU 3A-- (XXX) XXX-XXXX159302 FOR TOYT PRIUS// REAR BO TIRE [Shared]<br />Nov 21 2026  3:01PM [37] [Rotation Request Comment] 1039 KENNY TOWING (XXX) XXX-XXXX//20 OL [Shared]<br />Nov 21 2026  3:00PM [36] [Rotation Request Comment] 1021 ASTRO TOW (XXX) XXX-XXXX-- NEG TKS AVAILABLE [Shared]<br />Nov 21 2026  2:59PM [34] B83-092 REQ 1185 FOR MC // FB [Shared]<br />Nov 21 2026  2:54PM [28] B83-092 ALL LNS STOPPED JNO TELEGRAPH  [Shared]<br />Nov 21 2026  2:51PM [26] B83-021 BLKING HOV AND #1 LN  [Shared]<br />Nov 21 2026  2:46PM [23] [Appended, 14:47:35] [1] MCS WERE 23103 PRIOR TO TC // CUTTING VEHS OFF // NEAR TCS [Shared]<br />Nov 21 2026  2:42PM [20] [Appended, 14:43:31] [5] PER ADDTL 6 VEHS 2 MCS [Shared]<br />Nov 21 2026  2:41PM [11] [11] PTY IN BLU MERZ NO INJ //XFER SANTA FE SPRINGS FD [Shared][Shared]<br />Nov 21 2026  2:41PM [17] [Appended, 14:43:31] [2] BLK'ING LEFT LNS  [Shared]<br />Nov 21 2026  2:40PM [6] [6] HARLEY VS VEH  [Shared][Shared]<br />Nov 21 2026  2:39PM [1] [1] 3 MC TC [Shared]<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.090256,33.952416,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1637
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:39PM <br> I605 N / Telegraph Rd Onr</p>
+        <p class="iw-text">Nov 21 2026  3:28PM [45] [Notification] [CHP]-KENNYS TOW CALLED IN TO ADVS THEY ARE STUCK IN HEAVY TRAFFIC AT FIRESTONE  [Shared]<br />Nov 21 2026  3:20PM [43] [Notification] [CHP]-1039 3A  ID#722602  SO#58163162   HELMS and HILL TOW  (XXX) XXX-XXXX ETA 60 [Shared]<br />Nov 21 2026  3:13PM [40] B83-092 HOV 1 AND 2 CONNED OFF 3 AND 4 OPEN  [Shared]<br />Nov 21 2026  3:12PM [39] B83-650 1185 THRU 3A-- (XXX) XXX-XXXX159302 FOR TOYT PRIUS// REAR BO TIRE [Shared]<br />Nov 21 2026  3:01PM [38] [Rotation Request Comment] 1039 KENNY TOWING (XXX) XXX-XXXX//20 OL [Shared]<br />Nov 21 2026  3:00PM [37] [Rotation Request Comment] 1021 ASTRO TOW (XXX) XXX-XXXX-- NEG TKS AVAILABLE [Shared]<br />Nov 21 2026  2:59PM [35] B83-092 REQ 1185 FOR MC // FB [Shared]<br />Nov 21 2026  2:54PM [29] B83-092 ALL LNS STOPPED JNO TELEGRAPH  [Shared]<br />Nov 21 2026  2:51PM [27] B83-021 BLKING HOV AND #1 LN  [Shared]<br />Nov 21 2026  2:46PM [24] [Appended, 14:47:35] [1] MCS WERE 23103 PRIOR TO TC // CUTTING VEHS OFF // NEAR TCS<br />Nov 21 2026  2:42PM [21] [Appended, 14:43:31] [5] PER ADDTL 6 VEHS 2 MCS [Shared]<br />Nov 21 2026  2:41PM [11] PTY IN BLU MERZ NO INJ //XFER SANTA FE SPRINGS FD [Shared]<br />Nov 21 2026  2:41PM [18] [Appended, 14:43:31] [2] BLK'ING LEFT LNS <br />Nov 21 2026  2:40PM [6] HARLEY VS VEH  [Shared]<br />Nov 21 2026  2:39PM [1] 3 MC TC <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.090256,33.952416,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1658
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">20002-Hit and Run No Injuries</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:36PM <br> 4690 Colorado Blvd</p>
+        <p class="iw-text">Nov 21 2026  2:45PM [6] CORR LINE 5--- TC OCURED  EB 134 JEO FOREST LAWN<br />Nov 21 2026  2:38PM [5] POI EB 101 JWO SB 5 TRANS <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.274579,34.140573,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1638
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:36PM <br> Us101 S / N Alameda St</p>
+        <p class="iw-text">Nov 21 2026  2:39PM [1] PLYWOOD IN THE #1 LN<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.237857,34.054078,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1571
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">20002-Hit and Run No Injuries</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:13PM <br> 1418 4th St</p>
+        <p class="iw-text">Nov 21 2026  3:04PM [13] [Appended, 15:09:31] [4] RP ADV BABY WAS CRYING THE VEH - RP DIDN'T THINK VEH 'S MADE CONTACT  AND LEFT <br />Nov 21 2026  3:04PM [12] [Appended, 15:09:31] [3] OTHER VEH INVLD POSS WHI BMW<br />Nov 21 2026  3:04PM [10] [Appended, 15:09:31] [1] RP WAS INVLD IN TC  AT 1400 HRS <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.494869,34.016178,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1552
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:12PM <br> I10 W / Francisquito Ave</p>
+        <p class="iw-text">Nov 21 2026  3:20PM [46] 81-105 97/98 - MC IN TOW [Shared]<br />Nov 21 2026  2:43PM [22] [Rotation Request Comment] 1039 JAN'S TOW (XXX) XXX-XXXX // ENRT W/ FB ETA 20 OL [Shared]<br />Nov 21 2026  2:42PM [20] A81-103 1185 FOR BLK HARLEY DAVIDSON MC   [Shared]<br />Nov 21 2026  2:33PM [19] [Notification] [CHP]-LAPD OP 318 INC # 2439 - LAPD 10-97 PROVIDING 1184  [Shared]<br />Nov 21 2026  2:28PM [17] A81-103 #1 #2 #3 LNS SHUTDOWN   [Shared]<br />Nov 21 2026  2:14PM [11] TRANS TO LACOFD [Shared]<br />Nov 21 2026  2:12PM [5] 1125 #3  [Shared]<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.974155,34.068639,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA1544
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:09PM <br> I405 N / W Olympic Blvd</p>
+        <p class="iw-text">Nov 21 2026  3:22PM [34] 79-62 CPYS LN 32 [Shared]<br />Nov 21 2026  3:11PM [30] [FSP] has closed their incident [261121LAFSP0059]<br />Nov 21 2026  2:53PM [29] 79-63 CPYS ETA 5 MIN  [Shared]<br />Nov 21 2026  2:52PM [28] [Notification] [CHP]-LAPD OP#751 INC#2521 // LAPD HAS 2 UNITS 97 ASSISTING W/ TRAFFIC // WILL 1023 UNTIL CHP GOES 97  [Shared]<br />Nov 21 2026  2:24PM [23] PER INLVD BOTH VEHS ARE TOTALED// DRVR OF BRO TK HAS 3A WILL CALL TO GET THEM STARTED [Shared]<br />Nov 21 2026  2:23PM [21] [Appended, 14:23:46] [4] VEHS ARE BLKING THE RIGHT LNS// RP UNABLE TO ADVS WHICH LANES<br />Nov 21 2026  2:22PM [19] [Appended, 14:23:46] [2] BRO CHEV COLORADO vs RED TESL SD <br />Nov 21 2026  2:21PM [18] [Appended, 14:23:46] [1] 2 VEH TC <br />Nov 21 2026  2:12PM [13] [Appended, 14:14:38] [5] RP ADVS ALREADY ON THE NB 405 FROM THE TRANS <br />Nov 21 2026  2:11PM [10] [Appended, 14:14:38] [2] BLKING #2 LN <br />Nov 21 2026  2:10PM [1] RP ADVSD RED TESLA VS BGE CHEV PK TK // BLKNG LNS<br />Nov 21 2026  2:10PM [9] [Appended, 14:14:38] [1] RP IN RED TESLA VS WHI TOYT COA <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.43975,34.039089,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/full-closure-32x32.png" />
+            CHP Incident 261121LA1278
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">CLOSURE of a Road</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:06PM <br> I605 N / Valley Blvd Ofr</p>
+        <p class="iw-text">Nov 21 2026 12:06PM [2] [Notification] [CHP]-Problem changed from INFO-Information to CLOSURE of a Road by CHP<br />Nov 21 2026 12:06PM [1] ,CT W/ RAMP CLOSURE UNKN ETA TO OPENING<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#full-closure</styleUrl>
+  <Point><coordinates>-118.006003,34.050982,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA0425
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">MZP-Assist CT with Maintenance</h2>
+        
+        <p class="iw-text">Nov 21 2026  4:52AM <br> 102 S Humphreys Ave</p>
+        <p class="iw-text">Nov 21 2026 12:19PM [5] 82-MZP1 ALL TRFC RELEASED - NB 710 ATLANTIC ONR NOW OPEN <br />Nov 21 2026 12:15PM [4] 82-MZP2 ALL LNS STOPPED NB 710 JSO ATLANTIC <br />Nov 21 2026  8:26AM [3] 82-MZP1 WILL HAVE #4 LANE CLOSED FRM  ATLANTIC TO FLORENCE ON SB 710<br />Nov 21 2026  6:29AM [2] 82-MZP1 W/ TRFC BRK ALL LNS - NB 710 JSO ATLANTIC<br />Nov 21 2026  4:52AM [1] 82-MZP1 CT HUMPHREYS YARD - TIL APPROX 1600 HRS <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.171297,34.034624,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA0025
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1013-Road/Weather Conditions</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:08AM <br> 2901 W Broadway</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.227297,34.144921,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121LA0005
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1013-Road/Weather Conditions</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:03AM <br> Media Log</p>
+        <p class="iw-text">Nov 21 2026  5:17AM [5] ^NO CHP SIGALERTS IN LOS ANGELES COUNTY <br />Nov 21 2026 12:03AM [1] ^MEDIA LOG FOR NOVEMBER 21, 2026<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.227297,34.144921,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BF0216
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:24PM <br> Nb I5 Jso Grapevine Rd</p>
+        <p class="iw-text">Nov 21 2026  3:26PM [4] TRANS  RP TO ECC <br />Nov 21 2026  3:26PM [3] 4TH VEH -  DRK GRY NISS SED  -  PARTL 1125 IN #2 <br />Nov 21 2026  3:25PM [2] VEHS 1125 IN #1 LN <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.928611,34.9375,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BF0002
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">TADV-Traffic Advisory</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:00AM <br> Bakersfield Traffic Advisories</p>
+        <p class="iw-text">Nov 21 2026 12:06AM [3] STOCKDALE OFF RAMP FROM SOUTHBOUND 99 IS CLOSED FOR CONSTRUCTION - EXTENDED CLOSURE<br />Nov 21 2026 12:04AM [2] PARKER PASS DRIVE - M-50 IS CLOSED FROM MILE MARKER 105 TO M-99 UNTIL FURTHER NOTICE<br />Nov 21 2026 12:01AM [1] GREAT WESTERN DIVIDE HWY BETWEEN PONDEROSA AND M-50 IS CLOSED UNTIL FURTHER NOTICE<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-119.024794,35.265234,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121FR0338
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:22PM <br> Sr180 / Dunlap Rd</p>
+        <p class="iw-text">Nov 21 2026  3:29PM [8] CT ETA 30-45MN<br />Nov 21 2026  3:23PM [3] DOWN TO 1 LANE<br />Nov 21 2026  3:23PM [2] 2 LRG BOULDERS IN THE RDWY<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-119.164524,36.756486,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121FR0327
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">FEATHER-Missing Indigenous</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:59PM <br> 5025 W Noble Ave</p>
+        <p class="iw-text">Nov 21 2026  3:03PM [7] PLS BC FOR THE NEXT 48 HRS <br />Nov 21 2026  3:01PM [2] LS NOV 16, AT 1300 HRS IN VISALIA, TULARE COUNTY <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-119.347486,36.326791,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121FR0310
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">ANIMAL-Live or Dead Animal</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:19PM <br> Sr180 / N Shasta Ave</p>
+        <p class="iw-text">Nov 21 2026  3:19PM [13] 65-10 CPYS WILL CHK THE RDWY START FSO  [Shared]<br />Nov 21 2026  2:20PM [2] FENCE IS DOWN / 2 HORSE OO FENCE / NEG 1125<br />Nov 21 2026  2:20PM [6] [Appended, 14:21:01] [3] HORSES POSS WENT DOWN DIRT RD <br />Nov 21 2026  2:19PM [5] [Appended, 14:21:01] [2] NO LONGER IN RDWY <br />Nov 21 2026  2:19PM [4] [Appended, 14:21:01] [1] 2 LARGE WHI HORSES WERE PREVIOUSLY 1125 CROSS SR180  <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-120.105396,36.734718,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/full-closure-32x32.png" />
+            CHP Incident 261121FR0128
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">CLOSURE of a Road</h2>
+        
+        <p class="iw-text">Nov 21 2026  8:35AM <br> Sr99 S / E Court Ave</p>
+        <p class="iw-text">Nov 21 2026  8:37AM [2] 67-95 WILL BE CLOSED UNTIL 1400 HRS AND WILL HAVE #2 LANE CLOSED<br />Nov 21 2026  8:36AM [1] 67-95 CLOSURE STARTING SB 99 JNO COURT ST AND ENDING SB 99 JSO DAVIS <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#full-closure</styleUrl>
+  <Point><coordinates>-119.292488,35.971544,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121FR0029
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">FOG-Foggy Conditions</h2>
+        
+        <p class="iw-text">Nov 21 2026  1:21AM <br> 1380 E Fortune Ave</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-119.765082,36.689728,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261120FR0502
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1181-Trfc Collision-Minor Inj</h2>
+        
+        <p class="iw-text">Nov 20 2026 10:10PM <br> Sr43 / Elder Ave</p>
+        <p class="iw-text">Nov 21 2026  1:28AM [68] 68-10 NEG 180S JUST YET / VEH STILL 97 W / PGandE [Shared]<br />Nov 21 2026  1:28AM [67] [Notification] [CHP]-Problem changed from 1179-Trfc Collision-1141 Enrt to 1181-Trfc Collision-Minor Inj by CHP [Shared]<br />Nov 21 2026  1:28AM [66] B68-010 PTY BOOKED FOR 23152AB / SOLO VEH 1181 [Shared]<br />Nov 21 2026 12:04AM [60] LE 68-30 REQ  PGE CB WHEN VEH CAN BE TOWED  [Shared]<br />Nov 20 2026 11:51PM [58] 68-30 CONES PLACED AROUND VEH AT TC SCENE FOR FURTHER CALLS  [Shared]<br />Nov 20 2026 11:10PM [52] B68-030 ****  FOR INFO INCASE OF CALLS **** VEH ON CANAL JWO SR43 JNO ELDER AVE --- SIL CHEV CRZ W MAJ FE DMG AIRBAGS DEPLOYED LIGHTS TO VEH ARE ON  [Shared]<br />Nov 20 2026 11:10PM [51] B68-030  1022 1185 --- PGE  ADVD UNABLE TO RECOVER VEH AS OF NOW UNK ETA FOR WHEN CAN DEENERGIZE THE LINES ---- PGE  WILL CB AND ADV WHEN CHP CAN  COMEBACK TO DO 180/ HAVBE VEH TAKEN OUT [Shared]<br />Nov 20 2026 10:50PM [48] [Rotation Request Comment] *****1039 PRIME ROAD SOLUTIONS (XXX) XXX-XXXX***** [Shared]<br />Nov 20 2026 10:48PM [46] 68-30 REQ 1185 WILL POSS NEED FB FOR SD W MAJ FE DMG  [Shared]<br />Nov 20 2026 10:48PM [45] PGE - ETA 15 MIN  [Shared]<br />Nov 20 2026 10:47PM [43] [Notification] [CHP]-KCSO ADV PGandE ETA 15 MINS [Shared]<br />Nov 20 2026 10:45PM [41] 1039 PGE ---- WILL CB W ETA AND REF  [Shared]<br />Nov 20 2026 10:44PM [40] KCSO CONTACTED PGE -- WILL CB and ADV ETA [Shared]<br />Nov 20 2026 10:40PM [37] 68-30 JUST WANT TO MAKE SURE LINES ARE DEENERGIZED PRIOR TO STARTING 1185 [Shared]<br />Nov 20 2026 10:35PM [33] B68-030 ETA FRM PGE OR EDISON TO SHUT OFF POWER -- STILL ACTIVE LINES  [Shared]<br />Nov 20 2026 10:23PM [31] AND FIRE  [Shared]<br />Nov 20 2026 10:23PM [30] 1039 EMS  [Shared]<br />Nov 20 2026 10:22PM [29] B68-030 1022 FIRE AND 1141 [Shared]<br />Nov 20 2026 10:21PM [27] B68-030 ADV PGE OR EDISON COMPLETELY SHEERED POLE ON WEST SHOULDER AMPLE ROOM TO WORK ON SHOULDER BUT MAY NEED OWN 1184 [Shared]<br />Nov 20 2026 10:21PM [26] B68-030 SOLO VEH 1182 FOR NOW  [Shared]<br />Nov 20 2026 10:14PM [19] PER KCSO -- SOLO VEH VS POWER POLE // POSS SPARKING -- KCSO ADVSD EMS / FIRE [Shared]<br />Nov 20 2026 10:14PM [18] 1039 FIRE  [Shared]<br />Nov 20 2026 10:13PM [17] LL FIRE  [Shared]<br />Nov 20 2026 10:13PM [16] 1039 EMS [Shared]<br />Nov 20 2026 10:13PM [12] MALE PREV 23103 -- SWERVING -- OFF RDWY [Shared]<br />Nov 20 2026 10:12PM [6] POLE ON RHS<br />Nov 20 2026 10:11PM [4] WIRES HOLDING TOP PART OF POLE<br />Nov 20 2026 10:11PM [3] POLE SHEARED <br />Nov 20 2026 10:11PM [7] [Appended, 22:12:46] [1] IPHONE TC NOTIF <br />Nov 20 2026 10:11PM [1] VEH VS POLE<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-119.637015,36.38657,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121MR0360
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:14PM <br> Avenue 10 / Avenue 11</p>
+        <p class="iw-text">Nov 21 2026  3:19PM [12] [Notification] [CHP]-NOW NEAR CHILDRENS  IN RDWY DOING WHEELIES  [Shared]<br />Nov 21 2026  3:16PM [4] HEADED TOWARDS AVE 10/LANE BRIDGE DR<br />Nov 21 2026  3:15PM [3] DOWN TOWARDS BRICKYARD AREA ACROSS THE BRIDGE <br />Nov 21 2026  3:15PM [2] NEAR TC'S WITH VEHS <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-119.793548,36.909458,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121MR0003
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">CHAINS-Chain Control</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:01AM <br> Tuolumne County Chains</p>
+        <p class="iw-text">Nov 21 2026 12:04AM [1] LAST UPDATE WAS 11/20 AT 1355 HRS  R2 ON SR108 FRM LONGBARN TO SNOW PARK<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-120.384349,37.982264,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121MR0002
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">FOG-Foggy Conditions</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:01AM <br> 1500 Bell Dr</p>
+        <p class="iw-text">Nov 21 2026  3:10AM [1] 64-FOG 48-11 LEVEL 1 FOG FRM MITCHELL TO CL <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-120.61426,37.34291,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121OC0543
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:30PM <br> Sr73 S / Catalina View Toll Plaza Cvt</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.794563,33.604616,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121OC0539
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:24PM <br> Sr91 E / I5 N</p>
+        <p class="iw-text">Nov 21 2026  3:24PM [1] BUMPER IN SLO LNS <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.978786,33.85675,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121OC0533
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">20002-Hit and Run No Injuries</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:18PM <br> Sr55 S / Macarthur Blvd</p>
+        <p class="iw-text">Nov 21 2026  3:20PM [4] VV STILL ON THE RHS // RIGHT BEFORE THE 405 INTERCHANGE<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.861755,33.6987,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121OC0513
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">20002-Hit and Run No Injuries</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:48PM <br> 2175 W La Palma Ave</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.958135,33.847037,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121OC0493
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1182-Trfc Collision-No Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:39PM <br> Sr22 W / Euclid St</p>
+        <p class="iw-text">Nov 21 2026  3:30PM [14] [Notification] [CHP]-1021 3A SO#163494  CA ROADSIDE ETA 1HR  [Shared]<br />Nov 21 2026  3:26PM [13] Tow Request Cancelled: 1227708 [Shared]<br />Nov 21 2026  3:25PM [11] 55-20 START 1185 3A FOR NISS SENTRA// MEM#(XXX) XXX-XXXX087709 [Shared]<br />Nov 21 2026  2:41PM [6] PER RP, THE LRG TRASH CAN IS IN THE #3 LN, NEXT TO THE BUMPER // AS REPORTED IN LOG # 490<br />Nov 21 2026  2:40PM [4] BOTH VEHS ARE ON THE RHS<br />Nov 21 2026  2:40PM [3] THE BUMPBER OF THE BLK NISS IN THE #2 LN<br />Nov 21 2026  2:40PM [2] WHI CHEV PK VS BLK NISS 4D SD<br />Nov 21 2026  2:39PM [1] 2 VEH TC<br />Nov 21 2026  2:36PM [9] [Appended, 14:43:06] [2] ** VEHS IN REVERSE GP <br />Nov 21 2026  2:35PM [8] [Appended, 14:43:06] [1] WHI FORD F150 VS BLK NISS ALT -- ON RHS <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.937693,33.766163,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/full-closure-32x32.png" />
+            CHP Incident 261121OC0003
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">CLOSURE of a Road</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:00AM <br> 6681 Marine Way</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#full-closure</styleUrl>
+  <Point><coordinates>-117.757184,33.677582,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121OC0002
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1013-Road/Weather Conditions</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:00AM <br> 6681 Marine Way</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.757184,33.677582,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/full-closure-32x32.png" />
+            CHP Incident 261120OC0915
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">CLOSURE of a Road</h2>
+        
+        <p class="iw-text">Nov 20 2026 11:23PM <br> Sr22 W / Beach Blvd</p>
+        <p class="iw-text">Nov 20 2026 11:23PM [1] 55-20 WILL BE A CLOSURE WB 22 FRM BEACH TO VV // HOV 1/2 CONED OFF // WILL BE DOWN TO 1 LN<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#full-closure</styleUrl>
+  <Point><coordinates>-117.992102,33.771217,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/full-closure-32x32.png" />
+            CHP Incident 261120IN0972
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">CLOSURE of a Road</h2>
+        
+        <p class="iw-text">Nov 20 2026  9:12PM <br> Sr57 N To / Sr60 E</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#full-closure</styleUrl>
+  <Point><coordinates>-117.834712,34.001156,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BS0201
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:26PM <br> I15 S So / Oak Hill Rd</p>
+        <p class="iw-text">Nov 21 2026  3:25PM [6] [6] 1039 SBCOMM FOR PRECAUTIONARY [Shared]<br />Nov 21 2026  3:23PM [3] [3] SMOKE SEEN COMING FROM ENGINE [Shared]<br />Nov 21 2026  3:23PM [2] [2] BLU CHEV PK 1125 # 2 LANE [Shared]<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.438214,34.356384,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BS0192
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:51PM <br> 34�46'09.66"n / 116�38'10.28"w</p>
+        <p class="iw-text">Nov 21 2026  3:27PM [27] ID-H82 GROUND UNIT APPEARS CLOSE //H82 ABOUT TO GO 97<br />Nov 21 2026  3:24PM [26] 1039 CAL FIRE <br />Nov 21 2026  3:24PM [25] ID-H82 ADV CAL FIRE //ADV WILL BE ON CAL CORD 4 MIN ETA<br />Nov 21 2026  3:19PM [20] CAL FIRE // ADVS COMMAND CHNL 2 TONE 3<br />Nov 21 2026  3:16PM [18] CAL FIRE ADV FREQUENCY FOR BDCV8 TONE 3 FOR  FIRE 23  OR BDCV19<br />Nov 21 2026  3:15PM [17] H82 REQ CHANNEL FOR CAL FIRE  <br />Nov 21 2026  3:06PM [15] 1039 CAL FIRE <br />Nov 21 2026  3:06PM [14] H82 ADVS CAL FIRE WILL BE ENRT <br />Nov 21 2026  3:03PM [10] BFD IS GIVING CALL BACK TO CAL FIRE <br />Nov 21 2026  3:03PM [9] PER BFD THIS IS CAL FIRE <br />Nov 21 2026  3:00PM [6] 1039 CAL FIRE ADVS BARSTOW HANDLE <br />Nov 21 2026  2:52PM [3] SOLO MC TC  // MALE PTY FELL OFF W/BACK AND LEG PAIN<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-116.63619,34.76935,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BS0185
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:35PM <br> Alta Ave / Aberdeen Dr</p>
+        <p class="iw-text">Nov 21 2026  2:59PM [16] A(XXX) XXX-XXXX YV FOR 2ND TOW <br />Nov 21 2026  2:59PM [14] A106-031 REQ 2ND 1185 <br />Nov 21 2026  2:47PM [9] [Rotation Request Comment] 1039 YV TOW (XXX) XXX-XXXX<br />Nov 21 2026  2:46PM [7] A(XXX) XXX-XXXX EXP <br />Nov 21 2026  2:36PM [6] EACH VEH HAS 1 OCCP <br />Nov 21 2026  2:36PM [4] TRANS TO COMM CNTER <br />Nov 21 2026  2:36PM [2] BLKING LANES <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-116.360666,34.193079,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261120BS0447
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1182-Trfc Collision-No Inj</h2>
+        
+        <p class="iw-text">Nov 20 2026 11:30PM <br> 4070 Mm40 E Sbd R40.70</p>
+        <p class="iw-text">Nov 21 2026 12:23AM [52] [Rotation Request Comment] 1039 GandM TOWING (XXX) XXX-XXXX - HD [Shared]<br />Nov 21 2026 12:13AM [45] C73-047 S6 CPS CT ETA  [Shared]<br />Nov 21 2026 12:11AM [43] [Notification] [CHP]-Problem changed from 1183-Trfc Collision-Unkn Inj to 1182-Trfc Collision-No Inj [Shared]<br />Nov 21 2026 12:11AM [41] 1039 CC VIA DOWN SWITCH  [Shared]<br />Nov 21 2026 12:10AM [40] C73-047 PARTY ADV NEG INJ CC CAN 1022 [Shared]<br />Nov 21 2026 12:06AM [33] C73-047 1039 CT  [Shared]<br />Nov 21 2026 12:06AM [32] C73-047 1039 CT OF LN CLOSURE #2 LN  [Shared]<br />Nov 20 2026 11:57PM [31] C73-047 TAKING #2 LN  [Shared]<br />Nov 20 2026 11:56PM [28] C73-047 STARTING BREAK MPM 40  [Shared]<br />Nov 20 2026 11:56PM [27] 1039 AMERICAN TOWING [Shared]<br />Nov 20 2026 11:56PM [26] Tow Request Cancelled: 1227578 [Shared]<br />Nov 20 2026 11:51PM [22] [Rotation Request Comment] 1039 VVT (XXX) XXX-XXXX // ETA 45 MIN [Shared]<br />Nov 20 2026 11:49PM [19] C73-047 1185 EXP  [Shared]<br />Nov 20 2026 11:48PM [17] SEMI 1125 [Shared]<br />Nov 20 2026 11:47PM [16] ALL WHI SEMI VS ALL WHI SEMI  [Shared]<br />Nov 20 2026 11:42PM [12] [Appended, 23:46:08] [2] ATC RECONNECT RP TO TRANSLATOR <br />Nov 20 2026 11:32PM [5] ONE SEMI PART 1125<br />Nov 20 2026 11:32PM [4] DEBRIS 1125 IN LNS <br />Nov 20 2026 11:31PM [3] ALL WHI SEMI VS UNK SEMI <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-116.322955,34.744037,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BCFSP0158
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1183-Trfc Collision-Unkn Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:26PM <br> I15 N / RANCHO BERNARDO SO</p>
+        <p class="iw-text">Nov 21 2026  3:29PM [13] [CHP] has closed their incident [261121BC0711]<br />Nov 21 2026  3:22PM [2] [2] OPEN LINE / CAN TRAFFIC NOISE IN BACKGROUND / NVR / PSO DISC / ATC[Shared]<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.078537,33.021542,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BC0678
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:49PM <br> Sr54 E / I805 Eo</p>
+        <p class="iw-text">Nov 21 2026  2:54PM [4] NO VEHS AROUD <br />Nov 21 2026  2:53PM [3] XRAY DISTRAUGHT ON RHS  - HMA OR HFA WHI  TOP , BLK SHORTS <br />Nov 21 2026  2:53PM [2] DECEASED DOG #3 LN <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.067725,32.660836,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BC0656
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1183-Trfc Collision-Unkn Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:34PM <br> I5 N / I8 NO</p>
+        <p class="iw-text">Nov 21 2026  3:13PM [43] [FSP] has closed their incident [261121BCFSP0137]<br />Nov 21 2026  3:06PM [36] ANGELOS ETA 4 MIN  [Shared]<br />Nov 21 2026  3:05PM [34] 10B ETA ON THE 1185 [Shared]<br />Nov 21 2026  2:52PM [27] 87-10B START 1185 [Shared]<br />Nov 21 2026  2:52PM [26] B87-010B 1125 1 SLOW LNS NB 5 JNO 8  [Shared]<br />Nov 21 2026  2:47PM [23] B87-023B CPS RUNNING TRFC BREAK ON NB SIDE  [Shared]<br />Nov 21 2026  2:47PM [22] B87-010B WB 8 NB 5 TRANS CLOSED / VEH 1125 SLOW LN JNO 8 [Shared]<br />Nov 21 2026  2:47PM [21] 1039 METRO  [Shared]<br />Nov 21 2026  2:42PM [18] B87-010B BREAK STARTED JWO 163  [Shared]<br />Nov 21 2026  2:38PM [11] [Notification] [CHP]-TC DEBRIS IN LANES [Shared]<br />Nov 21 2026  2:37PM [6] BLOCKING #1  AND #2 LN  [Shared]<br />Nov 21 2026  2:37PM [7] [Appended, 14:37:49] [1] SOLO VEH TC / GRY HYUN SD VS RHS<br />Nov 21 2026  2:36PM [1] WB 8 TO NB 5      GRY NISS SEN FACING W/WAY  #2 LN            WHI SUV BEHIND IT<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.204231,32.761091,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BC0629
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:13PM <br> 1783 Opportunity Rd</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.159742,32.823558,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BC0599
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  1:49PM <br> I15 N / Via Rancho No</p>
+        <p class="iw-text">Nov 21 2026  3:23PM [41] A92-023 3 VEH 1181  [Shared]<br />Nov 21 2026  3:03PM [38] 92-S6 ALL LNS OPEN  // TAKING VEHS OFF AT CITRICADO [Shared]<br />Nov 21 2026  2:20PM [37] [FSP] has closed their incident [261121BCFSP0120]<br />Nov 21 2026  2:09PM [31] A92-023 3 1185 FB  [Shared]<br />Nov 21 2026  2:07PM [27] PLT FOR OTHER 2 VEH INVOLVED 9LIJ207/ AND PLT-9NKK318 [Shared]<br />Nov 21 2026  1:59PM [20] [Notification] [FSP]-FD REQ 2 FB'S // 1039 JONATHANS W/ 2 FB 'S  [Shared]<br />Nov 21 2026  1:52PM [14] A92-023 1185 [Shared]<br />Nov 21 2026  1:51PM [4] IPHONE TC NOTIFICATION - OPEN LINE - ATC X1  [Shared]<br />Nov 21 2026  1:51PM [12] [Appended, 13:52:24] [2] 1039 NCOMM <br />Nov 21 2026  1:51PM [2] 1039 NCOMM<br />Nov 21 2026  1:51PM [11] [Appended, 13:52:24] [1] 3 VEHS ON RS                   BLK LEXS    SIL FORD CROSSOVER    BLU HYUN CROSS OVER <br />Nov 21 2026  1:51PM [7] [Appended, 13:51:58] [2] VEHS ON RHS / ONE VEH CATCHING FIRE<br />Nov 21 2026  1:50PM [1] 3 VEH TC -BLK SD VS BLU VS GRY SD  / POSS 1125 RIGHT LNS /  AIRBAGS DEPLOYED SEEN<br />Nov 21 2026  1:50PM [6] [Appended, 13:51:58] [1] 3 VEH TC <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.06972,33.072508,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BC0582
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  1:37PM <br> I215 N / Clinton Keith</p>
+        <p class="iw-text">Nov 21 2026  3:20PM [37] 115-34N 2 VEH 1181 [Shared]<br />Nov 21 2026  2:44PM [30] B115-030N LNS ARE OPEN  [Shared]<br />Nov 21 2026  2:14PM [27] B115-034N BLOCKING THE  #1,2 LN  [Shared]<br />Nov 21 2026  2:01PM [24] LINE 22 FOR THE TOWS ENRT -  MURR FD HAS 1 LANE SHUT DOWN  [Shared]<br />Nov 21 2026  2:00PM [22] MURR FD ADVS BEST ACCESS IS FROM NB 215 / CLINTON KEITH OFR  // COMING FROM EB CLINTON KEITH [Shared]<br />Nov 21 2026  1:55PM [21] ANGELOS TOW ENRT WITH 2 FB TOWS  [Shared]<br />Nov 21 2026  1:54PM [20] [Notification] [CHP]-MURR FD CB ADVISING WE WILL NEED 2 FB TOWS - 1039 ANGELOS TOW TO START A 2ND ROT  [Shared]<br />Nov 21 2026  1:39PM [12] 1039 MURR FD  [Shared]<br />Nov 21 2026  1:39PM [11] 1039 MURR FD  [Shared]<br />Nov 21 2026  1:39PM [10] ADDIITIONAL VEH ON RHS  [Shared]<br />Nov 21 2026  1:38PM [8] [Appended, 13:39:06] [1] PK OTURN ON IT'S SIDE   IN CD <br />Nov 21 2026  1:38PM [2] 1125 #1<br />Nov 21 2026  1:38PM [6] [Appended, 13:39:05] [4] OCCUPANTS STILL TRAPED IN THE VEH - GOOD SAMS TRYING TO GET THEM OUT <br />Nov 21 2026  1:38PM [5] [Appended, 13:39:05] [3] BLOCKING THE FAST LN <br />Nov 21 2026  1:38PM [4] [Appended, 13:39:05] [2] PK TK O/TURNED LANDED ON ITS SIDE<br />Nov 21 2026  1:38PM [3] [Appended, 13:39:05] [1] 2 VEHS TC - GRY PK TK VS GRY SD <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.174361,33.598514,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BC0574
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">20002-Hit and Run No Injuries</h2>
+        
+        <p class="iw-text">Nov 21 2026  1:25PM <br> 12509 Oak Knoll Rd</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.06048,32.950195,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BC0489
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1180-Trfc Collision-Major Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:12PM <br> Sweetwater Rd / Jamacha Rd</p>
+        <p class="iw-text">Nov 21 2026  3:15PM [40] Secondary Location for 108-S2: C/D TOW YARD, [Shared]<br />Nov 21 2026  3:14PM [39] Incident 261121BC0489 was reopened. Comment: Incident Reopened : S2 ENRT TO TOW YARD  [Shared]<br />Nov 21 2026  2:22PM [38] [Notification] [CHP]-Problem changed from 1179-Trfc Collision-1141 Enrt to 1180-Trfc Collision-Major Inj by CHP [Shared]<br />Nov 21 2026  2:22PM [37] 108-26 4 VEH 1180 180S X2 [Shared]<br />Nov 21 2026 12:19PM [22] 108-28 1185 X2  [Shared]<br />Nov 21 2026 12:18PM [21] [Rotation Request Comment] 1039 C/D TOW (XXX) XXX-XXXX****** [Shared]<br />Nov 21 2026 12:14PM [14] [Appended, 12:14:44] [2] 1125 IN SB LNS <br />Nov 21 2026 12:13PM [8] [Appended, 12:14:24] [2] SOMEONE TRAPPED INSIDE OF ONE OF THE VEHS AND SOMEONE TRYING TO BRK THE WINDOW<br />Nov 21 2026 12:13PM [13] [Appended, 12:14:44] [1] BLK SD  VS GRY SD <br />Nov 21 2026 12:13PM [7] [Appended, 12:14:24] [1] 4 VEH TC <br />Nov 21 2026 12:13PM [3] 1125 I/S<br />Nov 21 2026 12:12PM [2] GRY SD VS BLK SD <br />Nov 21 2026 12:12PM [1] 2 VEH TC<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.012699,32.71472,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BC0484
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1181-Trfc Collision-Minor Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:10PM <br> I15 N / FRIARS SO</p>
+        <p class="iw-text">Nov 21 2026  2:44PM [64] ^1039 CT-HQ (DEVIN) [Shared]<br />Nov 21 2026  2:32PM [62] 1039 OES- CPS CORR  [Shared]<br />Nov 21 2026  2:19PM [60] 1039 OES AT 1418 HRS // OES #26-6055 [Shared]<br />Nov 21 2026  2:16PM [59] CT713-8 -- CLSR CREW IS 1097 // WILL BE TAKING THE #6 LANE [Shared]<br />Nov 21 2026  2:15PM [58] ^PER CT602-4 VIA LL; CLEAN HARBOR IS 1097, ETA FOR CLEAN UP WILL BE 3-4 HRS [Shared]<br />Nov 21 2026  2:07PM [56] [Notification] [CHP]-Problem changed from 1179-Trfc Collision-1141 Enrt to 1181-Trfc Collision-Minor Inj by CHP [Shared]<br />Nov 21 2026  2:07PM [55] 87-17 2 VEH 1181 [Shared]<br />Nov 21 2026  2:05PM [54] 87-S5 CT WILL SET UP A HARD CLOSURE FOR LN 6- ETA 30 MIN ( CLEAN UP SHOULD TAKE 2-3 HRS  [Shared]<br />Nov 21 2026  1:57PM [51] CT602-4 LL -- CLEAN HARBOR WILL BE RESPONDING // 45 MIN ETA [Shared]<br />Nov 21 2026  1:38PM [49] CT713-2 -- 1097 [Shared]<br />Nov 21 2026  1:30PM [48] CT602-4 -- 1097 FOR HAZMAT [Shared]<br />Nov 21 2026 12:56PM [41] ^CT SR#2439150 FOR 713 CREW [Shared]<br />Nov 21 2026 12:41PM [38] ^FCMS ACTIVATED AT WB 8/WARING [Shared]<br />Nov 21 2026 12:40PM [37] ^PER CT713 VIA LL: CT713-2 IS ENRT [Shared]<br />Nov 21 2026 12:40PM [36] A87-023 INFO FOR LOG 1 DRIVER AND PSGR TRANS TO SHARP MEMORIAL / START 2 1185'S 1 FOR MAZD CX50/ 2ND FOR CHEV SLV [Shared]<br />Nov 21 2026 12:38PM [32] [FSP] has closed their incident [261121BCFSP0081]<br />Nov 21 2026 12:35PM [27] [FSP] has closed their incident [261121BCFSP0090]<br />Nov 21 2026 12:34PM [26] ^1021 CT602-4 / NA / LVM [Shared]<br />Nov 21 2026 12:32PM [24] ^1039 CT713 / WILL SEND CREW ENRT [Shared]<br />Nov 21 2026 12:27PM [22] MCC REQ CT FOR A FUEL SPILL INTO THE DRAINAGE BY THE RAVINE / FUEL LEAK WAS STOPPED BUT DOES NEED CLEANING// UNK HOW MUCH IT LEAKED [Shared]<br />Nov 21 2026 12:26PM [21] [FSP] has closed their incident [261121BCFSP0081]<br />Nov 21 2026 12:14PM [17] [Notification] [CHP]-Problem changed from 1183-Trfc Collision-Unkn Inj to 1179-Trfc Collision-1141 Enrt by CHP [Shared]<br />Nov 21 2026 12:12PM [14] 1039 METRO  [Shared]<br />Nov 21 2026 12:12PM [16] [Appended, 12:12:45] [1] STAA 97 W/ 3 VEH TC<br />Nov 21 2026 12:12PM [13] IPHONE TC NOTIFICATION - RP ADVS THERE IS AN OFCR 97 - UNK AGENCY  [Shared]<br />Nov 21 2026 12:11PM [4] VEHS ON RS  [Shared]<br />Nov 21 2026 12:11PM [3] SIL TK VS UNK  [Shared]<br />Nov 21 2026 12:10PM [9] [Appended, 12:11:55] [3] VEHS ARE ON RHS <br />Nov 21 2026 12:10PM [1] 2 VEH TC <br />Nov 21 2026 12:10PM [7] [Appended, 12:11:55] [1] 2 VEH TC <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.113981,32.7877,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BC0151
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">MZP-Assist CT with Maintenance</h2>
+        
+        <p class="iw-text">Nov 21 2026  5:05AM <br> 1722 E Main St</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-116.91797,32.813144,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BC0002
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1013-Road/Weather Conditions</h2>
+        
+        <p class="iw-text">Nov 21 2026 12:00AM <br> Media Log</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.120842,32.783489,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121INFSP0022
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:25PM <br> I15 S So / Oak Hill Rd</p>
+        <p class="iw-text">Nov 21 2026  3:25PM [6] [6] 1039 SBCOMM FOR PRECAUTIONARY [Shared]<br />Nov 21 2026  3:23PM [3] [3] SMOKE SEEN COMING FROM ENGINE [Shared]<br />Nov 21 2026  3:23PM [2] [2] BLU CHEV PK 1125 # 2 LANE [Shared]<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.438214,34.356384,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121IN0603
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:23PM <br> I15 S So / Oak Hill Rd</p>
+        <p class="iw-text">Nov 21 2026  3:25PM [6] 1039 SBCOMM FOR PRECAUTIONARY <br />Nov 21 2026  3:23PM [3] SMOKE SEEN COMING FROM ENGINE <br />Nov 21 2026  3:23PM [2] BLU CHEV PK 1125 # 2 LANE <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.438214,34.356384,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121IN0599
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125-Traffic Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:22PM <br> I15 N / Baseline</p>
+        <p class="iw-text">Nov 21 2026  3:22PM [2] LRG TRASH BAG #1 LN <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.514017,34.121117,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121IN0594
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1182-Trfc Collision-No Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:14PM <br> Monte Vista Ave / Francis Ave</p>
+        <p class="iw-text">Nov 21 2026  3:28PM [10] [Notification] [CHP]-CHINO PD 97 // ADVS WILL BE CHP HANDLE // POI SB MONTE VISTA // CHINO PD ROLLED THEIR ROT 1185 // RECALL CHINO PD IF CHP IS ROLLING THIER OWN AND TO 1022 THEIRS  [Shared]<br />Nov 21 2026  3:16PM [7] 1039 CHINO PD FOR BORDERLINE<br />Nov 21 2026  3:16PM [5] RP NOT REQ 1185<br />Nov 21 2026  3:16PM [3] --  TOYT BLOCKING   MIDDLE LNS<br />Nov 21 2026  3:15PM [2] GRN TOYT PRIUS VS BLK CHEV SLV<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.698233,34.040774,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121IN0597
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1182-Trfc Collision-No Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:13PM <br> Market St / Rivera St</p>
+        <p class="iw-text">Nov 21 2026  3:16PM [7] BOTH VEHS DRIVABLE <br />Nov 21 2026  3:16PM [5] BLK MAZD 6 VS GRY NISS ROGUE <br />Nov 21 2026  3:15PM [4] 2 VEH TC <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.376138,34.002201,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121IN0588
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1179-Trfc Collision-1141 Enrt</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:11PM <br> Greenway Dr / Big Bear Blvd Sr18</p>
+        <p class="iw-text">Nov 21 2026  3:14PM [10] RP ADV MALE IN MIDDLE OF RD LOOKS LIKE HE WAS HAVING A SEIZURE [Shared]<br />Nov 21 2026  3:12PM [4] 1125<br />Nov 21 2026  3:12PM [1] VEH VS PED<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-116.845592,34.26112,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121IN0586
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125A-Animal Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:07PM <br> I215 S No / Little League Dr</p>
+        <p class="iw-text">Nov 21 2026  3:07PM [1] LG BRO BRINDLE DOG ON RS<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.382282,34.20697,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121IN0568
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1182-Trfc Collision-No Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:48PM <br> 9177 Central Ave</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.689479,34.087251,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121IN0504
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1183-Trfc Collision-Unkn Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  1:49PM <br> I15 S At / Sr138</p>
+        <p class="iw-text">Nov 21 2026  2:56PM [29] [Notification] [CHP]-ARMADA TOW HAD VIS F/NB SIDE WILL HAVE TO CONT FURTHER UP TO TURN AROUND - ETA 15 MINS [Shared]<br />Nov 21 2026  2:50PM [27] 1039 ARMADA  [Shared]<br />Nov 21 2026  2:48PM [26] A75-152 ETA FOR 1185 [Shared]<br />Nov 21 2026  2:39PM [25] 75-152 2 VEH 1181  [Shared]<br />Nov 21 2026  2:07PM [24] [Rotation Request Comment] **1039 ARAMADA TOW (XXX) XXX-XXXX** [Shared]<br />Nov 21 2026  2:07PM [22] A75-151 START 1185 GRY BMW SD MAJ FE  [Shared]<br />Nov 21 2026  1:56PM [13] PER BMW RDSIDE : 1182 IN SIL BMW 530E // UNK IF BLKG LNS [Shared]<br />Nov 21 2026  1:54PM [11] [Appended, 13:56:07] [2] BMW RESPONSE CENTER REC'D TC ALERT F/ VEH<br />Nov 21 2026  1:52PM [6] LEFT 2 LANES BLKD<br />Nov 21 2026  1:52PM [5] NOW ADVISING MULT VEHS INVLD<br />Nov 21 2026  1:51PM [4] RP IN LGRY FORD PK VS SIL BMW SDN - BOTH VEHS ON LHS<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.475233,34.311899,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121IN0189
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">MZP-Assist CT with Maintenance</h2>
+        
+        <p class="iw-text">Nov 21 2026  6:50AM <br> I15 N / Sierra Ave Sb</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-117.435515,34.182596,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121IC0209
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1183-Trfc Collision-Unkn Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:20PM <br> 70700-70899 Vander Veer Rd</p>
+        <p class="iw-text">Nov 21 2026  3:20PM [3] NO VEH SEEN IN ARAE<br />Nov 21 2026  3:20PM [2] POWER POLE WAS HIT AND FIRE HYDRANT <br />Nov 21 2026  3:20PM [1] RP HEARD A TC <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-115.939148,33.534003,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121IC0039
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">CFIRE-Car Fire</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:10AM <br> Dillon Rd / Old Aqueduct Rd</p>
+        <p class="iw-text">Nov 21 2026  3:30AM [19] [Rotation Request Comment]  1039 RYCO (XXX) XXX-XXXX  CPZ LINE 8
+<br />Nov 21 2026  3:29AM [18] LL W/ TOW ROTATION 1185<br />Nov 21 2026  3:22AM [14] 1185 WILL CB -- WILL ATC DRVR TO OBTAIN HIS 1020 AND ETA <br />Nov 21 2026  3:22AM [13] ON HOLD W/ 1185<br />Nov 21 2026  3:20AM [12] LL W/ 1185<br />Nov 21 2026  3:20AM [11] 76-21 1185 ETA<br />Nov 21 2026  2:43AM [10] [Rotation Request Comment]  1039 ABC TOWING  (XXX) XXX-XXXX   CPZ LINE 8<br />Nov 21 2026  2:42AM [9] LL W/ 1185<br />Nov 21 2026  2:42AM [8] C76-021 1185 FOR CAR - FULLY ENGULFED <br />Nov 21 2026  2:37AM [6] CAL FIRE IS STILL REQ'ING CHP <br />Nov 21 2026  2:37AM [5] PER CAL FIRE -- 97 / VEH IS ENGULFED / NEG THREAT TO VEGETATION<br />Nov 21 2026  2:36AM [4] LL W/ CAL FIRE --  UPDATES<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-116.185647,33.799442,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BI0085
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1125A-Animal Hazard</h2>
+        
+        <p class="iw-text">Nov 21 2026  3:10PM <br> Topaz Ln / Us395</p>
+        <p class="iw-text">Nov 21 2026  3:10PM [1] HORSES RUNNING IN LNS<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-119.519755,38.610863,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BI0068
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1181-Trfc Collision-Minor Inj</h2>
+        
+        <p class="iw-text">Nov 21 2026  1:56PM <br> SR58 / GRN MM 156 SAND CANYON</p>
+        <p class="iw-text">Nov 21 2026  3:28PM [62] [Notification] [CHP]-Problem changed from 1179-Trfc Collision-1141 Enrt to 1181-Trfc Collision-Minor Inj [Shared]<br />Nov 21 2026  3:28PM [60] A59-001 ALL UNITS 98// SOLO VEH 1181 NEG 180 [Shared]<br />Nov 21 2026  3:03PM [55] B59-010 ALL LANES OPEN  [Shared]<br />Nov 21 2026  2:31PM [50] 1039 CT  [Shared]<br />Nov 21 2026  2:30PM [49] B59-010 CT 97 / 1022 CT FOR LN CLOSURE [Shared]<br />Nov 21 2026  2:15PM [45] [Rotation Request Comment] 1039 AV TOWING (XXX) XXX-XXXX //ETA DRIVE TIME FROM SOUTH ST [Shared]<br />Nov 21 2026  2:14PM [43] A59-001 #1 LN CLOSED  [Shared]<br />Nov 21 2026  2:08PM [42] 1039 CT  [Shared]<br />Nov 21 2026  2:07PM [36] A59-001 STARTING BREAK JEO CAMERON [Shared]<br />Nov 21 2026  2:06PM [35] A59-002 WB JWO SC / REQ UNIT FOR BREAK / 59-10 F/ 165 [Shared]<br />Nov 21 2026  2:06PM [40] [Appended, 14:07:26] [3] NEG FIRE <br />Nov 21 2026  2:06PM [39] [Appended, 14:07:26] [2] 1125 IN #1 <br />Nov 21 2026  2:04PM [33] [Appended, 14:05:31] [7] LADY HAS BLEEDING FOOT INJ <br />Nov 21 2026  2:03PM [31] [Appended, 14:05:31] [5] GLASS AND GRAVEL DEBRIS <br />Nov 21 2026  2:03PM [30] [Appended, 14:05:31] [4] VEH PPASSING IN SHOUDLER <br />Nov 21 2026  2:03PM [18] A59-001 REQ 1185 [Shared]<br />Nov 21 2026  2:03PM [29] [Appended, 14:05:31] [3] DEBROS SPILLING IN #2 LANE <br />Nov 21 2026  2:03PM [28] [Appended, 14:05:31] [2] ON ROOD IN #1 LANE <br />Nov 21 2026  2:02PM [17] 1039 CT  [Shared]<br />Nov 21 2026  2:00PM [24] [Appended, 14:05:28] [5] NEG FIRE <br />Nov 21 2026  2:00PM [23] [Appended, 14:05:28] [4] ALL PTYS OO VEH <br />Nov 21 2026  2:00PM [22] [Appended, 14:05:28] [3] 1125 N #1 LANE <br />Nov 21 2026  1:58PM [13] [Appended, 13:58:53] [5] TRANS KCFD<br />Nov 21 2026  1:58PM [12] [Appended, 13:58:53] [4] NEG 1125<br />Nov 21 2026  1:58PM [10] [Appended, 13:58:53] [2] ROLL OVER<br />Nov 21 2026  1:57PM [7] 1125 IN #1 LANE <br />Nov 21 2026  1:57PM [6] [Notification] [CHP]-Problem changed from CFIRE-Car Fire to 1179-Trfc Collision-1141 Enrt by CHP<br />Nov 21 2026  1:57PM [4] ONE IN VEH 3 PTYS OUT <br />Nov 21 2026  1:57PM [2] ON FIRE <br />Nov 21 2026  1:57PM [1] 1 VEH ON ITS ROOF <br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.318722,35.108125,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121BI0011
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">CHAINS-Chain Control</h2>
+        
+        <p class="iw-text">Nov 21 2026  2:58AM <br> 469 Us395</p>
+        <p class="iw-text">Nov 21 2026  2:59AM [1] FOR CURRENT CHAIN CONTROLS AND ROAD CONDITIONS PLEASE USE THE CAL TRANS WEBSITE HTTP://QUICKMAP.DOT.CA.GOV<br /></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-118.395416,37.357709,0</coordinates></Point>
+</Placemark>
+<Placemark>
+  <name> </name>
+  <description><![CDATA[<link rel="stylesheet" type="text/css" href="https://quickmap.dot.ca.gov/css/gm-infowindow.css?v=9" />
+<div class="infowindow-content">
+    <div class="iw-header">
+        <div class="iw-header-left">
+            <img class="iw-icon" src="https://quickmap.dot.ca.gov/img/chp-32x32.png" />
+            CHP Incident 261121EC0013
+        </div>
+    </div>
+
+    <div class="iw-body">
+        <h2 class="iw-title">1013-Road/Weather Conditions</h2>
+        
+        <p class="iw-text">Nov 21 2026  7:16AM <br> 0 I8 W</p>
+        <p class="iw-text"></p>
+        
+        <p class="iw-attribution">
+            Information courtesy of <strong>CHP</strong>
+        </p>
+    </div>
+
+    <div class="iw-footer">
+        <span class="iw-timestamp">Last updated: <strong>11/21/2026</strong> 3:31pm</span>
+    </div>
+</div>]]></description>
+  <styleUrl>#chp</styleUrl>
+  <Point><coordinates>-116.077622,32.690821,0</coordinates></Point>
+</Placemark>
+</Document>
+</kml>
