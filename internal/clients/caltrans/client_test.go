@@ -17,6 +17,7 @@ import (
 // mockHTTPClient provides local KML file responses for testing
 type mockHTTPClient struct {
 	testDataDir string
+	chpFile     string // overrides chp_incidents.kml when set
 }
 
 func (m *mockHTTPClient) Do(req *http.Request) (*http.Response, error) {
@@ -26,6 +27,9 @@ func (m *mockHTTPClient) Do(req *http.Request) (*http.Response, error) {
 		filename = "lane_closures.kml"
 	case "https://quickmap.dot.ca.gov/data/chp-only.kml":
 		filename = "chp_incidents.kml"
+		if m.chpFile != "" {
+			filename = m.chpFile
+		}
 	case "https://quickmap.dot.ca.gov/data/cc.kml":
 		filename = "chain_controls.kml"
 	default:
@@ -98,6 +102,41 @@ func TestParseCHPIncidents(t *testing.T) {
 		assert.NotEmpty(t, incident.Name)
 		assert.NotNil(t, incident.Coordinates)
 		assert.NotZero(t, incident.LastFetched)
+	}
+}
+
+// CHP's chain-control logs never leave the parser: Caltrans's chain feeds are
+// the record of chains. The 2026-11-21 capture lists three, one of them the R2
+// on SR-108 that outlived Caltrans lifting it.
+func TestParseCHPIncidentsLeavesOutChainLogs(t *testing.T) {
+	parser := setupTestParser(t)
+	parser.HTTPClient.(*mockHTTPClient).chpFile = "chp_incidents_20261121_233200.kml"
+
+	incidents, err := parser.ParseCHPIncidents(context.Background())
+	require.NoError(t, err)
+	require.NotEmpty(t, incidents)
+	for _, in := range incidents {
+		assert.NotContains(t, in.DescriptionHtml, "CHAINS-Chain Control", in.Name)
+		assert.NotEqual(t, "CHP Incident 261121MR0003", in.Name)
+	}
+
+	all, err := parser.parseKMLFeed(context.Background(), "https://quickmap.dot.ca.gov/data/chp-only.kml", CHP_INCIDENT)
+	require.NoError(t, err)
+	assert.Equal(t, len(all)-3, len(incidents), "exactly the three chain logs are dropped")
+}
+
+func TestIsCHPChainLog(t *testing.T) {
+	title := func(s string) string { return `<div class="iw-body"><h2 class="iw-title">` + s + `</h2></div>` }
+	for desc, want := range map[string]bool{
+		title("CHAINS-Chain Control"):         true,
+		title(" chains - Chain Control "):     true,
+		title("SNOW Information"):             false,
+		title("ESCORT for Road Conditions"):   false,
+		title("1013-Road/Weather Conditions"): false,
+		title("CLOSURE of a Road"):            false,
+		"no title at all":                     false,
+	} {
+		assert.Equal(t, want, isCHPChainLog(desc), desc)
 	}
 }
 

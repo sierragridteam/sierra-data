@@ -31,6 +31,13 @@ legacy layout to a Google-Maps "infowindow" (`iw-*`) layout** around 2026:
 - Details live in `<p class="iw-text">` blocks, the type in `<h2 class="iw-title">`,
   and the timestamp in `<span class="iw-timestamp">Last updated: <strong>…`.
 - Lane closures carry `Closure ID: …, Log Number: …`.
+- **CHP chain-control logs are dropped** (`iw-title` "CHAINS-Chain Control",
+  `isCHPChainLog`, in `ParseCHPIncidents`), so they reach neither the
+  `road_incident` events nor per-road status. Caltrans's chain feeds are the
+  record of chains; a CHP log stays listed long after Caltrans lifts them, and
+  is placed at the CHP area office, not on the highway (2026-11-21: an SR-108
+  R2 log pinned in Sonora, hours after the lift). "SNOW Information", "ESCORT
+  for Road Conditions" and `1013-Road/Weather Conditions` are kept.
 
 `processPlacemark` backfills a meaningful `Name` from the description when the
 KML `<name>` is blank (`deriveNameFromDescription`), so downstream road-alert
