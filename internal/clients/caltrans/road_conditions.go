@@ -329,6 +329,12 @@ type SeasonalClosure struct {
 	// to MaxStartOffsetMiles. With no direction set, no offset is accepted.
 	StartOffsetDirection string
 	MaxStartOffsetMiles  float64
+	// The end may stop short ("to 2.4 mi west of ..."), only in
+	// EndOffsetDirection (the direction back towards the start) and only up
+	// to MaxEndOffsetMiles: the far end drawing in leaves the closure past
+	// the segment. With no direction set, no offset is accepted.
+	EndOffsetDirection string
+	MaxEndOffsetMiles  float64
 }
 
 var (
@@ -350,14 +356,15 @@ var (
 // seasonal closure and says nothing else. The whole text is read, case and
 // spacing aside:
 //
-//	[Is] closed from [N mi <direction> of] <start> to <end> [(... Co)]
+//	[Is] closed from [N mi <direction> of] <start> to [N mi <direction> of] <end> [(... Co)]
 //	[24 hrs a day] [- Due to snow] [- For the winter]
 //	[- Motorists are advised to use an alternate route][.]
 //
 // A period after an abbreviation is ignored ("Mt. Reba" is "Mt Reba").
 // The start and the end are made of the configured names and nothing else;
 // the start's offset must be in the configured direction and no longer than
-// the configured maximum; the end has no offset. After the end only the
+// the configured maximum; the end's offset likewise, in its own direction
+// (back towards the start) and up to its own maximum. After the end only the
 // tail above is accepted. Anything else is not it: a chain requirement over
 // the same span, a different end, an offset the other way or a longer one, a
 // closure "at" the start with no span, a second sentence, another place, or
@@ -382,20 +389,35 @@ func MatchSeasonalClosure(condition RoadCondition, closure SeasonalClosure) bool
 	if !ok {
 		return false
 	}
-	if m := conditionOffset.FindStringSubmatch(from); m != nil {
-		miles, err := strconv.ParseFloat(m[1], 64)
-		if err != nil || closure.StartOffsetDirection == "" ||
-			!strings.EqualFold(m[2], strings.TrimSpace(closure.StartOffsetDirection)) ||
-			miles > closure.MaxStartOffsetMiles {
-			return false
-		}
-		from = from[len(m[0]):]
+	from, ok = trimOffset(from, closure.StartOffsetDirection, closure.MaxStartOffsetMiles)
+	if !ok || !onlyNames(from, closure.Start) {
+		return false
 	}
-	if !onlyNames(from, closure.Start) {
+	// On 2026-11-22 Caltrans drew the far end in ("to 2.4 mi west of the Jct
+	// of SR 89 /Ebbetts Pass/"). Read as another closure, it closed Arnold to
+	// Bear Valley for a day while the road was open with chains.
+	rest, ok = trimOffset(rest, closure.EndOffsetDirection, closure.MaxEndOffsetMiles)
+	if !ok {
 		return false
 	}
 	tail, ok := trimNames(rest, closure.End)
 	return ok && seasonalClosureTail.MatchString(tail)
+}
+
+// trimOffset removes a leading "N mi <direction> of " from lower-case text.
+// ok is false when the text has an offset that is not in the given direction
+// or is longer than max, or when it has one and no direction is configured.
+func trimOffset(text, direction string, max float64) (rest string, ok bool) {
+	m := conditionOffset.FindStringSubmatch(text)
+	if m == nil {
+		return text, true
+	}
+	miles, err := strconv.ParseFloat(m[1], 64)
+	direction = strings.TrimSpace(direction)
+	if err != nil || direction == "" || !strings.EqualFold(m[2], direction) || miles > max {
+		return text, false
+	}
+	return text[len(m[0]):], true
 }
 
 // lowerNames are names lower-cased, longest first, blanks dropped.

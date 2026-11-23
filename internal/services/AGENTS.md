@@ -335,7 +335,7 @@ the same place every year and starts where Arnold to Bear Valley ends, so it
 is named rather than inferred. `caltrans.MatchSeasonalClosure` accepts a
 condition only when the WHOLE text, case and spacing aside, reads
 
-    [Is] closed from [N mi <dir> of] <start> to <end> [(... Co)] [24 hrs a day]
+    [Is] closed from [N mi <dir> of] <start> to [N mi <dir> of] <end> [(... Co)] [24 hrs a day]
     [- Due to snow|ice|weather...] [- For the winter|season]
     [- Motorists are advised to use an alternate route][.]
 
@@ -343,7 +343,12 @@ condition only when the WHOLE text, case and spacing aside, reads
 - the start is made of the configured `start` names and nothing else, bare or
   offset by at most `maxStartOffsetMiles` in `startOffsetDirection` (the
   direction away from the road: "0.5 mi east of ...");
-- the end is made of the configured `end` names and nothing else, no offset;
+- the end is made of the configured `end` names and nothing else, bare or
+  stopping short by at most `maxEndOffsetMiles` in `endOffsetDirection` (back
+  towards the start: "to 2.4 mi west of the Jct of SR 89", Caltrans's wording
+  from 2026-11-22, which read as a closure on the road until this was
+  accepted). Keep the maximum under the distance from the end to the place
+  the closure is named for;
 - what follows the end is only the tail above (`seasonalClosureTail`, a
   whitelist with a fixed list of reasons). It is a whitelist because the
   places a trailing sentence might name are not all known: "Also closed at

@@ -21,6 +21,20 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-23
+
+### The Ebbetts Pass winter closure is recognised when its far end draws in
+
+From 2026-11-22 Caltrans published the closure as "from the Mt. Reba turnoff
+to 2.4 mi west of the Jct of SR 89 /Ebbetts Pass/". The shortened end was read
+as a different closure, so `road:hwy4-arnold-bearvalley` and the
+`road_segment` layer reported Hwy 4 Arnold to Bear Valley `CLOSED` (severity
+`SEVERE`) while the road was open with R2 chains. A named seasonal closure may
+now stop short of its end by a configured distance, towards its start (10 mi
+west for this one). The road keeps its own status and the closure is
+`roadSegment.beyond` again; `beyond.to` carries the offset in Caltrans's words
+("2.4 mi west of the Jct of SR 89 /Ebbetts Pass/"). No field changes.
+
 ## 2026-11-21 (later: CHP chain-control logs left out)
 
 ### CHP chain-control logs are no longer road incidents

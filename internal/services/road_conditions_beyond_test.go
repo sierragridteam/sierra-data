@@ -37,6 +37,8 @@ func shippedRoads(t *testing.T) []config.MonitoredRoad {
 					End                  []string `yaml:"end"`
 					StartOffsetDirection string   `yaml:"startOffsetDirection"`
 					MaxStartOffsetMiles  float64  `yaml:"maxStartOffsetMiles"`
+					EndOffsetDirection   string   `yaml:"endOffsetDirection"`
+					MaxEndOffsetMiles    float64  `yaml:"maxEndOffsetMiles"`
 				} `yaml:"seasonalClosures"`
 			} `yaml:"monitoredRoads"`
 		} `yaml:"roads"`
@@ -47,7 +49,8 @@ func shippedRoads(t *testing.T) []config.MonitoredRoad {
 		road := config.MonitoredRoad{Name: r.Name, Section: r.Section, ID: r.ID, LocationKeywords: r.LocationKeywords}
 		for _, sc := range r.SeasonalClosures {
 			road.SeasonalClosures = append(road.SeasonalClosures, config.SeasonalClosure{Name: sc.Name, Side: sc.Side,
-				Start: sc.Start, End: sc.End, StartOffsetDirection: sc.StartOffsetDirection, MaxStartOffsetMiles: sc.MaxStartOffsetMiles})
+				Start: sc.Start, End: sc.End, StartOffsetDirection: sc.StartOffsetDirection, MaxStartOffsetMiles: sc.MaxStartOffsetMiles,
+				EndOffsetDirection: sc.EndOffsetDirection, MaxEndOffsetMiles: sc.MaxEndOffsetMiles})
 		}
 		out = append(out, road)
 	}
@@ -114,6 +117,10 @@ func TestShippedSeasonalClosures(t *testing.T) {
 		assert.Equal(t, "end", sc.Side)
 		assert.Equal(t, "east", sc.StartOffsetDirection)
 		assert.LessOrEqual(t, sc.MaxStartOffsetMiles, 2.0)
+		// The far end may draw in towards the start, never so far that the
+		// pass (about 13 mi west of the SR 89 junction) is outside it.
+		assert.Equal(t, "west", sc.EndOffsetDirection)
+		assert.LessOrEqual(t, sc.MaxEndOffsetMiles, 10.0)
 	}
 }
 
@@ -162,6 +169,29 @@ func TestApplyRoadConditions_EbbettsPassWinterClosure(t *testing.T) {
 	}
 }
 
+// The same closure as Caltrans published it on 2026-11-22 and 23, with its
+// far end drawn in to 2.4 mi west of the SR 89 junction and R2 chains up to
+// the turnoff. Read as a closure on the road, it made Arnold to Bear Valley
+// CLOSED in production for a day. The road is open with chains.
+func TestApplyRoadConditions_EbbettsPassClosureShortOfTheJunction(t *testing.T) {
+	roads := shippedRoads(t)
+	conditions := realConditions(t, "road_conditions_sr4_20261123.html", "4")
+	require.Equal(t, caltrans.CONDITION_CLOSURE, conditions[0].Type)
+
+	last := applyTo(t, roads, hwy4Upper, conditions)
+	assert.Equal(t, api.RoadStatus_OPEN, last.status, "Arnold to Bear Valley is open")
+	assert.Equal(t, api.ChainControlStatus_REQUIRED, last.chain)
+	require.Len(t, last.beyond, 1)
+	b := last.beyond[0]
+	assert.Equal(t, "Ebbetts Pass winter closure", b.GetName())
+	assert.Equal(t, api.RoadStatus_CLOSED, b.GetStatus())
+	assert.Equal(t, "the Mt. Reba turnoff", b.GetFrom())
+	assert.Equal(t, "2.4 mi west of the Jct of SR 89 /Ebbetts Pass/", b.GetTo())
+	for _, c := range last.causes {
+		assert.NotEqual(t, api.RoadStatus_CLOSED, c.GetStatus(), "no closure is a cause on this road")
+	}
+}
+
 type want struct {
 	status  api.RoadStatus
 	chain   api.ChainControlStatus
@@ -204,7 +234,7 @@ func TestApplyRoadConditions_EverythingElseStaysOnTheSection(t *testing.T) {
 
 		// Near misses of the named closure.
 		{"Is closed from 0.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/ to Lake Alpine (Alpine Co) - Due to snow", clear, clear, closed},
-		{"Is closed from 0.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/ to 7.2 mi west of the Jct of SR 89 /Ebbetts Pass/ (Alpine Co)", clear, clear, closed},
+		{"Is closed from 0.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/ to 10.1 mi west of the Jct of SR 89 /Ebbetts Pass/ (Alpine Co)", clear, clear, closed},
 		{"Is closed from 0.5 mi west of the Jct of SR 207 /Mt Reba Turnoff/ to the Jct of SR 89 /Ebbetts Pass/ (Alpine Co)", clear, clear, closed},
 		{"Is closed from 2.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/ to the Jct of SR 89 /Ebbetts Pass/ (Alpine Co)", clear, clear, closed},
 		{"Is closed 0.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/ (Alpine Co) - Due to snow", clear, clear, closed},
@@ -235,7 +265,7 @@ func TestApplyRoadConditions_EverythingElseStaysOnTheSection(t *testing.T) {
 		{"Is open from Arnold to Dorrington - no chains or traction devices required", clear, info, info},
 		{"1-way controlled traffic from Arnold to Dorrington - chains or snow tires are required", clear, restrict, restrict},
 		// The early-season gate at Lake Alpine is not the configured closure.
-		{"Is closed from 0.6 mi east of Lake Alpine to 7.2 mi west of the Jct of SR 89 /Ebbetts Pass/ (Alpine Co) - For the winter - Motorists are advised to use an alternate route", clear, clear, closed},
+		{"Is closed from 0.6 mi east of Lake Alpine to 10.1 mi west of the Jct of SR 89 /Ebbetts Pass/ (Alpine Co) - For the winter - Motorists are advised to use an alternate route", clear, clear, closed},
 		{"Is closed from Bear Valley to the Jct of SR 89 /Ebbetts Pass/ (Alpine Co) - Due to snow", clear, clear, closed},
 
 		// As on main, across the sections.

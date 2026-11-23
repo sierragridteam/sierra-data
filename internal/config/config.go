@@ -1074,6 +1074,12 @@ type SeasonalClosure struct {
 	// MaxStartOffsetMiles. Without a direction no offset is accepted.
 	StartOffsetDirection string  `koanf:"startOffsetDirection"`
 	MaxStartOffsetMiles  float64 `koanf:"maxStartOffsetMiles"`
+	// Caltrans may also stop the closure short of End ("to 2.4 mi west of
+	// ..."): accepted only in EndOffsetDirection (the direction back towards
+	// Start) and up to MaxEndOffsetMiles, which must stay well under the
+	// closure's length. Without a direction no offset is accepted.
+	EndOffsetDirection string  `koanf:"endOffsetDirection"`
+	MaxEndOffsetMiles  float64 `koanf:"maxEndOffsetMiles"`
 }
 
 // WeatherConfig holds weather monitoring configuration
