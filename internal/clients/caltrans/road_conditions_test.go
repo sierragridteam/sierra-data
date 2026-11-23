@@ -274,6 +274,8 @@ var ebbettsWinterClosure = SeasonalClosure{
 	End:                  []string{"Jct of SR 89", "Ebbetts Pass"},
 	StartOffsetDirection: "east",
 	MaxStartOffsetMiles:  2,
+	EndOffsetDirection:   "west",
+	MaxEndOffsetMiles:    10,
 }
 
 func TestMatchSeasonalClosure_RealPages(t *testing.T) {
@@ -285,6 +287,16 @@ func TestMatchSeasonalClosure_RealPages(t *testing.T) {
 	assert.Equal(t, "Is closed from 0.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/ to the Jct of SR 89 /Ebbetts Pass/ (Alpine Co) - Due to snow- Motorists are advised to use an alternate route", ebbetts.Description)
 	assert.True(t, MatchSeasonalClosure(ebbetts, ebbettsWinterClosure))
 	assert.False(t, MatchSeasonalClosure(sr4[1], ebbettsWinterClosure), "construction at the Delta")
+
+	// 2026-11-22 and 23: the far end drawn in, chains up to the turnoff.
+	short := realPage(t, "road_conditions_sr4_20261123.html", "4")
+	require.NotEmpty(t, short)
+	assert.Equal(t, CONDITION_CLOSURE, short[0].Type)
+	assert.Equal(t, "Is closed from the Mt. Reba turnoff to 2.4 mi west of the Jct of SR 89 /Ebbetts Pass/ (Alpine Co) - Due to snow - Motorists are advised to use an alternate route", short[0].Description)
+	assert.True(t, MatchSeasonalClosure(short[0], ebbettsWinterClosure))
+	for _, c := range short[1:] {
+		assert.False(t, MatchSeasonalClosure(c, ebbettsWinterClosure), c.Description)
+	}
 
 	// The Sonora Pass closure on the SR 108 page is another closure.
 	sr108 := realPage(t, "road_conditions_sr108_20261113.html", "108")
@@ -338,7 +350,17 @@ func TestMatchSeasonalClosure_Rule(t *testing.T) {
 
 		// A different end.
 		{"Is closed from 0.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/ to Lake Alpine (Alpine Co) - Due to snow", CONDITION_CLOSURE, false},
-		{"Is closed from 0.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/ to 7.2 mi west of the Jct of SR 89 /Ebbetts Pass/", CONDITION_CLOSURE, false},
+		{"Is closed from 0.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/ to 2.4 mi west of Lake Alpine", CONDITION_CLOSURE, false},
+		// The far end drawn in, towards the start and not too far: still it.
+		{"Is closed from the Mt. Reba turnoff to 2.4 mi west of the Jct of SR 89 /Ebbetts Pass/ (Alpine Co) - Due to snow - Motorists are advised to use an alternate route", CONDITION_CLOSURE, true},
+		{"Is closed from 0.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/ to 7.2 mi west of the Jct of SR 89 /Ebbetts Pass/", CONDITION_CLOSURE, true},
+		{"Is closed from 0.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/ to 10 miles west of Ebbetts Pass.", CONDITION_CLOSURE, true},
+		// An end offset the other way, too long, unreadable, or with more after it.
+		{"Is closed from the Mt. Reba turnoff to 2.4 mi east of the Jct of SR 89 /Ebbetts Pass/", CONDITION_CLOSURE, false},
+		{"Is closed from the Mt. Reba turnoff to 10.1 mi west of the Jct of SR 89 /Ebbetts Pass/", CONDITION_CLOSURE, false},
+		{"Is closed from the Mt. Reba turnoff to just west of the Jct of SR 89 /Ebbetts Pass/", CONDITION_CLOSURE, false},
+		{"Is closed from the Mt. Reba turnoff to 2.4 mi west of 1 mi west of the Jct of SR 89 /Ebbetts Pass/", CONDITION_CLOSURE, false},
+		{"Is closed from the Mt. Reba turnoff to 2.4 mi west of the Jct of SR 89 /Ebbetts Pass/ and at Cottage Springs", CONDITION_CLOSURE, false},
 		{"Is closed from 0.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/ to the Jct of SR 89 /Ebbetts Pass/ to the Nevada State Line", CONDITION_CLOSURE, false},
 		// A different start.
 		{"Is closed from Cottage Springs to the Jct of SR 89 /Ebbetts Pass/ - Due to snow", CONDITION_CLOSURE, false},
@@ -362,6 +384,9 @@ func TestMatchSeasonalClosure_Rule(t *testing.T) {
 	// With no direction configured, no offset is accepted.
 	bare := ebbettsWinterClosure
 	bare.StartOffsetDirection = ""
+	bare.EndOffsetDirection = ""
+	assert.False(t, MatchSeasonalClosure(RoadCondition{Type: CONDITION_CLOSURE,
+		Description: "Is closed from the Jct of SR 207 /Mt Reba Turnoff/ to 2.4 mi west of the Jct of SR 89 /Ebbetts Pass/"}, bare))
 	assert.False(t, MatchSeasonalClosure(RoadCondition{Type: CONDITION_CLOSURE,
 		Description: "Is closed from 0.5 mi east of the Jct of SR 207 /Mt Reba Turnoff/ to the Jct of SR 89 /Ebbetts Pass/"}, bare))
 	assert.True(t, MatchSeasonalClosure(RoadCondition{Type: CONDITION_CLOSURE,

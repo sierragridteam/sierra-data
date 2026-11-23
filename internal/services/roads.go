@@ -1080,6 +1080,7 @@ func seasonalClosureBeyond(c caltrans.RoadCondition, road config.MonitoredRoad) 
 		if strings.TrimSpace(sc.Name) == "" || !caltrans.MatchSeasonalClosure(c, caltrans.SeasonalClosure{
 			Name: sc.Name, Start: sc.Start, End: sc.End,
 			StartOffsetDirection: sc.StartOffsetDirection, MaxStartOffsetMiles: sc.MaxStartOffsetMiles,
+			EndOffsetDirection: sc.EndOffsetDirection, MaxEndOffsetMiles: sc.MaxEndOffsetMiles,
 		}) {
 			continue
 		}
