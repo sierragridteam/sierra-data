@@ -21,6 +21,23 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-24
+
+### The burn line reader can run on AWS models (internal; no API change)
+
+`cmd/burn-line -provider=aws` transcribes the recording with Amazon Transcribe
+and reads the status with a model on Amazon Bedrock, on the process's AWS
+credentials. The default is unchanged (`-provider=openai`: Whisper and
+`gpt-4o`), so the scheduled workflow reads as before and `burnStatus` on
+`/api/v1/events?layer=burn_status` has the same fields and meanings.
+`-recording <file>` reads a saved recording without placing a call or pushing.
+
+The reader now checks a message's dates against the day in Pacific time. A run
+after 4 pm Pacific on a UTC host used tomorrow's date and could read a current
+burn-day message as out of date. The one reading on record taken that late
+(Tuolumne, 2026-10-14) was a suspension "until further notice", which names
+no day, so no published reading is known to be affected.
+
 ## 2026-11-23
 
 ### The Ebbetts Pass winter closure is recognised when its far end draws in

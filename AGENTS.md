@@ -536,8 +536,10 @@ survives as a legacy alias):
 **County burn line** (a recorded phone line, the `burnline` source):
 - The daily permissive-burn-day call. **The authority is a phone number, not an
   API** (Calaveras: 209-754-6600). `cmd/burn-line` places a recorded call via
-  Twilio, transcribes it with Whisper, and extracts the status with a
-  structured-output chat call.
+  Twilio, transcribes it, and extracts the status with a structured-output
+  chat call: Whisper and `gpt-4o` (`-provider=openai`, the default), or Amazon
+  Transcribe and a Bedrock model (`-provider=aws`, no key). See the `burnline`
+  section of `internal/clients/AGENTS.md`.
 - **It runs from CI, not the server** (`.github/workflows/burn-line.yml`) and PUSHES the readings to `POST /api/v1/ingest/burn.line` in ONE
   batched report (the endpoint rate-limits per reporter, so a push per line would
   429 everything after the first). A phone call costs
