@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/sierragridteam/sierra-data/internal/clients/twilio"
+	"github.com/sierragridteam/sierra-data/internal/lib/llm"
 )
 
 func TestParseStatus(t *testing.T) {
@@ -72,7 +73,8 @@ func newTestReader(t *testing.T, tw, ai *httptest.Server) *Reader {
 	cfg.BaseURL = ai.URL
 	r := NewReader(
 		twilio.NewClientWithHTTPDoer(tw.URL, "AC1", "tok", tw.Client()),
-		openai.NewClientWithConfig(cfg),
+		Whisper{Client: openai.NewClientWithConfig(cfg)},
+		llm.OpenAI{Client: openai.NewClientWithConfig(cfg)},
 		Config{Phone: "+12097546600", From: "+15550000000", TwiMLURL: "https://twiml.test",
 			County: "Calaveras County", HangUpAfter: time.Millisecond},
 	)

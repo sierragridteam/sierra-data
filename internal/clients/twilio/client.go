@@ -118,8 +118,18 @@ func (c *Client) Recordings(ctx context.Context, callSID string) ([]Recording, e
 
 // DownloadRecording fetches a recording as mp3 bytes.
 func (c *Client) DownloadRecording(ctx context.Context, recordingSID string) ([]byte, error) {
-	u := fmt.Sprintf("%s/2010-04-01/Accounts/%s/Recordings/%s.mp3",
-		c.baseURL, url.PathEscape(c.accountSID), url.PathEscape(recordingSID))
+	return c.DownloadRecordingAs(ctx, recordingSID, "mp3")
+}
+
+// DownloadRecordingAs fetches a recording in the given format: "mp3", or
+// "wav" for the call's own audio (8 kHz 16-bit mono PCM), which is larger and
+// not re-encoded.
+func (c *Client) DownloadRecordingAs(ctx context.Context, recordingSID, format string) ([]byte, error) {
+	if format != "mp3" && format != "wav" {
+		return nil, fmt.Errorf("twilio: recording format %q is not mp3 or wav", format)
+	}
+	u := fmt.Sprintf("%s/2010-04-01/Accounts/%s/Recordings/%s.%s",
+		c.baseURL, url.PathEscape(c.accountSID), url.PathEscape(recordingSID), format)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, fmt.Errorf("twilio: build download request: %w", err)

@@ -24,7 +24,6 @@
 package burnline
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -34,6 +33,7 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 
 	"github.com/sierragridteam/sierra-data/internal/clients/twilio"
+	"github.com/sierragridteam/sierra-data/internal/lib/llm"
 )
 
 // Status is the extracted burn-day answer, in the vocabulary the ingest push
@@ -73,12 +73,23 @@ type Config struct {
 	HangUpAfter time.Duration
 	// Model is the chat model used for extraction.
 	Model string
+	// Location is the district's clock. The message says "today" and names
+	// dates, and the extraction checks them against today's date there, not
+	// where this process runs: a host on UTC is already on tomorrow from 4 pm
+	// Pacific, and would read a current message as out of date. Nil means the
+	// process's local time.
+	Location *time.Location
+	// Today, when set, replaces the current time as the day the message is
+	// checked against: for reading a saved recording as of the day it was
+	// made.
+	Today time.Time
 }
 
 // Reader places calls and extracts readings.
 type Reader struct {
 	tw     *twilio.Client
-	ai     *openai.Client
+	stt    Transcriber
+	ai     llm.JSONCompleter
 	cfg    Config
 	now    func() time.Time
 	sleep  func(time.Duration)
@@ -86,8 +97,9 @@ type Reader struct {
 	settle time.Duration // how long to wait for the recording to materialize
 }
 
-// NewReader builds a Reader.
-func NewReader(tw *twilio.Client, ai *openai.Client, cfg Config) *Reader {
+// NewReader builds a Reader. stt turns the recording into text and ai reads
+// the status out of that text; they need not be the same provider.
+func NewReader(tw *twilio.Client, stt Transcriber, ai llm.JSONCompleter, cfg Config) *Reader {
 	if cfg.HangUpAfter <= 0 {
 		cfg.HangUpAfter = 90 * time.Second
 	}
@@ -95,7 +107,7 @@ func NewReader(tw *twilio.Client, ai *openai.Client, cfg Config) *Reader {
 		cfg.Model = openai.GPT4o
 	}
 	return &Reader{
-		tw: tw, ai: ai, cfg: cfg,
+		tw: tw, stt: stt, ai: ai, cfg: cfg,
 		now: time.Now, sleep: time.Sleep,
 		poll: 5 * time.Second, settle: 10 * time.Second,
 	}
@@ -109,9 +121,22 @@ func (r *Reader) Read(ctx context.Context) (*Reading, error) {
 	if err != nil {
 		return nil, err
 	}
-	transcript, err := r.transcribe(ctx, audio)
+	reading, err := r.ReadRecording(ctx, audio)
 	if err != nil {
 		return nil, err
+	}
+	reading.ObservedAt = observed
+	return reading, nil
+}
+
+// ReadRecording reads a recording that already exists, in the transcriber's
+// AudioFormat: everything Read does after the call. It is how a provider is
+// tried on a saved recording without dialing anyone. ObservedAt is now.
+func (r *Reader) ReadRecording(ctx context.Context, audio []byte) (*Reading, error) {
+	observed := r.now()
+	transcript, err := r.stt.Transcribe(ctx, audio, r.cfg.County)
+	if err != nil {
+		return nil, fmt.Errorf("burnline: transcribe: %w", err)
 	}
 	if strings.TrimSpace(transcript) == "" {
 		return nil, fmt.Errorf("burnline: transcription was empty")
@@ -120,7 +145,7 @@ func (r *Reader) Read(ctx context.Context) (*Reading, error) {
 	if err != nil {
 		return nil, err
 	}
-	reading.ObservedAt = observed
+	reading.ObservedAt = observed.UTC()
 	return reading, nil
 }
 
@@ -171,31 +196,7 @@ func (r *Reader) record(ctx context.Context) ([]byte, error) {
 	if len(recs) == 0 {
 		return nil, fmt.Errorf("burnline: call %s produced no recording", call.SID)
 	}
-	return r.tw.DownloadRecording(ctx, recs[0].SID)
-}
-
-// transcribe runs Whisper over the recording. The prompt primes it with the
-// domain's proper nouns and jargon, which measurably improves "Calaveras",
-// "Cal Fire" and the elevation phrasing.
-func (r *Reader) transcribe(ctx context.Context, audio []byte) (string, error) {
-	prompt := fmt.Sprintf("This is a recording of the %s burn information line. "+
-		"The automated message covers burn day restrictions, fire danger, elevation "+
-		"requirements, and permit information. Key terms: %s, Cal Fire, burn day, "+
-		"permissive burn day, fire danger, elevation restrictions (3500 feet), "+
-		"landscape debris, permits, burn barrel.", r.cfg.County, r.cfg.County)
-
-	resp, err := r.ai.CreateTranscription(ctx, openai.AudioRequest{
-		Model:       openai.Whisper1,
-		FilePath:    "recording.mp3", // names the Reader's content; no file is opened
-		Reader:      bytes.NewReader(audio),
-		Prompt:      prompt,
-		Temperature: 0.1,
-		Language:    "en",
-	})
-	if err != nil {
-		return "", fmt.Errorf("burnline: transcribe: %w", err)
-	}
-	return resp.Text, nil
+	return r.tw.DownloadRecordingAs(ctx, recs[0].SID, r.stt.AudioFormat())
 }
 
 // ExtractSchema is the structured-output contract for the extraction step.
@@ -254,30 +255,35 @@ Transcription:
 %q`, county, today, transcript)
 }
 
+// today is the day the message is checked against, on the district's clock.
+func (r *Reader) today() time.Time {
+	t := r.cfg.Today
+	if t.IsZero() {
+		t = r.now()
+	}
+	if r.cfg.Location != nil {
+		t = t.In(r.cfg.Location)
+	}
+	return t
+}
+
 // extract reads today's status out of the transcript.
 func (r *Reader) extract(ctx context.Context, transcript string) (*Reading, error) {
-	prompt := ExtractPrompt(r.cfg.County, r.now().Format("Monday, January 2, 2006"), transcript)
+	prompt := ExtractPrompt(r.cfg.County, r.today().Format("Monday, January 2, 2006"), transcript)
 
-	resp, err := r.ai.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+	answer, err := r.ai.CompleteJSON(ctx, llm.JSONRequest{
 		Model:       r.cfg.Model,
+		Prompt:      prompt,
+		SchemaName:  ExtractSchema.Name,
+		Schema:      ExtractSchema.Schema.(json.RawMessage),
 		Temperature: 0.1,
-		Messages: []openai.ChatCompletionMessage{
-			{Role: openai.ChatMessageRoleUser, Content: prompt},
-		},
-		ResponseFormat: &openai.ChatCompletionResponseFormat{
-			Type:       openai.ChatCompletionResponseFormatTypeJSONSchema,
-			JSONSchema: &ExtractSchema,
-		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("burnline: extract: %w", err)
 	}
-	if len(resp.Choices) == 0 {
-		return nil, fmt.Errorf("burnline: extract returned no choices")
-	}
 
 	var out extraction
-	if err := json.Unmarshal([]byte(resp.Choices[0].Message.Content), &out); err != nil {
+	if err := json.Unmarshal([]byte(answer), &out); err != nil {
 		return nil, fmt.Errorf("burnline: decode extraction: %w", err)
 	}
 

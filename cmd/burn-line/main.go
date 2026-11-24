@@ -24,11 +24,19 @@
 //	burn-line -not-before 06:00 ...     # scheduled mode: skip lines already
 //	                                    # read this morning; before 06:00
 //	                                    # Pacific, dial nothing
+//	burn-line -provider aws ...         # Amazon Transcribe and a Bedrock model
+//	                                    # instead of OpenAI
+//	burn-line -line tuolumne-apcd -recording call.wav
+//	                                    # read a saved recording: no call, no
+//	                                    # push. How a provider is tried.
 //
 // Credentials come from the environment:
 //
 //	TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER, TWILIO_TWIML_URL
-//	OPENAI_API_KEY
+//	OPENAI_API_KEY      with -provider=openai (the default)
+//	AWS credentials and AWS_REGION, however the SDK finds them, with
+//	                    -provider=aws: bedrock:InvokeModel on the model and
+//	                    transcribe:StartStreamTranscription
 //	GRID_INGEST_TOKEN   a grid.ingest reporter token granted the "burn.line"
 //	                    stream. Mint with:
 //	                      make ingest-token REPORTER=burn-line STREAMS=burn.line
@@ -46,8 +54,6 @@ import (
 	"strings"
 	"time"
 
-	openai "github.com/sashabaranov/go-openai"
-
 	"github.com/sierragridteam/sierra-data/internal/clients/burnline"
 	"github.com/sierragridteam/sierra-data/internal/clients/twilio"
 	"github.com/sierragridteam/sierra-data/internal/config"
@@ -57,7 +63,11 @@ func main() {
 	var (
 		endpoint  = flag.String("endpoint", "", "Grid burn.line ingest endpoint, e.g. https://host/api/v1/ingest/burn.line (required unless -dry-run)")
 		only      = flag.String("line", "", "dial only this line id (default: every enabled line)")
-		model     = flag.String("model", openai.GPT4o, "chat model for extraction")
+		provider  = flag.String("provider", providerOpenAI, "who transcribes and extracts: openai (Whisper and a chat model) or aws (Amazon Transcribe and a Bedrock model)")
+		model     = flag.String("model", "", "model for extraction (default: gpt-4o for openai, deepseek.v3.2 for aws)")
+		vocab     = flag.String("vocabulary", "", "with -provider=aws: name of an Amazon Transcribe custom vocabulary")
+		asOf      = flag.String("as-of", "", "with -recording: the day the recording was made, YYYY-MM-DD, so its dates are checked against that day and not today")
+		recording = flag.String("recording", "", "read this saved recording as the line given by -line instead of calling it; prints the reading, never pushes (wav for aws, mp3 for openai)")
 		hangUp    = flag.Duration("hangup-after", 90*time.Second, "how long to stay on each line")
 		timeout   = flag.Duration("timeout", 10*time.Minute, "deadline per line")
 		dryRun    = flag.Bool("dry-run", false, "call and extract, print the readings, do not push")
@@ -67,6 +77,20 @@ func main() {
 	)
 	flag.Parse()
 
+	if *model == "" {
+		*model = defaultModel(*provider)
+	}
+	if *recording != "" {
+		if *only == "" {
+			fatal("-recording needs -line: which line is this a recording of")
+		}
+		if *notBefore != "" {
+			fatal("-recording reads a file whatever the day's readings are; it does not go with -not-before")
+		}
+		*dryRun = true
+	} else if *asOf != "" {
+		fatal("-as-of goes with -recording: a call is always read as of now")
+	}
 	if *endpoint == "" && !*dryRun {
 		fatal("-endpoint is required (or pass -dry-run)")
 	}
@@ -125,18 +149,26 @@ func main() {
 		lines = due
 	}
 
+	if *recording != "" {
+		readRecording(lines[0], *recording, *asOf, *provider, *vocab, *model, *timeout)
+		return
+	}
+
 	sid := mustEnv("TWILIO_ACCOUNT_SID")
 	authToken := mustEnv("TWILIO_AUTH_TOKEN")
 	from := mustEnv("TWILIO_FROM_NUMBER")
 	twiml := mustEnv("TWILIO_TWIML_URL")
-	openaiKey := mustEnv("OPENAI_API_KEY")
+	ms, err := newModels(context.Background(), *provider, *vocab)
+	if err != nil {
+		fatal("%v", err)
+	}
 	var ingestToken string
 	if !*dryRun {
 		ingestToken = mustEnv("GRID_INGEST_TOKEN")
 	}
 
 	// Check the endpoint will take our report BEFORE dialing. Every call costs
-	// Twilio and OpenAI money, and a reading that cannot be delivered is wasted,
+	// Twilio and model money, and a reading that cannot be delivered is wasted,
 	// so a bad token, a missing grant, or a server that is down must fail here,
 	// for free.
 	if !*dryRun {
@@ -149,7 +181,6 @@ func main() {
 	}
 
 	tw := twilio.NewClient(sid, authToken)
-	ai := openai.NewClient(openaiKey)
 
 	// Lines are independent: one being unreachable must not stop the others.
 	// Every failure is reported and the exit code reflects whether ANY failed,
@@ -162,7 +193,7 @@ func main() {
 	var readings []pushReading
 	for _, l := range lines {
 		fmt.Printf("\n=== %s (%s) — %s\n", l.ID, l.Phone, strings.Join(l.Counties, ", "))
-		r, err := readWithRetry(l, tw, ai, runOpts{
+		r, err := readWithRetry(l, tw, ms, runOpts{
 			from: from, twiml: twiml, model: *model,
 			hangUp: *hangUp, timeout: *timeout,
 		}, *attempts, *retryGap)
@@ -211,17 +242,17 @@ type runOpts struct {
 //
 // Retried blindly rather than by error class: the common failure is the line
 // answering "busy" (other callers, the same morning), but a dropped call, an
-// empty recording or a Whisper/OpenAI blip are equally transient, and every
+// empty recording or a transcription or model blip are equally transient, and every
 // failure mode is a few cents at most. A line that fails every attempt is left
 // for the next scheduled run.
-func readWithRetry(l config.BurnLine, tw *twilio.Client, ai *openai.Client, o runOpts, attempts int, wait time.Duration) (*burnline.Reading, error) {
+func readWithRetry(l config.BurnLine, tw *twilio.Client, ms models, o runOpts, attempts int, wait time.Duration) (*burnline.Reading, error) {
 	if attempts < 1 {
 		attempts = 1
 	}
 	var err error
 	for i := 1; i <= attempts; i++ {
 		var r *burnline.Reading
-		if r, err = read(l, tw, ai, o); err == nil {
+		if r, err = read(l, tw, ms, o); err == nil {
 			return r, nil
 		}
 		fmt.Fprintf(os.Stderr, "  attempt %d/%d FAILED: %v\n", i, attempts, err)
@@ -234,13 +265,14 @@ func readWithRetry(l config.BurnLine, tw *twilio.Client, ai *openai.Client, o ru
 }
 
 // read dials one line and returns its reading.
-func read(l config.BurnLine, tw *twilio.Client, ai *openai.Client, o runOpts) (*burnline.Reading, error) {
+func read(l config.BurnLine, tw *twilio.Client, ms models, o runOpts) (*burnline.Reading, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), o.timeout)
 	defer cancel()
 
-	reader := burnline.NewReader(tw, ai, burnline.Config{
+	reader := burnline.NewReader(tw, ms.stt, ms.ai, burnline.Config{
 		Phone: l.Phone, From: o.from, TwiMLURL: o.twiml,
 		County: displayName(l), HangUpAfter: o.hangUp, Model: o.model,
+		Location: pacific,
 	})
 
 	reading, err := reader.Read(ctx)
@@ -248,12 +280,51 @@ func read(l config.BurnLine, tw *twilio.Client, ai *openai.Client, o runOpts) (*
 		return nil, err
 	}
 
+	printReading(reading, 240)
+	return reading, nil
+}
+
+func printReading(reading *burnline.Reading, transcriptChars int) {
 	fmt.Printf("  status:     %s\n", reading.Status)
 	fmt.Printf("  confidence: %d\n", reading.Confidence)
 	fmt.Printf("  message:    %s\n", reading.Message)
 	fmt.Printf("  observedAt: %s\n", reading.ObservedAt.Format(time.RFC3339))
-	fmt.Printf("  transcript: %s\n", truncate(reading.Transcript, 240))
-	return reading, nil
+	fmt.Printf("  transcript: %s\n", truncate(reading.Transcript, transcriptChars))
+}
+
+// readRecording reads a saved recording as line l with the given provider and
+// prints the reading, transcript in full. It places no call, needs no Twilio
+// or ingest credential, and pushes nothing: it exists to try a provider, a
+// model or a vocabulary on audio we already have.
+func readRecording(l config.BurnLine, path, asOf, provider, vocabulary, model string, timeout time.Duration) {
+	audio, err := os.ReadFile(path)
+	if err != nil {
+		fatal("%v", err)
+	}
+	var today time.Time
+	if asOf != "" {
+		day, err := time.ParseInLocation("2006-01-02", asOf, pacific)
+		if err != nil {
+			fatal("-as-of must be YYYY-MM-DD: %v", err)
+		}
+		today = day.Add(12 * time.Hour)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	ms, err := newModels(ctx, provider, vocabulary)
+	if err != nil {
+		fatal("%v", err)
+	}
+	fmt.Printf("=== %s from %s (%s, %s)\n", l.ID, path, provider, model)
+	reader := burnline.NewReader(nil, ms.stt, ms.ai, burnline.Config{
+		County: displayName(l), Model: model, Location: pacific, Today: today,
+	})
+	reading, err := reader.ReadRecording(ctx, audio)
+	if err != nil {
+		fatal("%v", err)
+	}
+	printReading(reading, 1<<20)
+	fmt.Printf("\n-recording: not pushed\n")
 }
 
 // pushBody mirrors the burn.line stream contract. Request bodies on

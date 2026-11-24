@@ -13,7 +13,7 @@ enhancement live in `internal/services`, not here.
 | `nws`      | api.weather.gov       | none (User-Agent required)    | Authoritative zone alerts + fire-weather products. |
 | `firis`    | ArcGIS (CAL FIRE org) | none (public)                 | CAL FIRE/FIRIS combo fire perimeters. Dedup + `LastEdit` gating live in `internal/ingest` (wildfire). Replaced `wfigs` (retained unused). |
 | `pge`      | ArcGIS (PG&E)         | none (public, undocumented)   | Electric outages (points + affected-area polygons) and PSPS coverage, plus PG&E's own ETL stamp. See below. |
-| `burnline` | county burn phone line | Twilio + OpenAI              | Places a recorded call, transcribes it, extracts today's burn day. Driven by `cmd/burn-line` from CI, not the server — see below. |
+| `burnline` | county burn phone line | Twilio + OpenAI, or Twilio + AWS (Transcribe, Bedrock) | Places a recorded call, transcribes it, extracts today's burn day. Driven by `cmd/burn-line` from CI, not the server — see below. |
 | `twilio`   | Twilio REST API       | account SID + auth token      | Minimal hand-rolled client: place a recorded call, hang up, fetch the recording. |
 | `calfireburn` | burnpermit.fire.ca.gov HTML | none (browser headers required) | CAL FIRE per-county burn suspension. HTML scrape behind Akamai bot management — see below. |
 
@@ -457,8 +457,38 @@ Three parsing rules that must not be relaxed:
 
 The authority is the county's recorded burn-information line (Calaveras:
 (209) 754-6600). There is no API and no website behind it — the number IS the
-source. `burnline.Reader` places a recorded call via `twilio`, transcribes it
-with Whisper, and extracts today's status with a structured-output chat call.
+source. `burnline.Reader` places a recorded call via `twilio`, transcribes it,
+and extracts today's status with a structured-output chat call.
+
+**Two providers, behind two interfaces.** `burnline.Transcriber` (recording to
+text) and `llm.JSONCompleter` (`internal/lib/llm`: one prompt in, one JSON
+document matching a schema out; shared, meant for the alert enhancer too).
+`cmd/burn-line -provider=openai` (the default, and what the workflow runs) is
+Whisper plus `gpt-4o` with `OPENAI_API_KEY`. `-provider=aws` is Amazon
+Transcribe's streaming API plus a Bedrock model through Converse
+(`deepseek.v3.2` unless `-model` says otherwise) on the process's AWS
+credentials, with no key. Things that differ and matter:
+
+- **The recording format follows the transcriber** (`AudioFormat`): mp3 for
+  Whisper, WAV for Transcribe, which streams the file's 16-bit mono PCM.
+  Anything that is not such a WAV is refused by name; as PCM it would come
+  back as noise or nothing, and an empty transcript reads like a silent line.
+- **Transcribe cannot be primed with a sentence.** Proper nouns come from a
+  custom vocabulary (`-vocabulary`, created by the hosting account's
+  infrastructure code). Without one it writes "Tuwame County" and "coal
+  fire". The extraction is right either way; the published transcript shows it.
+- **"Today" is the district's day** (`Config.Location`, Pacific): a host on
+  UTC is on tomorrow's date from 4 pm Pacific, and a model told that date
+  reads a current message as out of date.
+- **Try a provider on a saved recording, not on a call:**
+  `burn-line -provider aws -line tuolumne-apcd -recording call.wav [-as-of
+  2026-11-23]` transcribes, extracts and prints; it places no call, needs no
+  Twilio or ingest credential and pushes nothing. `-as-of` is the day the
+  recording was made, so a message for that day is not judged against today.
+- A model that passes must do three things on the past transcripts: the right
+  status on the day, `red` on a later day (the dates named have passed), and
+  the cleaned transcript returned whole. Several models that got the status
+  right cut the transcript to a sentence.
 
 **The server never runs this.** `cmd/burn-line` does, on a daily schedule from
 `.github/workflows/burn-line.yml`, and PUSHES the results to
