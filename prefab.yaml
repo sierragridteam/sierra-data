@@ -809,7 +809,7 @@ grid:
       # BURNLINE_INGEST_TOKEN); only its SHA-256 is committed.
       - id: burn-line
         name: "County burn line reader"
-        tokenSha256: "8427c3c2698c64f8d27a4edd378fdce22f94e933c8c7366e6dfb4d3e75dcc363"
+        tokenSha256: "48362d126836eb45bf8a15630f76f7f20dfae65d43c27672eb4c002adc1a0a85"
         streams: ["burn.line"]
         staleAfter: "30h"
         minInterval: "60s"
