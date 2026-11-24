@@ -251,6 +251,11 @@ current.
 
 Also return a 0-100 confidence, and a one-sentence summary suitable for display.
 
+The transcription is automatic and misspells names it does not know. In the
+cleaned transcription, spell the county the way it is written in the first line
+above (for example "Tuwame County" on the Tuolumne County line is "Tuolumne
+County") and write the state fire agency as "Cal Fire". Change no other words.
+
 Transcription:
 %q`, county, today, transcript)
 }

@@ -490,6 +490,13 @@ credentials, with no key. Things that differ and matter:
   the cleaned transcript returned whole. Several models that got the status
   right cut the transcript to a sentence.
 
+**Names are corrected by the extraction prompt, not by the transcriber.**
+Amazon Transcribe writes "Tuwame County" for Tuolumne even with the word in its
+custom vocabulary (the vocabulary did fix "coal fire" for Cal Fire). The prompt
+tells the model to spell the county as the line's name has it and to write
+"Cal Fire" in `cleanedTranscription`, changing nothing else; checked on a
+Tuolumne recording of 2026-11-23.
+
 **The server never runs this.** `cmd/burn-line` does, on a daily schedule (a
 scheduled task built from the Dockerfile's `burn-line` target, and
 `.github/workflows/burn-line.yml`; see the root `AGENTS.md`), and PUSHES the
