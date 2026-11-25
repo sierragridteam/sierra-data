@@ -19,6 +19,12 @@
 #      automatic rollback) to SUCCESSFUL, printing the deployment ARN and the
 #      rollback commands.
 #
+# The burn line (cmd/burn-line, Dockerfile target burn-line) is a scheduled
+# task, not a service: its image is pushed and a revision registered in the
+# same way, and then its EventBridge Scheduler schedule is pointed at that
+# revision, so the next scheduled run uses it. Nothing is started here, and
+# no call is placed by a deploy.
+#
 # A service whose image and revision did not change is not redeployed. The
 # tooling (this file, scripts/deploy.py) comes from main's tip; the images
 # are built from a second checkout of the commit being deployed, so an older
@@ -30,7 +36,8 @@
 # exists sends no failure mail); once it is, any other unset required
 # variable fails the run before anything is built. The three DEPLOY_RELAY_*
 # variables are optional as a group: all unset deploys the Grid only, with a
-# notice; some set fails the run naming the missing ones.
+# notice; some set fails the run naming the missing ones. The three
+# DEPLOY_BURN_LINE_* variables are optional in the same way.
 name: Deploy
 
 on:
@@ -78,6 +85,9 @@ env:
   DEPLOY_RELAY_SERVICE: ${{ vars.DEPLOY_RELAY_SERVICE }}
   DEPLOY_RELAY_TASK_FAMILY: ${{ vars.DEPLOY_RELAY_TASK_FAMILY }}
   DEPLOY_RELAY_ECR_REPOSITORY: ${{ vars.DEPLOY_RELAY_ECR_REPOSITORY }}
+  DEPLOY_BURN_LINE_TASK_FAMILY: ${{ vars.DEPLOY_BURN_LINE_TASK_FAMILY }}
+  DEPLOY_BURN_LINE_ECR_REPOSITORY: ${{ vars.DEPLOY_BURN_LINE_ECR_REPOSITORY }}
+  DEPLOY_BURN_LINE_SCHEDULE: ${{ vars.DEPLOY_BURN_LINE_SCHEDULE }}
 
 jobs:
   preflight:

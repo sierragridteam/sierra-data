@@ -39,7 +39,8 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 ###############################################################################
 # The relay is its own process with its own database so a relay crash or deploy
 # never touches the hazard feeds (the relay is github.com/sierragridteam/sierra-meshrelay/relay). These stages sit BEFORE the
-# server's final stage so a plain `docker build` still produces the server.
+# server's final stage so a plain `docker build` still produces the server
+# (as do the burn line's, below).
 FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS relay-builder
 WORKDIR /app
 ENV GOTOOLCHAIN=local
@@ -75,6 +76,43 @@ EXPOSE 8090
 HEALTHCHECK --interval=30s --timeout=3s --start-period=120s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8090/mesh/relay/healthz || exit 1
 ENTRYPOINT ["/app/mesh-relay"]
+
+###############################################################################
+# Burn line image (docker build --target burn-line) — a scheduled TASK
+###############################################################################
+# cmd/burn-line phones the county burn lines and pushes the readings to the
+# Grid's ingest endpoint. It is started on a schedule, runs for a few minutes
+# and exits: no port, no health check, no volume. Its own image rather than a
+# second entry point in the Grid's, so that a change to the dialer never
+# redeploys the API (and the reverse), and the image holds only what the task
+# needs. Credentials come from the environment (see cmd/burn-line/main.go).
+FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS burn-line-builder
+WORKDIR /app
+ENV GOTOOLCHAIN=local
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go build -ldflags="-s -w" -o /burn-line ./cmd/burn-line
+
+FROM alpine:3.24.4 AS burn-line
+# ca-certificates: every call it makes is HTTPS (Twilio, the transcription
+# and model provider, the Grid).
+# The Pacific zone is compiled into the binary (time/tzdata).
+RUN apk add --no-cache ca-certificates && apk upgrade && \
+    addgroup -S sierra && adduser -S sierra -G sierra
+WORKDIR /app
+COPY --from=burn-line-builder /burn-line /app/burn-line
+# grid.burn.lines in prefab.yaml is the list of lines to dial, the same file
+# the server reads, so the two agree by being built from one commit.
+COPY --from=burn-line-builder /app/prefab.yaml /app/prefab.yaml
+USER sierra
+# Arguments come from whoever starts it (the task definition's command):
+#   -endpoint=https://<host>/api/v1/ingest/burn.line -not-before=06:00
+#   -provider=aws -model=<bedrock model id> -vocabulary=<name>
+ENTRYPOINT ["/app/burn-line"]
 
 ###############################################################################
 # Stage 2: Final lightweight runtime image (docker build --target grid; also

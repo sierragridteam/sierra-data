@@ -30,10 +30,11 @@ func dayStart(now time.Time, hhmm string) (time.Time, error) {
 // lineObservations fetches each burn line's last observedAt from the public
 // events API on the same host as the ingest endpoint.
 //
-// This is what makes a scheduled run idempotent: GitHub fires the cron hourly
-// (its schedules land hours late, so one slot cannot hit the morning), and each
-// run dials only the lines that have no reading since this morning. The server
-// is the record of what was read, so there is no CI-side state to drift.
+// This is what makes a scheduled run idempotent: the schedule fires several
+// times a morning (retries), and each run dials only the lines that have no
+// reading since this morning. The server is the record of what was read, so
+// there is no state on the caller's side to drift. It only knows of readings
+// already pushed: a run still dialing is invisible, so runs must not overlap.
 func lineObservations(ctx context.Context, endpoint string) (map[string]time.Time, error) {
 	u, err := url.Parse(endpoint)
 	if err != nil {

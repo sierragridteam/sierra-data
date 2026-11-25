@@ -727,8 +727,9 @@ grid:
     # UNKNOWN answer is the honest thing to show, and merely publishing one must
     # not flip the source unhealthy for a reading we never ask for.
     #
-    # This list is the SINGLE SOURCE OF TRUTH: .github/workflows/burn-line.yml
-    # does not enumerate numbers, it just runs the tool, which reads this file.
+    # This list is the SINGLE SOURCE OF TRUTH: neither the burn-line image nor
+    # .github/workflows/burn-line.yml enumerates numbers, they just run the
+    # tool, which reads this file (the image carries its own copy).
     lines:
       - id: "calaveras-apcd"
         name: "Calaveras County burn line"
@@ -797,7 +798,8 @@ grid:
         minInterval: "30s"
         priority: 20
         enumerates: true
-      # The burn-line reader (.github/workflows/burn-line.yml). It reports ONCE
+      # The burn-line reader (cmd/burn-line: the scheduled task, and
+      # .github/workflows/burn-line.yml by hand). It reports ONCE
       # A DAY, so staleAfter is generous: anything under ~24h would flag a
       # healthy reporter between runs. The layer's own 36h freshness gate
       # (grid.burn.burnDayStaleAfter) is what decides a reading is too old to
@@ -805,8 +807,9 @@ grid:
       #
       # Mint/rotate with: make ingest-token REPORTER=burn-line STREAMS=burn.line
       #
-      # The token itself lives only with the operator (and in the repo secret
-      # BURNLINE_INGEST_TOKEN); only its SHA-256 is committed.
+      # The token itself lives only with the operator, in the scheduled task's
+      # secret store and in the repo secret BURNLINE_INGEST_TOKEN (one token,
+      # so a rotation replaces both); only its SHA-256 is committed.
       - id: burn-line
         name: "County burn line reader"
         tokenSha256: "48362d126836eb45bf8a15630f76f7f20dfae65d43c27672eb4c002adc1a0a85"

@@ -21,6 +21,11 @@
 # next hourly run. If it is never read, the previous reading ages past the
 # server's freshness gate (grid.burn.burnDayStaleAfter, 36h) and the burn-day
 # facet reads UNKNOWN, which consumers render as "call the line".
+#
+# A scheduled task in the hosting account now runs the same command at 06:00
+# Pacific (the Dockerfile's `burn-line` image; docs/deploy-handoff.md). Until
+# that task has had a good scheduled run, the cron below stays as it was:
+# both pass -not-before=06:00, so each skips the lines the other has read.
 name: Burn line
 
 on:

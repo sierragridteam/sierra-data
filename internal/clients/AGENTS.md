@@ -490,18 +490,26 @@ credentials, with no key. Things that differ and matter:
   the cleaned transcript returned whole. Several models that got the status
   right cut the transcript to a sentence.
 
-**The server never runs this.** `cmd/burn-line` does, on a daily schedule from
-`.github/workflows/burn-line.yml`, and PUSHES the results to
-`POST /api/v1/ingest/burn.line` as ONE batched report.
+**Names are corrected by the extraction prompt, not by the transcriber.**
+Amazon Transcribe writes "Tuwame County" for Tuolumne even with the word in its
+custom vocabulary (the vocabulary did fix "coal fire" for Cal Fire). The prompt
+tells the model to spell the county as the line's name has it and to write
+"Cal Fire" in `cleanedTranscription`, changing nothing else; checked on a
+Tuolumne recording of 2026-11-23.
+
+**The server never runs this.** `cmd/burn-line` does, on a daily schedule (a
+scheduled task built from the Dockerfile's `burn-line` target, and
+`.github/workflows/burn-line.yml`; see the root `AGENTS.md`), and PUSHES the
+results to `POST /api/v1/ingest/burn.line` as ONE batched report.
 It reads `grid.burn.lines` from `prefab.yaml` and dials every enabled line, so
-the workflow enumerates no phone numbers — one source of truth, and no CI edit
-that can drift from config in either direction.
+neither the image nor the workflow enumerates phone numbers — one source of
+truth, and no edit elsewhere that can drift from config in either direction.
 Placing a phone call costs money and must happen exactly once a day; a
 long-running server would re-dial on every restart unless carefully guarded,
-whereas a scheduled workflow has those semantics for free. The workflow fires
-hourly (GitHub lands any one slot 3–8h late) and passes `-not-before=06:00`, which
+whereas a scheduled run has those semantics for free. Every scheduled run
+passes `-not-before=06:00`, which
 dials only lines whose last reading on `/api/v1/events?layer=burn_status` predates
-6am Pacific today, so the extra runs cost nothing. Each line is tried
+6am Pacific today, so a schedule may fire again later as a retry at no cost. Each line is tried
 `-attempts` (3) times, `-retry-wait` (2m) apart.
 
 Three behaviours are deliberate:

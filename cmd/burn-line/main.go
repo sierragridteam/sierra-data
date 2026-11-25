@@ -2,10 +2,12 @@
 // today's burn-day status from each, and PUSHES the readings to The Grid's
 // shared push-ingest endpoint as the `burn.line` stream.
 //
-// It runs on a schedule from CI (.github/workflows/burn-line.yml), not inside
-// the server: placing phone calls costs money and must not be re-triggered by a
-// container restart, so the dialing lives somewhere with exactly-once-per-day
-// semantics. The server only ever receives the results.
+// It runs on a schedule, not inside the server: placing phone calls costs
+// money and must not be re-triggered by a container restart, so the dialing
+// lives somewhere with exactly-once-per-day semantics. The server only ever
+// receives the results. Two things start it: a scheduled task running the
+// Dockerfile's `burn-line` image (-not-before=06:00, with later retries), and
+// .github/workflows/burn-line.yml.
 //
 // # prefab.yaml is the single source of truth
 //
@@ -111,8 +113,9 @@ func main() {
 		fatal("no enabled burn lines in grid.burn.lines")
 	}
 
-	// Scheduled mode. The workflow fires hourly because GitHub runs schedules
-	// hours late; this turns all those runs into one morning read per line.
+	// Scheduled mode. A schedule fires more than once a morning (the task's
+	// retries; the workflow's hourly cron, which GitHub runs hours late); this
+	// turns all those runs into one morning read per line.
 	if *notBefore != "" {
 		start, err := dayStart(time.Now(), *notBefore)
 		if err != nil {
