@@ -21,6 +21,16 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-25 (burn line workflow is manual only)
+
+### The burn line workflow no longer runs on a schedule; no API change
+
+The daily burn line call is made by the scheduled task alone, at 06:00
+Pacific. The GitHub workflow that used to make it hourly-until-read keeps
+only its manual trigger. No client needs an update: the day's reading on
+`/api/v1/events?layer=burn_status` now arrives shortly after 06:00 Pacific
+from one caller instead of from whichever of the two ran first.
+
 ## 2026-11-24 (burn line reader as a scheduled task)
 
 ### The daily burn line call can run as a scheduled task; no API change

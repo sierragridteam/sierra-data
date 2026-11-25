@@ -1,11 +1,19 @@
-# Reads each configured county burn line once a day, as early in the morning as
-# GitHub allows, and PUSHES the reading to The Grid.
+# Reads the configured county burn lines BY HAND and PUSHES the readings to The
+# Grid. It has no schedule: the daily read is a scheduled task in the hosting
+# account, running the same command from the Dockerfile's `burn-line` image at
+# 06:00 Pacific (docs/deploy-handoff.md, "The burn line task"). This workflow
+# had an hourly cron until 2026-11; GitHub started about 3 of its 15 runs a
+# day, hours late, which is why the read moved.
 #
-# Why this lives in CI rather than in the server: placing a phone call costs
-# money and must happen exactly once a day. A long-running server would re-dial
-# on every restart or deploy unless carefully guarded; a scheduled workflow has
-# the semantics we want for free. The server only ever receives the result, on
-# the shared push-ingest endpoint as the `burn.line` stream.
+# Use it to force a fresh read (a plain run always dials every enabled line),
+# to retry one line (`line`), or to test without pushing (`dry_run`). It uses
+# the repository's own copies of the credentials; the ingest token is the
+# same token the scheduled task holds, so a rotation replaces both.
+#
+# The dialing never lives in the server: placing a phone call costs money and
+# a long-running server would re-dial on every restart or deploy. The server
+# only ever receives the result, on the shared push-ingest endpoint as the
+# `burn.line` stream.
 #
 # GRID_INGEST_ENDPOINT is the full stream URL, e.g.
 # https://data.sierragridteam.org/api/v1/ingest/burn.line; the repo secret
@@ -18,28 +26,12 @@
 #
 # A failed line pushes NOTHING — deliberately. The tool retries it a few times
 # in-run (the usual failure is the line answering "busy"), then leaves it to the
-# next hourly run. If it is never read, the previous reading ages past the
+# next run. If it is never read, the previous reading ages past the
 # server's freshness gate (grid.burn.burnDayStaleAfter, 36h) and the burn-day
 # facet reads UNKNOWN, which consumers render as "call the line".
-#
-# A scheduled task in the hosting account now runs the same command at 06:00
-# Pacific (the Dockerfile's `burn-line` image; docs/deploy-handoff.md). Until
-# that task has had a good scheduled run, the cron below stays as it was:
-# both pass -not-before=06:00, so each skips the lines the other has read.
 name: Burn line
 
 on:
-  schedule:
-    # HOURLY, not daily: a single daily slot cannot hit the morning. GitHub ran
-    # "23 14" (7:23am PDT) at 17:20-22:10 UTC every day of 2026-10-12..29 —
-    # 3 to 8 hours late, i.e. after noon, so the day's reading showed as
-    # yesterday's for half the day. The tool's -not-before makes the extra runs
-    # free: before 06:00 Pacific it dials nothing, and after it, it dials only
-    # the lines with no reading since 06:00 today (it asks the public API), so
-    # whichever run lands first after 06:00 reads the day and the rest no-op.
-    # The window starts at 2am PT so a run delayed by a few hours still lands
-    # near 6am. Off the hour because GitHub delays :00 schedules the most.
-    - cron: "23 9-23 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -51,23 +43,22 @@ on:
         type: string
         required: false
       not_before:
-        description: "Pacific HH:MM. Dial nothing before it and skip lines already read since it today (what an external scheduler passes; empty always dials)"
+        description: "Pacific HH:MM. Dial nothing before it and skip lines already read since it today (empty always dials)"
         type: string
         required: false
 
-# Never two runs at once: overlapping runs would dial every line twice and the
-# second push would 429 against the first.
+# Never two runs of this workflow at once: overlapping runs would dial every
+# line twice and the second push would 429 against the first. (This does not
+# see the scheduled task: do not dispatch a plain run while the morning read
+# is under way, or pass not_before.)
 concurrency:
   group: burn-line
   cancel-in-progress: false
 
 jobs:
   read:
-    # Scheduled runs are off until the repo variable GRID_INGEST_ENDPOINT is
-    # set, so merging this before the reporter is deployed costs nothing and
-    # sends no daily failure email. Manual runs always go (a dry run needs no
-    # endpoint; a real one without it fails fast, before dialing).
-    if: vars.GRID_INGEST_ENDPOINT != '' || github.event_name == 'workflow_dispatch'
+    # A dry run needs no endpoint; a real one without the repo variable
+    # GRID_INGEST_ENDPOINT fails fast, before dialing.
     runs-on: ubuntu-latest
     # Each attempt is bounded by the tool's own -timeout (10m) and a line is
     # tried up to 3 times; this caps the job if something hangs outside a call.
@@ -94,10 +85,9 @@ jobs:
       # stop the others — and it exits non-zero if ANY failed after its retries,
       # so a single bad line is visible without losing the good ones.
       #
-      # Scheduled runs pass -not-before=06:00. A manual run always dials, so it
-      # stays the way to force a fresh read, unless it is given not_before:
-      # that is how a scheduler outside GitHub starts the morning read on time
-      # and may fire more than once without paying for a second call.
+      # A run always dials, so it is the way to force a fresh read, unless it
+      # is given not_before: then it skips the lines already read since that
+      # time today, as the scheduled task does.
       - name: Read burn lines and push
         env:
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
@@ -110,5 +100,5 @@ jobs:
           ./bin/burn-line \
             -endpoint="${{ vars.GRID_INGEST_ENDPOINT }}" \
             ${{ inputs.line && format('-line={0}', inputs.line) || '' }} \
-            ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '-dry-run' || '' }} \
-            ${{ github.event_name == 'schedule' && '-not-before=06:00' || (inputs.not_before && format('-not-before={0}', inputs.not_before) || '') }}
+            ${{ inputs.dry_run && '-dry-run' || '' }} \
+            ${{ inputs.not_before && format('-not-before={0}', inputs.not_before) || '' }}

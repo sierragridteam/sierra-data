@@ -5,9 +5,9 @@
 // It runs on a schedule, not inside the server: placing phone calls costs
 // money and must not be re-triggered by a container restart, so the dialing
 // lives somewhere with exactly-once-per-day semantics. The server only ever
-// receives the results. Two things start it: a scheduled task running the
-// Dockerfile's `burn-line` image (-not-before=06:00, with later retries), and
-// .github/workflows/burn-line.yml.
+// receives the results. A scheduled task running the Dockerfile's `burn-line`
+// image starts it (-not-before=06:00, with later retries);
+// .github/workflows/burn-line.yml runs it by hand.
 //
 // # prefab.yaml is the single source of truth
 //
@@ -113,9 +113,8 @@ func main() {
 		fatal("no enabled burn lines in grid.burn.lines")
 	}
 
-	// Scheduled mode. A schedule fires more than once a morning (the task's
-	// retries; the workflow's hourly cron, which GitHub runs hours late); this
-	// turns all those runs into one morning read per line.
+	// Scheduled mode. The schedule fires more than once a morning (retries);
+	// this turns all those runs into one morning read per line.
 	if *notBefore != "" {
 		start, err := dayStart(time.Now(), *notBefore)
 		if err != nil {
