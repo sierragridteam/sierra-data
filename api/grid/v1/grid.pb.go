@@ -4442,7 +4442,17 @@ type RoadSegmentBeyond struct {
 	// `END`: past the segment's destination. `START`: before its origin.
 	Side string `protobuf:"bytes,2,opt,name=side,proto3" json:"side,omitempty"`
 	// What the highway is there: `CLOSED`.
-	Status        string `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	Status string `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	// True when this is a closure that recurs every year at this place and is
+	// expected at this time of year: a standing condition, to show as context
+	// and not as a hazard. Always true today. Absent on revisions recorded
+	// before 2026-11-26, which says nothing either way.
+	Seasonal bool `protobuf:"varint,4,opt,name=seasonal,proto3" json:"seasonal,omitempty"`
+	// The closure's own severity, as on the `road_segment` map layer's
+	// `road.beyond[].severity`: `INFO`, because it is seasonal. The segment's
+	// severity does not include it. Empty on revisions recorded before
+	// 2026-11-26.
+	Severity      string `protobuf:"bytes,5,opt,name=severity,proto3" json:"severity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4494,6 +4504,20 @@ func (x *RoadSegmentBeyond) GetSide() string {
 func (x *RoadSegmentBeyond) GetStatus() string {
 	if x != nil {
 		return x.Status
+	}
+	return ""
+}
+
+func (x *RoadSegmentBeyond) GetSeasonal() bool {
+	if x != nil {
+		return x.Seasonal
+	}
+	return false
+}
+
+func (x *RoadSegmentBeyond) GetSeverity() string {
+	if x != nil {
+		return x.Severity
 	}
 	return ""
 }
@@ -11220,11 +11244,13 @@ const file_grid_proto_rawDesc = "" +
 	"\x06source\x18\x02 \x01(\tB\x0f\x92A\fJ\n" +
 	"\"incident\"R\x06source\x122\n" +
 	"\bevent_id\x18\x03 \x01(\tB\x17\x92A\x14J\x12\"chp:261118ST0331\"R\aeventId\x12\x12\n" +
-	"\x04text\x18\x04 \x01(\tR\x04text\"w\n" +
+	"\x04text\x18\x04 \x01(\tR\x04text\"\xbc\x01\n" +
 	"\x11RoadSegmentBeyond\x126\n" +
 	"\x04name\x18\x01 \x01(\tB\"\x92A\x1fJ\x1d\"Ebbetts Pass winter closure\"R\x04name\x12\x12\n" +
 	"\x04side\x18\x02 \x01(\tR\x04side\x12\x16\n" +
-	"\x06status\x18\x03 \x01(\tR\x06status\"\xaf\x02\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x1a\n" +
+	"\bseasonal\x18\x04 \x01(\bR\bseasonal\x12'\n" +
+	"\bseverity\x18\x05 \x01(\tB\v\x92A\bJ\x06\"INFO\"R\bseverity\"\xaf\x02\n" +
 	"\x12ChainControlDetail\x12\x1f\n" +
 	"\x05level\x18\x01 \x01(\tB\t\x92A\x06J\x04\"R2\"R\x05level\x12%\n" +
 	"\ahighway\x18\x02 \x01(\tB\v\x92A\bJ\x06\"SR 4\"R\ahighway\x12\x1c\n" +
