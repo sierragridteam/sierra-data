@@ -49,7 +49,7 @@ const (
 
 // Activity states. There is no "down": see the package note above.
 const (
-	stateActive  = "active"  // heard or relayed within 12 h
+	stateActive  = "active"  // heard or relayed within 12 h (a monitor's read does not count)
 	stateQuiet   = "quiet"   // 12 to 48 h
 	stateSilent  = "silent"  // over 48 h
 	stateUnknown = "unknown" // the Grid has no activity on record
@@ -163,25 +163,38 @@ func (n meshNode) isGateway() bool { return n.Type == "companion" && n.Admin != 
 // handheld, which comes and goes without it being news.
 func (n meshNode) infrastructure() bool { return relayCapable(n.Type) || n.isGateway() }
 
-// lastActive is the latest evidence the node was working and what it was:
-// its own advert reached the Grid ("heard"), a packet it relayed did
-// ("relayed"), or a monitor logged in to it ("answered a monitor"). The
-// explorer's fleet view reads the first two; a login that succeeded twenty
-// minutes ago is at least as good as either, and leaving it out called a
-// gateway that had just answered "quiet". A stamp in the future is ignored:
-// the first two are the Grid's clock and can only be ahead of now by a fault.
+// lastActive is the latest activity the Grid observed on the mesh and what it
+// was: the node's own advert reached the Grid ("heard") or a packet it relayed
+// did ("relayed"). A monitor's read is not activity and is never folded in
+// here: it is a second observation with its own state (monitorState), and the
+// two fail apart. A repeater can be relaying while the gateway that reads it
+// has lost power or its internet; a node can answer a login while nothing it
+// sends reaches the Grid. The explorer's fleet view draws the same line
+// (sierra-grid src/lib/mesh-fleet.ts). A stamp in the future is ignored: these
+// are the Grid's clocks and can only be ahead of now by a fault.
 func (n meshNode) lastActive(now time.Time) (time.Time, string) {
 	var at time.Time
 	kind := ""
 	for _, c := range []struct {
 		at   time.Time
 		kind string
-	}{{n.Heard, "heard"}, {n.Relayed, "relayed"}, {parseTime(n.Admin["lastSuccessAt"]), "answered a monitor"}} {
+	}{{n.Heard, "heard"}, {n.Relayed, "relayed"}} {
 		if !c.at.IsZero() && !c.at.After(now) && c.at.After(at) {
 			at, kind = c.at, c.kind
 		}
 	}
 	return at, kind
+}
+
+// monitorReadNote is what to add to a "quiet on the mesh" issue when a monitor
+// is reading the node all the same: the node is on, so the silence is about
+// what reaches the Grid.
+func (n meshNode) monitorReadNote(now time.Time) string {
+	if n.monitorState(now) != monitorAnswering {
+		return ""
+	}
+	read := parseTime(n.Admin["lastSuccessAt"])
+	return fmt.Sprintf(" A monitor read it %s ago, so it is powered and answering; this is about what reaches the Grid.", ageText(now.Sub(read)))
 }
 
 func (n meshNode) activityState(now time.Time) string {
@@ -243,13 +256,16 @@ type issue struct {
 func (n meshNode) issues(now time.Time) []issue {
 	var out []issue
 	at, kind := n.lastActive(now)
+	// A node a monitor is reading right now is not an alarm for being silent
+	// on the mesh: it is on. The silence is still said, with that beside it.
+	read := n.monitorReadNote(now)
 	switch n.activityState(now) {
 	case stateUnknown:
-		out = append(out, issue{false, "No activity on record: the Grid has never heard or been relayed by it since it began tracking. Unknown, not down."})
+		out = append(out, issue{false, "No activity on record: the Grid has never heard or been relayed by it since it began tracking. Unknown, not down." + read})
 	case stateSilent:
-		out = append(out, issue{true, fmt.Sprintf("Not heard for %s (last %s %s).", ageText(now.Sub(at)), kind, stamp(at))})
+		out = append(out, issue{read == "", fmt.Sprintf("Not heard for %s (last %s %s).", ageText(now.Sub(at)), kind, stamp(at)) + read})
 	case stateQuiet:
-		out = append(out, issue{false, fmt.Sprintf("Quiet for %s (last %s %s).", ageText(now.Sub(at)), kind, stamp(at))})
+		out = append(out, issue{false, fmt.Sprintf("Quiet for %s (last %s %s).", ageText(now.Sub(at)), kind, stamp(at)) + read})
 	}
 	if n.monitorState(now) == monitorNoAnswer {
 		who := "a monitor"
@@ -257,11 +273,18 @@ func (n meshNode) issues(now time.Time) []issue {
 			who = "the " + r + " monitor"
 		}
 		read := parseTime(n.Admin["lastSuccessAt"])
+		// The other half of the same line: no answer to a monitor says
+		// nothing against a node the Grid is still hearing. The monitor's
+		// own gateway may be the one without power or internet.
+		still := ""
+		if n.activityState(now) == stateActive {
+			still = fmt.Sprintf(" It was %s on the mesh %s ago, so the node is working; the fault may be the monitor or its gateway (power or internet), not the node.", kind, ageText(now.Sub(at)))
+		}
 		if read.IsZero() {
-			out = append(out, issue{false, fmt.Sprintf("Did not answer %s; no successful read on record.", who)})
+			out = append(out, issue{false, fmt.Sprintf("Did not answer %s; no successful read on record.", who) + still})
 		} else {
-			out = append(out, issue{now.Sub(read) > 7*24*time.Hour,
-				fmt.Sprintf("Did not answer %s; last answered %s ago (%s).", who, ageText(now.Sub(read)), stamp(read))})
+			out = append(out, issue{still == "" && now.Sub(read) > 7*24*time.Hour,
+				fmt.Sprintf("Did not answer %s; last answered %s ago (%s).", who, ageText(now.Sub(read)), stamp(read)) + still})
 		}
 	}
 	if v, at, ok := n.battery(); ok && now.Sub(at) <= readingCurrentWithin && v < batteryLowVolts {

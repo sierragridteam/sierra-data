@@ -73,8 +73,10 @@ in any spelling ("hwy 4", "SR-4", "state route 4").
   grid_mesh_node with the node's name, its short id (first 8 hex of its key) or
   a key prefix. A name that matches several nodes returns the candidates and
   reads none. Freshness is last_active_at (the later of its advert reaching the
-  Grid, a packet it relayed reaching the Grid, and a monitor's successful
-  read), never an event's observedAt.
+  Grid and a packet it relayed reaching the Grid), never an event's
+  observedAt. A monitor's read is a separate observation, in monitor: a node
+  can be active with a monitor that gets no answer (the monitor's gateway may
+  have lost power or internet), or answer a monitor while quiet on the mesh.
 - "Is there a path from <A> to <B>?" — grid_mesh_path. The answer is an
   inference from links observed carrying traffic, not a guarantee, and
   found=false means none was observed, not that none exists: links are learned

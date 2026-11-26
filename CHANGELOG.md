@@ -21,6 +21,27 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-26 (later: mesh activity and monitor reads are apart on MCP)
+
+### Changed: a monitor's read is no longer counted as a node's activity in the MCP mesh tools
+
+The `grid_mesh_*` tools counted a monitor's successful login as node activity:
+`state` and `last_active_at` took the latest of heard, relayed and the monitor's
+read, and `last_active_was` could be `answered a monitor`. Activity is now only
+what the Grid observed on the mesh (`heard` or `relayed`), the line the Grid
+explorer already draws. What a monitor says stays in the row's `monitor` block.
+
+The two fail apart, and each issue now says so:
+
+- A node still heard or relaying whose monitor gets no answer is `active`. Its
+  "Did not answer" issue adds that the node is working and that the fault may be
+  the monitor or its gateway (power or internet). It no longer alarms.
+- A node a monitor is reading but that is quiet or silent on the mesh keeps that
+  state. Its issue adds when the monitor last read it, and it no longer alarms.
+- A node both silent and not answering alarms as before.
+
+`last_active_was` is now `heard` or `relayed` only. `/api/v1` is unchanged.
+
 ## 2026-11-26 (later: the Ebbetts Pass gates say they are seasonal)
 
 ### `chain_control` closure points at the Ebbetts Pass gates are `seasonal` and `INFO`
