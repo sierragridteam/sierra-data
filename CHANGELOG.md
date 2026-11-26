@@ -21,6 +21,27 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-26 (later: the Ebbetts Pass gates say they are seasonal)
+
+### `chain_control` closure points at the Ebbetts Pass gates are `seasonal` and `INFO`
+
+On the `chain_control` map layer, a closure point (`category: "closed"`)
+that is a gate of the Ebbetts Pass winter closure on Highway 4 now has
+`chainControl.seasonal: true`, `chainControl.closure: "Ebbetts Pass winter
+closure"`, the headline `Highway 4: Ebbetts Pass winter closure` (was
+`Highway 4 road closed`) and severity `INFO` (was `MINOR`). It no longer
+counts as an active item in the roads domain of a place summary. The
+gate's own place stays in `areaLabel`.
+
+A gate is recognized by its highway plus either the pass named in its place
+or its position between the Mount Reba turnoff and the SR 89 junction, so
+the gate Caltrans moves through the season (Mount Reba Road, the east end of
+Lake Alpine, Raymond Meadows on the far side) is covered. Every other
+closure point is unchanged: `MINOR`, no `seasonal`.
+
+A client that picked the gate out by `severity: MINOR` or by its headline
+should read `chainControl.seasonal` instead.
+
 ## 2026-11-26
 
 ### `roadSegment.beyond[]` on events says `seasonal` and `severity`

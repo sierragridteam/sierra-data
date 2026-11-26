@@ -690,15 +690,19 @@ spec:
           the level (R1 MINOR, R2 MODERATE, R3 SEVERE).
 
           Two kinds of feature are still one per reported point, with none of
-          `from`, `to`, `signs`: a seasonal pass closure (`category` closed,
-          MINOR) and a cc.kml truck or hold level (no `level`, no `category`,
-          INFO), which is not part of any stretch.
+          `from`, `to`, `signs`: a road closure point (`category` closed,
+          MINOR; a gate of a named seasonal closure has `seasonal` true, the
+          closure's name in `closure`, and is INFO) and a cc.kml truck or
+          hold level (no `level`, no `category`, INFO), which is not part of
+          any stretch.
         properties:
           level: {type: string, enum: [R1, R2, R3], description: "Absent on a closure and on a truck or hold level."}
           highway: {type: string, example: Highway 4}
           direction: {type: string, example: Eastbound, description: "On a stretch, set only when every sign in it faces the same way; a stretch signed in both directions has none."}
           from: {$ref: "#/components/schemas/MapChainPlace"}
           to: {$ref: "#/components/schemas/MapChainPlace"}
+          seasonal: {type: boolean, description: "Present and true on a closure point that is a gate of a named seasonal closure (today the Ebbetts Pass winter closure on Highway 4): a closure that recurs every year at this place and is expected at this time of year. Show it as context, not as a hazard; its severity is INFO. Absent on every other feature, including closure points that are not a recognized gate."}
+          closure: {type: string, example: Ebbetts Pass winter closure, description: "With `seasonal`: the closure's name, the same as `road.beyond[].name` on the `road_segment` layer."}
           inferred:
             type: boolean
             description: |
@@ -1214,7 +1218,7 @@ spec:
                       {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-120.18315, 38.38902]}, "properties": {"id": "cc:hwy4:r2", "layer": "CHAIN_CONTROL", "kind": "Chain control", "category": "r2", "severity": "MODERATE", "severityRank": 2, "headline": "Hwy 4 chains required, Poison Springs to Mount Reba Road (R2)", "description": "Chains or traction devices are required on all vehicles except four wheel / all wheel drive vehicles with snow-tread tires on all four wheels.  Four wheel / all wheel drive vehicles must carry traction devices in chain control areas.", "effective": "2026-11-13T13:45:34-08:00", "areaLabel": "Poison Springs to Mount Reba Road", "source": {"id": "caltrans", "name": "Caltrans", "attribution": "cwwp2.dot.ca.gov"}, "chainControl": {"level": "R2", "highway": "Highway 4", "from": {"place": "Poison Springs", "coordinates": [-120.18315, 38.38902]}, "to": {"place": "Mount Reba Road", "coordinates": [-120.02152, 38.4816]}, "signs": [
                         {"id": "cc:10-CAL-4-56.3-E-12E", "place": "POISON SPRINGS", "direction": "Eastbound", "level": "R2", "since": "2026-11-13T15:29:26-08:00", "coordinates": [-120.18315, 38.38902], "source": "cwwp2.dot.ca.gov", "county": "Calaveras", "postmile": "56.30"},
                         {"id": "cc:10-ALP-4-2.77-W-15W", "place": "MOUNT REBA ROAD", "direction": "Westbound", "level": "R2", "since": "2026-11-13T13:45:34-08:00", "coordinates": [-120.02152, 38.4816], "source": "cwwp2.dot.ca.gov", "county": "Alpine", "postmile": "2.77"}]}}},
-                      {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-119.99421, 38.48135]}, "properties": {"id": "cc:10-2515", "layer": "CHAIN_CONTROL", "kind": "Chain control", "category": "closed", "severity": "MINOR", "severityRank": 1, "headline": "Highway 4 road closed", "description": "Closed to traffic.", "effective": "2026-11-12T12:08:00-08:00", "areaLabel": "EAST END OF LAKE ALPINE - EBBETTS PASS", "source": {"id": "caltrans", "name": "Caltrans", "attribution": "quickmap.dot.ca.gov"}, "chainControl": {"highway": "Highway 4", "direction": "Eastbound"}}}],
+                      {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-119.99421, 38.48135]}, "properties": {"id": "cc:10-2515", "layer": "CHAIN_CONTROL", "kind": "Chain control", "category": "closed", "severity": "INFO", "severityRank": 0, "headline": "Highway 4: Ebbetts Pass winter closure", "description": "Closed to traffic.", "effective": "2026-11-12T12:08:00-08:00", "areaLabel": "EAST END OF LAKE ALPINE - EBBETTS PASS", "source": {"id": "caltrans", "name": "Caltrans", "attribution": "quickmap.dot.ca.gov"}, "chainControl": {"highway": "Highway 4", "direction": "Eastbound", "seasonal": true, "closure": "Ebbetts Pass winter closure"}}}],
                       "metadata": {"layer": "chain_control", "area": "ebbetts-pass", "generatedAt": "2026-11-14T01:38:22Z", "sourceStatus": "OK", "attribution": "cwwp2.dot.ca.gov · quickmap.dot.ca.gov", "schemaVersion": 1}}
                   road_segment:
                     summary: road_segment - an OPEN route (coordinates trimmed)

@@ -502,6 +502,7 @@ func (s *Service) chainControls(ctx context.Context, area config.HazardArea) ([]
 			}
 		}
 	}
+	gates := seasonalGates(s.cfg)
 	for _, c := range dedupeChainSigns(points) {
 		if !inArea(c) {
 			continue
@@ -533,6 +534,15 @@ func (s *Service) chainControls(ctx context.Context, area config.HazardArea) ([]
 			// this state all winter. Note /summary's roads domain counts
 			// anything above INFO as active, so an in-area gate shows there too.
 			p.setSeverity(SevMinor)
+			// A gate of a named seasonal closure is the road's yearly state,
+			// not today's news: it says so, carries the closure's name and
+			// is INFO, as road.beyond[] is on the road_segment layer. So it
+			// no longer counts as active in /summary's roads domain.
+			if name := seasonalClosureOf(c, gates); name != "" {
+				p.ChainControl.Seasonal, p.ChainControl.Closure = true, name
+				p.Headline = strings.TrimSpace(c.Highway + ": " + name)
+				p.setSeverity(SevInfo)
+			}
 		}
 		out = append(out, Feature{Type: "Feature", Geometry: PointGeom(c.Coordinates.Latitude, c.Coordinates.Longitude), Properties: p})
 	}

@@ -232,6 +232,19 @@ roads:
           maxStartOffsetMiles: 2
           endOffsetDirection: west
           maxEndOffsetMiles: 10
+          # The closure's gates among Caltrans's closure points (cc.kml "Road
+          # Closed" entries on the chain_control layer). Caltrans names the
+          # gate it has shut and moves it through the season: "MOUNT REBA ROAD
+          # - EBBETTS PASS", "EAST END OF LAKE ALPINE - EBBETTS PASS", and
+          # from the Alpine County side "RAYMOND MEADOWS - EBBETTS PASS". A
+          # closure point on Highway 4 that names the pass OR lies in the box
+          # is a gate: seasonal, INFO. The box runs from just east of the
+          # Mount Reba turnoff's junction (the segment ends west of it, at
+          # Bear Valley, -120.04) to just short of the SR 89 junction.
+          gates:
+            highway: "4"
+            names: ["Ebbetts Pass", "Ebbets Pass", "Ebbett Pass"]
+            bounds: { south: 38.44, west: -120.02, north: 38.68, east: -119.75 }
     # Hwy 49 / Tuolumne corridor (issue #6). Angels Camp <-> Sonora links the
     # Calaveras and Tuolumne service areas. Note: the upper Hwy 4 segment past
     # Arnold (Dorrington) is already covered by "Arnold to Bear Valley" above,

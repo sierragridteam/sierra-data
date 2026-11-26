@@ -1080,6 +1080,34 @@ type SeasonalClosure struct {
 	// closure's length. Without a direction no offset is accepted.
 	EndOffsetDirection string  `koanf:"endOffsetDirection"`
 	MaxEndOffsetMiles  float64 `koanf:"maxEndOffsetMiles"`
+	// Gates says which of Caltrans's closure points (cc.kml "Road Closed"
+	// entries, the chain_control layer's closed points) are this closure's
+	// gates. Unset: none is.
+	Gates *SeasonalClosureGates `koanf:"gates"`
+}
+
+// SeasonalClosureGates recognizes a seasonal closure's gates among cc.kml's
+// closure points. Caltrans names the gate it has shut, and moves it through
+// the season ("MOUNT REBA ROAD - EBBETTS PASS", "EAST END OF LAKE ALPINE -
+// EBBETTS PASS", from the other side "RAYMOND MEADOWS - EBBETTS PASS"), so a
+// closure point on Highway is a gate when its place names one of Names OR it
+// lies inside Bounds: either is enough, so a gate under a new name or at a
+// new spot is still recognized.
+type SeasonalClosureGates struct {
+	// Highway is the route number alone ("4").
+	Highway string `koanf:"highway"`
+	// Names are matched in the point's place text, case and punctuation
+	// aside, as whole words.
+	Names []string `koanf:"names"`
+	// Bounds is the box the closed part of the highway lies in. It must not
+	// reach the monitored segment: a closure point on the segment is not
+	// the seasonal closure. All four zero: no box, names only.
+	Bounds struct {
+		South float64 `koanf:"south"`
+		West  float64 `koanf:"west"`
+		North float64 `koanf:"north"`
+		East  float64 `koanf:"east"`
+	} `koanf:"bounds"`
 }
 
 // WeatherConfig holds weather monitoring configuration
