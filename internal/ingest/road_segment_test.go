@@ -98,6 +98,9 @@ func TestRoadSegmentNormalizer_Event(t *testing.T) {
 	require.Len(t, d.GetBeyond(), 1)
 	assert.Equal(t, "Ebbetts Pass winter closure", d.GetBeyond()[0].GetName())
 	assert.Equal(t, "CLOSED", d.GetBeyond()[0].GetStatus())
+	// The event says what the map layer says: seasonal, and INFO.
+	assert.True(t, d.GetBeyond()[0].GetSeasonal())
+	assert.Equal(t, "INFO", d.GetBeyond()[0].GetSeverity())
 
 	closed := res.Events[1]
 	assert.Equal(t, gridv1.Severity_SEVERE, closed.GetSeverity())

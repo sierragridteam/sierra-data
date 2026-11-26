@@ -1460,6 +1460,16 @@ message RoadSegmentBeyond {
   string side = 2;
   // What the highway is there: `CLOSED`.
   string status = 3;
+  // True when this is a closure that recurs every year at this place and is
+  // expected at this time of year: a standing condition, to show as context
+  // and not as a hazard. Always true today. Absent on revisions recorded
+  // before 2026-11-26, which says nothing either way.
+  bool seasonal = 4;
+  // The closure's own severity, as on the `road_segment` map layer's
+  // `road.beyond[].severity`: `INFO`, because it is seasonal. The segment's
+  // severity does not include it. Empty on revisions recorded before
+  // 2026-11-26.
+  string severity = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {example: "\"INFO\""}];
 }
 
 // ChainControlDetail is one stretch of highway under one chain requirement

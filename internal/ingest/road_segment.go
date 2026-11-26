@@ -406,6 +406,11 @@ func (n *RoadSegmentNormalizer) event(ctx context.Context, mr config.MonitoredRo
 	for _, b := range rd.GetBeyond() {
 		d.Beyond = append(d.Beyond, &gridv1.RoadSegmentBeyond{
 			Name: b.GetName(), Side: b.GetSide(), Status: strings.TrimPrefix(b.GetStatus().String(), "ROAD_STATUS_"),
+			// What the map layer says of the same closure (hazards'
+			// roadBeyond): a named seasonal closure is the road's yearly
+			// state, INFO whatever its status. Written here so that a
+			// client reading the event does not have to decide it.
+			Seasonal: true, Severity: hazards.SevInfo,
 		})
 	}
 	// The service promises no order; an order flip must not be a revision.

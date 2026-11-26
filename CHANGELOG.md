@@ -21,6 +21,22 @@ longer exist: `/api/v1` originally hosted a different hand-built REST surface,
 replaced by a snake_case `/v1` surface on 2026-07-05, which was folded back onto
 the proto-defined `/api/v1` gateway on 2026-07-09.
 
+## 2026-11-26
+
+### `roadSegment.beyond[]` on events says `seasonal` and `severity`
+
+A road event's closures past its end (`roadSegment.beyond[]`, e.g. the
+Ebbetts Pass winter closure on `road:hwy4-arnold-bearvalley`) now carry
+`seasonal` (`true`) and `severity` (`INFO`), the same values the
+`road_segment` map layer has had on `road.beyond[]` since 2026-11-19. A
+client reading the event no longer has to decide for itself that such a
+closure is a standing condition.
+
+Additive. Revisions recorded before this deploy do not have the two fields:
+read their absence as "not said", not as "not seasonal". Each road event
+with such a closure gets one new revision at the deploy, with nothing else
+changed in it.
+
 ## 2026-11-25 (burn line workflow is manual only)
 
 ### The burn line workflow no longer runs on a schedule; no API change

@@ -3648,6 +3648,15 @@
         "status": {
           "type": "string",
           "description": "What the highway is there: `CLOSED`."
+        },
+        "seasonal": {
+          "type": "boolean",
+          "description": "True when this is a closure that recurs every year at this place and is\nexpected at this time of year: a standing condition, to show as context\nand not as a hazard. Always true today. Absent on revisions recorded\nbefore 2026-11-26, which says nothing either way."
+        },
+        "severity": {
+          "type": "string",
+          "example": "INFO",
+          "description": "The closure's own severity, as on the `road_segment` map layer's\n`road.beyond[].severity`: `INFO`, because it is seasonal. The segment's\nseverity does not include it. Empty on revisions recorded before\n2026-11-26."
         }
       },
       "description": "RoadSegmentBeyond is a named seasonal closure past a segment's end."
