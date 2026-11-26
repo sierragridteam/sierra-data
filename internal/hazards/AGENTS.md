@@ -114,8 +114,16 @@ shown as a level), or a row with no position. Controls cc.kml reports where
 CWWP2 says R-0 are SHOWN and logged ("cc.kml reports chain controls CWWP2 does
 not"). Road closures (`Closed`) render as `"<highway> road closed"`, category
 `closed`, severity `MINOR` — one notch above a clear checkpoint, below R-1,
-because the seasonal gates hold it all winter (and `/summary`'s roads domain
-counts it as active). Sign ids are `cc:<checkpoint index>` for CWWP2 (e.g.
+(and `/summary`'s roads domain counts it as active). A closure point that
+is a gate of a configured seasonal closure (`seasonalClosures[].gates` in
+`prefab.yaml`; today the Ebbetts Pass winter closure) is instead `INFO`
+with `chainControl.seasonal` and `chainControl.closure`, headline
+`"<highway>: <closure name>"`, and so is not active in `/summary`.
+`seasonalClosureOf` (`seasonalgate.go`) recognizes one by highway plus
+EITHER the pass named in its place text OR its position in the configured
+box, because Caltrans renames and moves the gate through the season
+(Mount Reba Road, east end of Lake Alpine, Raymond Meadows). Keep both
+tests and add each new wording to `TestSeasonalClosureOf`. Sign ids are `cc:<checkpoint index>` for CWWP2 (e.g.
 `cc:10-ALP-4-0.65-W-14W`, Bear Valley WB), `cc:<district>-<message id>` for
 cc.kml (`cc:10-2515`; message ids repeat across districts), and `cc:<lat>,<lng>`
 when either part is missing (`chainControlID`); `source.attribution` names the host.

@@ -249,6 +249,15 @@ type ChainControlProps struct {
 	Inferred bool `json:"inferred,omitempty"`
 	// Signs is every checkpoint Caltrans reported in the stretch, From to To.
 	Signs []ChainSign `json:"signs,omitempty"`
+	// Seasonal and Closure are set on a closure point (category "closed")
+	// that is a gate of a named seasonal closure: the closure recurs every
+	// year at this place and is expected at this time of year, a standing
+	// condition to show as context and not as a hazard. Closure is its name
+	// ("Ebbetts Pass winter closure"), the same as road.beyond[].name on the
+	// road_segment layer. Absent on every other feature, which says only
+	// that the closure point is not a recognized gate.
+	Seasonal bool   `json:"seasonal,omitempty"`
+	Closure  string `json:"closure,omitempty"`
 }
 
 // ChainPlace is one end of a chain-control stretch.
