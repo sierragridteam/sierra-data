@@ -66,6 +66,7 @@ func stampNature(m protoreflect.Message) {
 	if m.Descriptor().FullName() == eventName {
 		if ev, ok := m.Interface().(*gridv1.Event); ok {
 			ev.Nature = LayerNature(ev.GetLayer())
+			completeBeyond(ev)
 		}
 		return // an event holds no other event
 	}
@@ -91,4 +92,25 @@ func stampNature(m protoreflect.Message) {
 		}
 		return true
 	})
+}
+
+// completeBeyond fills `seasonal` and `severity` on a road event's closures
+// past its end (roadSegment.beyond[]) where the stored snapshot has neither:
+// every revision recorded before 2026-11-26, when the two fields were added.
+// Unfilled, such an entry would read `seasonal: false`, which nobody ever
+// recorded and which is wrong: an entry is in `beyond` only because it
+// matched a configured named seasonal closure, then as now, and its severity
+// has been INFO since the list was introduced (hazards' roadBeyond says the
+// same of the map layer). An empty severity is the mark of an entry written
+// before the fields; one written since always has it, and is left alone.
+//
+// Done here with nature, over every response, so a revision in a history
+// page, a search hit and the current event all read alike. Nothing is
+// written back: the stored snapshots and their hashes do not change.
+func completeBeyond(ev *gridv1.Event) {
+	for _, b := range ev.GetRoadSegment().GetBeyond() {
+		if b.GetSeverity() == "" {
+			b.Seasonal, b.Severity = true, "INFO"
+		}
+	}
 }

@@ -3651,12 +3651,12 @@
         },
         "seasonal": {
           "type": "boolean",
-          "description": "True when this is a closure that recurs every year at this place and is\nexpected at this time of year: a standing condition, to show as context\nand not as a hazard. Always true today. Absent on revisions recorded\nbefore 2026-11-26, which says nothing either way."
+          "description": "True when this is a closure that recurs every year at this place and is\nexpected at this time of year: a standing condition, to show as context\nand not as a hazard. Always true today, on every revision: one recorded\nbefore the field existed (2026-11-26) is served with it filled in,\nbecause only a named seasonal closure has ever been listed here."
         },
         "severity": {
           "type": "string",
           "example": "INFO",
-          "description": "The closure's own severity, as on the `road_segment` map layer's\n`road.beyond[].severity`: `INFO`, because it is seasonal. The segment's\nseverity does not include it. Empty on revisions recorded before\n2026-11-26."
+          "description": "The closure's own severity, as on the `road_segment` map layer's\n`road.beyond[].severity`: `INFO`, because it is seasonal. The segment's\nseverity does not include it. Filled in the same way on older revisions."
         }
       },
       "description": "RoadSegmentBeyond is a named seasonal closure past a segment's end."

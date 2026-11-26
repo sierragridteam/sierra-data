@@ -4445,13 +4445,13 @@ type RoadSegmentBeyond struct {
 	Status string `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
 	// True when this is a closure that recurs every year at this place and is
 	// expected at this time of year: a standing condition, to show as context
-	// and not as a hazard. Always true today. Absent on revisions recorded
-	// before 2026-11-26, which says nothing either way.
+	// and not as a hazard. Always true today, on every revision: one recorded
+	// before the field existed (2026-11-26) is served with it filled in,
+	// because only a named seasonal closure has ever been listed here.
 	Seasonal bool `protobuf:"varint,4,opt,name=seasonal,proto3" json:"seasonal,omitempty"`
 	// The closure's own severity, as on the `road_segment` map layer's
 	// `road.beyond[].severity`: `INFO`, because it is seasonal. The segment's
-	// severity does not include it. Empty on revisions recorded before
-	// 2026-11-26.
+	// severity does not include it. Filled in the same way on older revisions.
 	Severity      string `protobuf:"bytes,5,opt,name=severity,proto3" json:"severity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

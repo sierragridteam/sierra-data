@@ -85,3 +85,34 @@ func TestNatureIsOnEveryEventInEveryResponse(t *testing.T) {
 	stamped := &gridv1.Event{Id: "x", Layer: gridv1.Layer_MESH, Nature: gridv1.EventNature_STATE}
 	assert.Equal(t, store.ContentHash(plain), store.ContentHash(stamped))
 }
+
+// A road event's closure past its end recorded before `seasonal` and
+// `severity` existed is served with both, wherever the event sits in a
+// response; one recorded since is left as it is, and nothing else is touched.
+func TestBeyondOnOldRevisionsIsCompleted(t *testing.T) {
+	old := func() *gridv1.Event {
+		return &gridv1.Event{Id: "road:hwy4-arnold-bearvalley", Layer: gridv1.Layer_ROAD_SEGMENT, Detail: &gridv1.Event_RoadSegment{RoadSegment: &gridv1.RoadSegmentDetail{
+			Status: "OPEN", Beyond: []*gridv1.RoadSegmentBeyond{{Name: "Ebbetts Pass winter closure", Side: "END", Status: "CLOSED"}},
+		}}}
+	}
+	resp := &gridv1.EventRevisionList{Revisions: []*gridv1.EventRevision{{Revision: 18, Event: old()}}}
+	StampNature(resp)
+	b := resp.GetRevisions()[0].GetEvent().GetRoadSegment().GetBeyond()[0]
+	assert.True(t, b.GetSeasonal())
+	assert.Equal(t, "INFO", b.GetSeverity())
+	assert.Equal(t, "Ebbetts Pass winter closure", b.GetName())
+	assert.Equal(t, "CLOSED", b.GetStatus())
+
+	// Recorded with the fields: whatever it says stands.
+	rated := old()
+	rated.GetRoadSegment().GetBeyond()[0].Severity = "MINOR"
+	StampNature(rated)
+	assert.False(t, rated.GetRoadSegment().GetBeyond()[0].GetSeasonal())
+	assert.Equal(t, "MINOR", rated.GetRoadSegment().GetBeyond()[0].GetSeverity())
+
+	// An event with no such closure, and one of another layer, are untouched.
+	plain := &gridv1.Event{Layer: gridv1.Layer_ROAD_SEGMENT, Detail: &gridv1.Event_RoadSegment{RoadSegment: &gridv1.RoadSegmentDetail{Status: "OPEN"}}}
+	StampNature(plain)
+	assert.Empty(t, plain.GetRoadSegment().GetBeyond())
+	StampNature(&gridv1.Event{Layer: gridv1.Layer_MESH})
+}

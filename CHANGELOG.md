@@ -53,10 +53,12 @@ Ebbetts Pass winter closure on `road:hwy4-arnold-bearvalley`) now carry
 client reading the event no longer has to decide for itself that such a
 closure is a standing condition.
 
-Additive. Revisions recorded before this deploy do not have the two fields:
-read their absence as "not said", not as "not seasonal". Each road event
-with such a closure gets one new revision at the deploy, with nothing else
-changed in it.
+Additive. Each road event with such a closure gets one new revision at the
+deploy, with nothing else changed in it. Revisions recorded before it are
+served with both fields filled in the same way (corrected later the same
+day: for a few hours they read `seasonal: false` and an empty `severity`,
+which was never recorded and was wrong; only a named seasonal closure has
+ever been listed in `beyond`).
 
 ## 2026-11-25 (burn line workflow is manual only)
 
