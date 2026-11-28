@@ -378,8 +378,9 @@ func TestMeshStatus_DefaultScopeAndStates(t *testing.T) {
 	if gw == nil || gw["role"] != "gateway" {
 		t.Fatalf("gateway row = %v", gw)
 	}
-	// Its own advert was 9 h ago, but it answered a monitor a minute ago.
-	if gw["state"] != stateActive || gw["last_active_was"] != "answered a monitor" || gw["last_active_ago"] != "1 min" {
+	// Its own advert was 9 h ago and it answered a monitor a minute ago. The
+	// read is the monitor's, below: activity is only what the Grid heard.
+	if gw["state"] != stateActive || gw["last_active_was"] != "heard" || gw["last_active_ago"] != "9 h" {
 		t.Errorf("gateway activity = %v / %v / %v", gw["state"], gw["last_active_was"], gw["last_active_ago"])
 	}
 	if m := gw["monitor"].(map[string]interface{}); m["state"] != monitorAnswering {
@@ -1180,5 +1181,68 @@ func TestMeshModelWording(t *testing.T) {
 	tr := trend(pts, meshNow.Add(-24*time.Hour), meshNow, 12, 2)
 	if len(tr["series"].([]interface{})) != 2 || tr["change"] != -0.2 {
 		t.Errorf("trend = %v", tr)
+	}
+}
+
+// Observed activity and a monitor's read are two observations that fail
+// apart, and neither is folded into the other.
+func TestMeshNode_ActivityAndMonitorAreApart(t *testing.T) {
+	admin := func(read, tried time.Duration) map[string]interface{} {
+		a := map[string]interface{}{"reporterId": "relay"}
+		if read > 0 {
+			a["lastSuccessAt"] = meshNow.Add(-read).Format(time.RFC3339)
+		}
+		if tried > 0 {
+			a["lastAttemptAt"] = meshNow.Add(-tried).Format(time.RFC3339)
+		}
+		return a
+	}
+	texts := func(n meshNode) (string, bool) {
+		var sb strings.Builder
+		alarm := false
+		for _, x := range n.issues(meshNow) {
+			sb.WriteString(x.text + "\n")
+			alarm = alarm || x.alarm
+		}
+		return sb.String(), alarm
+	}
+
+	// Relaying an hour ago; its monitor has had no answer for twelve days
+	// (the monitor's gateway lost power). Active, and not an alarm.
+	relaying := meshNode{Type: "repeater", Relayed: meshNow.Add(-time.Hour), Reachability: "UNREACHABLE",
+		Admin: admin(12*24*time.Hour, time.Hour)}
+	if got := relaying.activityState(meshNow); got != stateActive {
+		t.Errorf("relaying node state = %s, want active", got)
+	}
+	if got := relaying.monitorState(meshNow); got != monitorNoAnswer {
+		t.Errorf("relaying node monitor = %s, want no_answer", got)
+	}
+	text, alarm := texts(relaying)
+	if alarm || !strings.Contains(text, "Did not answer the relay monitor") || !strings.Contains(text, "relayed on the mesh 1 h ago") {
+		t.Errorf("relaying node issues (alarm %v):\n%s", alarm, text)
+	}
+
+	// Read by a monitor ten minutes ago; nothing from it has reached the Grid
+	// for three days. Silent, the monitor answering, and not an alarm.
+	read := meshNode{Type: "repeater", Heard: meshNow.Add(-72 * time.Hour), Admin: admin(10*time.Minute, 10*time.Minute)}
+	if got := read.activityState(meshNow); got != stateSilent {
+		t.Errorf("read node state = %s, want silent: a monitor's read is not activity", got)
+	}
+	if at, kind := read.lastActive(meshNow); kind != "heard" || !at.Equal(read.Heard) {
+		t.Errorf("read node last active = %v %s, want its advert", at, kind)
+	}
+	if got := read.monitorState(meshNow); got != monitorAnswering {
+		t.Errorf("read node monitor = %s, want answering", got)
+	}
+	text, alarm = texts(read)
+	if alarm || !strings.Contains(text, "Not heard for") || !strings.Contains(text, "A monitor read it 10 min ago") {
+		t.Errorf("read node issues (alarm %v):\n%s", alarm, text)
+	}
+
+	// Neither: silent and no answer is the one that alarms.
+	gone := meshNode{Type: "repeater", Heard: meshNow.Add(-72 * time.Hour), Reachability: "UNREACHABLE",
+		Admin: admin(12*24*time.Hour, time.Hour)}
+	if _, alarm := texts(gone); !alarm {
+		t.Error("a node silent on the mesh and not answering its monitor should alarm")
 	}
 }
